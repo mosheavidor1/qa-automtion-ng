@@ -1,0 +1,7 @@
+pytest==6.2.5
+allure-pytest==2.9.45
+requests==2.26
+urllib3==1.26.7
+pywinrm==0.4.2
+pypsexec==0.3.0
+paramiko==2.8.1
