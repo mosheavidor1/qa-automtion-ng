@@ -11,8 +11,8 @@ from infra.system_components.management import Management
 class JiraConfiguration:
 
     endpoint = 'http://jira.ensilo.local'
-    user_name = None
-    password = None
+    user_name = 'automation'
+    password = 'Aut0g00dqa42'
     project = 'EN'
 
 

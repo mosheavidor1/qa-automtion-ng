@@ -14,6 +14,10 @@ class Assertion:
     fails_list = []
 
     @staticmethod
+    def add_message_soft_assert(message: str):
+        Assertion.fails_list.append(message)
+
+    @staticmethod
     def invoke_assertion(expected,
                          actual,
                          message: str,
