@@ -112,10 +112,6 @@ class Collector:
         Reporter.report(f"Collector process ID updated to: {self._process_id}")
 
     @abstractmethod
-    def copy_installation_files_to_local_machine(self, version: str):
-        pass
-
-    @abstractmethod
     def start_health_mechanism(self):
         pass
 

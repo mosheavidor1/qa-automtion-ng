@@ -2,6 +2,11 @@ import ipaddress
 from abc import ABCMeta, abstractmethod
 from typing import List
 
+import allure
+
+from infra.allure_report_handler.reporter import Reporter
+from infra.utils.utils import StringUtils
+
 
 class OsStation(metaclass=ABCMeta):
 
@@ -64,6 +69,22 @@ class OsStation(metaclass=ABCMeta):
         self._os_name = self.get_os_name()
         self._os_architecture = self.get_os_architecture()
 
+    @allure.step("Get IP of a remote host {host}")
+    def get_ip_of_remote_host(self, host):
+        cmd = f"ping -c 1 {host}"
+        result = self.execute_cmd(cmd=cmd,
+                                  return_output=True,
+                                  fail_on_err=False,
+                                  attach_output_to_report=True,
+                                  asynchronous=False)
+        if 'unreachable' in result.lower():
+            Reporter.report("host is unreachable, can't get IP")
+            return None
+
+        ip = StringUtils.get_txt_by_regex(text=result, regex='(\d+\.\d+.\d+.\d+)', group=1)
+        Reporter.report(f"The Ip is: {ip}")
+        return ip
+
     @abstractmethod
     def connect(self):
         pass
@@ -119,7 +140,7 @@ class OsStation(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def remove_all_mounted_drives(self):
+    def remove_mounted_drive(self, local_mounted_drive: str = None):
         pass
 
     @abstractmethod
@@ -131,11 +152,23 @@ class OsStation(metaclass=ABCMeta):
         pass
 
     @abstractmethod
+    def copy_files_from_shared_folder_to_local_machine(self,
+                                                       target_path_in_local_machine: str,
+                                                       shared_drive_path: str,
+                                                       shared_drive_user_name: str,
+                                                       shared_drive_password: str):
+        pass
+
+    @abstractmethod
     def copy_files(self, source: str, target: str):
         pass
 
     @abstractmethod
     def remove_file(self, file_path: str):
+        pass
+
+    @abstractmethod
+    def remove_folder(self, folder_path: str):
         pass
 
     @abstractmethod
