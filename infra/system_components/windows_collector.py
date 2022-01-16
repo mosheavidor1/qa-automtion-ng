@@ -142,29 +142,6 @@ class WindowsCollector(Collector):
 
             return True
 
-    @allure.step("{0} - Copy installation filed to collector's machine")
-    def copy_installation_files_to_local_machine(self,
-                                                 version: str):
-
-        target_folder_full_path = fr'{self.__target_versions_path}\{version}'
-        target_folder = self.os_station.create_new_folder(folder_path=target_folder_full_path)
-        try:
-            self.os_station.remove_all_mounted_drives()
-            self.os_station.mount_shared_drive_locally(desired_local_drive='X:',
-                                                       shared_drive=third_party_details.SHARED_DRIVE_VERSIONS_PATH,
-                                                       user_name=third_party_details.USER_NAME,
-                                                       password=third_party_details.PASSWORD)
-
-            is_path_exist = self.os_station.is_path_exist(fr'X:\{version}')
-            if not is_path_exist:
-                raise Exception("Mount failed, can not copy any file from shared file")
-
-            self.os_station.copy_files(source=fr'X:\{version}\*', target=f'{target_folder}')
-            return target_folder
-
-        finally:
-            self.os_station.remove_all_mounted_drives()
-
     @allure.step("{0} - Get collector status")
     def get_collector_status(self) -> SystemState:
         cmd = f'"{self.__collector_service_exe}" --status'
@@ -218,7 +195,11 @@ class WindowsCollector(Collector):
         install_logs_file_name = f"install_logs_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.txt"
         install_log_file_name = fr"{logs_folder}\{install_logs_file_name}"
 
-        installation_files_folder = self.copy_installation_files_to_local_machine(version=version)
+        shared_drive_path = rf'{third_party_details.SHARED_DRIVE_VERSIONS_PATH}\{version}'
+        installation_files_folder = self.os_station.copy_files_from_shared_folder_to_local_machine(target_path_in_local_machine=f'{self.__target_versions_path}\{version}',
+                                                                                                   shared_drive_path=shared_drive_path,
+                                                                                                   shared_drive_user_name=third_party_details.USER_NAME,
+                                                                                                   shared_drive_password=third_party_details.PASSWORD)
 
         list_of_file_in_folder = self.os_station.get_list_of_files_in_folder(folder_path=installation_files_folder, file_suffix=".msi")
 

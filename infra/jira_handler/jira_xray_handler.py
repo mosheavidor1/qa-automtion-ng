@@ -4,6 +4,7 @@ from enum import Enum
 import allure
 import requests
 
+import third_party_details
 from infra.allure_report_handler.reporter import Reporter
 from infra.system_components.management import Management
 
@@ -11,8 +12,8 @@ from infra.system_components.management import Management
 class JiraConfiguration:
 
     endpoint = 'http://jira.ensilo.local'
-    user_name = 'automation'
-    password = 'Aut0g00dqa42'
+    user_name = third_party_details.USER_NAME
+    password = third_party_details.PASSWORD
     project = 'EN'
 
 

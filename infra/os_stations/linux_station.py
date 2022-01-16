@@ -1,8 +1,10 @@
 import re
+from datetime import datetime
 
 import allure
 import paramiko
 
+import third_party_details
 from infra.allure_report_handler.reporter import Reporter
 from infra.os_stations.os_station_base import OsStation
 from infra.utils.utils import StringUtils
@@ -184,21 +186,69 @@ class LinuxStation(OsStation):
 
     @allure.step("Create new folder {folder_path}")
     def create_new_folder(self, folder_path: str):
-        raise Exception("Not implemented yet")
+        expected_message = "directory exist"
+        cmd = f'[ -d {folder_path} ] && echo "{expected_message}"'
+        result = self.execute_cmd(cmd=cmd, fail_on_err=True, return_output=True, attach_output_to_report=True)
+        if result is not None and expected_message in result:
+            return folder_path
 
+        create_new_folder_command = f"mkdir -p {folder_path}"
+        self.execute_cmd(cmd=create_new_folder_command, fail_on_err=True, return_output=True, attach_output_to_report=True)
+        return folder_path
+
+    @allure.step("Mount shared drive locally")
     def mount_shared_drive_locally(self, desired_local_drive: str, shared_drive: str, user_name: str, password: str):
-        raise Exception("Not implemented yet")
+        cmd = f"sudo mount -t cifs -o username={user_name},password={password} {shared_drive} {desired_local_drive}"
+        self.execute_cmd(cmd=cmd, fail_on_err=True)
 
-    def remove_all_mounted_drives(self):
-        raise Exception("Not implemented yet")
+    @allure.step("Unmount shared drive {local_mounted_drive}")
+    def remove_mounted_drive(self, local_mounted_drive: str = None):
+        cmd = f"sudo sudo umount --force {local_mounted_drive}"
+        self.execute_cmd(cmd=cmd, return_output=False, fail_on_err=True)
 
     def copy_files(self, source: str, target: str):
-        raise Exception("Not implemented yet")
+        cmd = f'scp -r {source} {target}'
+        self.execute_cmd(cmd=cmd, return_output=False, fail_on_err=True)
 
     @allure.step("Removing file {file_path}")
     def remove_file(self, file_path):
         cmd = f"rm -f {file_path}"
         self.execute_cmd(cmd=cmd, return_output=False, fail_on_err=True)
 
+    @allure.step("Removing folder {folder_path}")
+    def remove_folder(self, folder_path: str):
+        cmd = f"rm -rf {folder_path}"
+        self.execute_cmd(cmd=cmd, return_output=False, fail_on_err=True)
+
     def overwrite_file_content(self, content: str, file_path: str):
         raise Exception("Not implemented yet")
+
+    @allure.step("Copy files from shared folder to local machine")
+    def copy_files_from_shared_folder_to_local_machine(self,
+                                                       target_path_in_local_machine: str,
+                                                       shared_drive_path: str,
+                                                       shared_drive_user_name: str,
+                                                       shared_drive_password: str):
+
+        curr_time = datetime.now().strftime('%Y_%m_%d_%H_%M_%S_%f')
+        mounted_dir_name = f'/mnt/{curr_time}'
+        try:
+            target_folder = self.create_new_folder(folder_path=target_path_in_local_machine)
+            mounted_dir_name = self.create_new_folder(folder_path=mounted_dir_name)
+            shared_drive_ip = self.get_ip_of_remote_host(host=third_party_details.SHARED_DRIVE_PATH.replace('\\', ''))
+            shared_drive_path_for_command = shared_drive_path.replace("\\", "/")
+            str_to_replace = third_party_details.SHARED_DRIVE_PATH.replace('\\', '')
+            shared_drive_path_for_command = shared_drive_path_for_command.replace(str_to_replace, shared_drive_ip)
+
+            self.mount_shared_drive_locally(desired_local_drive=mounted_dir_name,
+                                            shared_drive=shared_drive_path_for_command,
+                                            user_name=shared_drive_user_name,
+                                            password=shared_drive_password)
+            self.copy_files(source=f'{mounted_dir_name}/*', target=target_folder)
+            return target_folder
+
+        finally:
+            # unmount
+            self.remove_mounted_drive(local_mounted_drive=mounted_dir_name)
+            # remove file
+            self.remove_folder(mounted_dir_name)

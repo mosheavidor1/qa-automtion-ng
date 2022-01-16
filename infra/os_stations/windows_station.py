@@ -182,8 +182,8 @@ class WindowsStation(OsStation):
         return folder_path
 
     @allure.step("Delete all mounted drives")
-    def remove_all_mounted_drives(self):
-        self.execute_cmd(cmd='net use * /del /yes', fail_on_err=True)
+    def remove_mounted_drive(self, local_mounted_drive: str = '*'):
+        self.execute_cmd(cmd=f'net use {local_mounted_drive} /del /yes', fail_on_err=True)
 
     @allure.step("Mount shared drive locally")
     def mount_shared_drive_locally(self,
@@ -201,6 +201,10 @@ class WindowsStation(OsStation):
     @allure.step("Removing file {file_path}")
     def remove_file(self, file_path: str):
         self.execute_cmd(cmd=f'del /f {file_path}')
+
+    @allure.step("Removing folder {folder_path}")
+    def remove_folder(self, folder_path: str):
+        raise Exception("Not  implemented yet")
 
     @allure.step("Get list of files inside {folder_path} with the suffix {file_suffix}")
     def get_list_of_files_in_folder(self,
@@ -245,4 +249,29 @@ class WindowsStation(OsStation):
         if self.__is_valid_content_to_write(rows[len(rows)-1]):
             cmd_builder += f"& ECHO {rows[len(rows)-1]} >> {file_path}"
         self.execute_cmd(cmd=cmd_builder, fail_on_err=True)
+
+    @allure.step("Copy files from shared folder to local machine")
+    def copy_files_from_shared_folder_to_local_machine(self,
+                                                       target_path_in_local_machine: str,
+                                                       shared_drive_path: str,
+                                                       shared_drive_user_name: str,
+                                                       shared_drive_password: str):
+
+        target_folder = self.create_new_folder(folder_path=target_path_in_local_machine)
+        try:
+            self.remove_mounted_drive()
+            self.mount_shared_drive_locally(desired_local_drive='X:',
+                                            shared_drive=shared_drive_path,
+                                            user_name=shared_drive_user_name,
+                                            password=shared_drive_password)
+
+            is_path_exist = self.is_path_exist(fr'X:\\')
+            if not is_path_exist:
+                raise Exception("Mount failed, can not copy any file from shared file")
+
+            self.copy_files(source=fr'X:\\*', target=f'{target_folder}')
+            return target_folder
+
+        finally:
+            self.remove_mounted_drive()
 

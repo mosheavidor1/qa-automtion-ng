@@ -58,9 +58,6 @@ class LinuxCollector(Collector):
     def has_crash_dumps(self, append_to_report: bool):
         pass
 
-    def copy_installation_files_to_local_machine(self, version: str):
-        pass
-
     def get_collector_status(self):
         pass
 
