@@ -6,6 +6,7 @@ import paramiko
 
 import third_party_details
 from infra.allure_report_handler.reporter import Reporter
+from infra.decorators import retry
 from infra.os_stations.os_station_base import OsStation
 from infra.utils.utils import StringUtils
 
@@ -21,6 +22,7 @@ class LinuxStation(OsStation):
                            user_name=user_name,
                            password=password)
 
+    @retry
     def connect(self):
         if self._remote_connection_session is None:
             try:
@@ -41,6 +43,7 @@ class LinuxStation(OsStation):
         ansi_escape = re.compile(r'(?:\x1B[@-_]|[\x80-\x9F])[0-?]*[ -/]*[@-~]')
         return ansi_escape.sub('', line)
 
+    @retry
     @allure.step("Executing command: {cmd}")
     def execute_cmd(self, cmd: str, return_output: bool = True, fail_on_err: bool = False, timeout: int = 180,
                     attach_output_to_report: bool = True, asynchronous: bool = False):

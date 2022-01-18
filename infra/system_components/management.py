@@ -5,6 +5,7 @@ import allure
 from ensilo.platform.rest.nslo_management_rest import NsloRest, NsloManagementConnection
 
 import sut_details
+from infra.allure_report_handler.reporter import Reporter
 from infra.containers.system_component_containers import AggregatorDetails, CoreDetails, CollectorDetails, \
     ManagementDetails
 from infra.enums import ComponentType, OsTypeEnum, SystemState, CollectorTypes
@@ -193,47 +194,73 @@ class Management(FortiEdrLinuxStation):
             os_type = OsTypeEnum.LINUX
             collector = None
             if 'win' in collector_details.os_family.lower():
+
+                user_name = sut_details.win_user_name
+                password = sut_details.win_password
+
+                encrypted_connection = True
+                if "windows 7" in collector_details.operating_system.lower():
+                    encrypted_connection = False
+
+                # collector = WindowsCollector(host_ip=collector_details.ip_address,
+                #                              user_name=sut_details.win_user_name,
+                #                              password=sut_details.win_password,
+                #                              collector_details=collector_details,
+                #                              encrypted_connection=encrypted_connection)
+
+                # all this part below is a workaround because there is different users & passwords for various operating systems
+                # should be removed when we will have templated with the same user name and password for all windows versions.
+                elif "windows server 2019" in collector_details.operating_system.lower():
+                    user_name = 'Administrator'
+                    password = 'enSilo$$'
+
+                elif "windows 8.1" in collector_details.operating_system.lower():
+                    user_name = 'root'
+                    password = 'root'
+
                 collector = WindowsCollector(host_ip=collector_details.ip_address,
-                                             user_name=sut_details.win_user_name,
-                                             password=sut_details.win_password,
-                                             collector_details=collector_details)
+                                             user_name=user_name,
+                                             password=password,
+                                             collector_details=collector_details,
+                                             encrypted_connection=encrypted_connection)
 
-            elif 'ubunto' in collector_details.os_family.lower() \
-                    or 'centos' in collector_details.os_family.lower() \
-                    or 'oracle' in collector_details.os_family.lower() \
-                    or 'suse' in collector_details.os_family.lower() \
-                    or 'amazon' in collector_details.os_family.lower():
-                collector = LinuxCollector(host_ip=collector_details.ip_address,
-                                           user_name='root',
-                                           password='enSilo$$',
-                                           collector_details=collector_details)
+                collector.os_station.user_name = user_name
+                collector.os_station.password = password
 
-            elif 'osx' in collector_details.os_family.lower():
-                collector = OsXCollector(host_ip=collector_details.ip_address,
-                                         user_name='root',
-                                         password='enSilo$$',
-                                         collector_details=collector_details)
+                self._collectors.append(collector)
 
-            else:
-                raise Exception(
-                    f"Can not create an collector object since collector from the {collector_details.os_family} family is not known by the automation'")
 
-            self._collectors.append(collector)
+            # TBD - Uncomment when the logic of linux collector will be implemented
+
+            # elif 'ubunto' in collector_details.os_family.lower() \
+            #         or 'centos' in collector_details.os_family.lower() \
+            #         or 'oracle' in collector_details.os_family.lower() \
+            #         or 'suse' in collector_details.os_family.lower() \
+            #         or 'amazon' in collector_details.os_family.lower():
+            #
+            #     collector = LinuxCollector(host_ip=collector_details.ip_address,
+            #                                user_name='root',
+            #                                password='enSilo$$',
+            #                                collector_details=collector_details)
+            #
+            # elif 'osx' in collector_details.os_family.lower():
+            #     collector = OsXCollector(host_ip=collector_details.ip_address,
+            #                              user_name='root',
+            #                              password='enSilo$$',
+            #                              collector_details=collector_details)
+            #
+            # else:
+            #     raise Exception(
+            #         f"Can not create an collector object since collector from the {collector_details.os_family} family is not known by the automation'")
+            #
+            # self._collectors.append(collector)
 
     @allure.step("Check all system components services are up and running")
     def validate_all_system_components_are_running(self):
         non_collector_sys_components = [self] + self._aggregators + self._cores
 
         for sys_comp in non_collector_sys_components:
-
-            # workaround for demo since my system is not so healthy
-            if isinstance(sys_comp, Aggregator):
-                sys_comp.validate_system_component_is_in_desired_state(desired_state=SystemState.NOT_RUNNING)
-            else:
-                sys_comp.validate_system_component_is_in_desired_state(desired_state=SystemState.RUNNING)
-
-            # remove the workaround above and uncomment this row
-            # sys_comp.validate_system_component_is_in_desired_state(desired_state=SystemState.RUNNING)
+            sys_comp.validate_system_component_is_in_desired_state(desired_state=SystemState.RUNNING)
 
         for single_collector in self._collectors:
             single_collector.validate_collector_is_up_and_running(use_health_monitor=True)
@@ -245,6 +272,11 @@ class Management(FortiEdrLinuxStation):
             file_suffix = '.log'
 
             if isinstance(sys_comp, Collector) or isinstance(sys_comp, Core):
+
+                if isinstance(sys_comp, Collector):
+                    # TBD - not implement yet, this if should be removed after the implementation
+                    continue
+
                 file_suffix = '.blg'
 
             sys_comp.clear_logs(file_suffix=file_suffix)
@@ -253,9 +285,17 @@ class Management(FortiEdrLinuxStation):
     def append_logs_to_report_from_all_system_components(self):
         all_sys_comp = [self] + self._aggregators + self._cores + self._collectors
         for sys_comp in all_sys_comp:
-            if isinstance(sys_comp, Collector) or isinstance(sys_comp, Core):
+
+            if isinstance(sys_comp, Collector):
                 # TBD
                 continue
+
+            if isinstance(sys_comp, Core):
+                logs_folder_path = sys_comp.get_logs_folder_path()
+                blg_log_files = sys_comp.get_list_of_files_in_folder(logs_folder_path)
+                blg_log_files = [f'{logs_folder_path}/{single_file}' for single_file in blg_log_files]
+                sys_comp.parse_blg_log_files(blg_log_files_paths=blg_log_files)
+
             sys_comp.append_logs_to_report(file_suffix='.log')
 
 

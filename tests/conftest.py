@@ -1,6 +1,7 @@
 import allure
 
 from infra.allure_report_handler.reporter import Reporter
+from infra.assertion.assertion import Assertion
 from infra.system_components.management import Management
 
 import json
@@ -209,8 +210,11 @@ def management():
 
     yield management
 
-    management.append_logs_to_report_from_all_system_components()
-    check_if_collectors_has_crashed(management.collectors)
+    try:
+        management.append_logs_to_report_from_all_system_components()
+        check_if_collectors_has_crashed(management.collectors)
+    finally:
+        Assertion.assert_all()
 
 
 @allure.step("Check if collector has crashed")
@@ -220,6 +224,6 @@ def check_if_collectors_has_crashed(collectors_list):
         for single_collector in collectors_list:
             has_crashed = single_collector.has_crash()
             if has_crashed:
-                assert False, "Crash was found"
+                Assertion.add_message_soft_assert(f"Crash was detected in {single_collector} collector")
     else:
         Reporter.report("Collectors list is None, can not check anything")
