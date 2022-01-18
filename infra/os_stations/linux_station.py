@@ -180,16 +180,28 @@ class LinuxStation(OsStation):
     def get_process_id(self, service_name: str) -> int:
         raise Exception("Not implemented yet")
 
-    @allure.step("Checking if file {file_name} exist")
+    @allure.step("Checking if {path} exist")
     def is_path_exist(self, path: str) -> bool:
-        raise Exception("Not implemented yet")
+        expected_message = "exist"
+
+        # check if dir exist
+        cmd = f'[ -d {path} ] && echo "{expected_message}"'
+        result_dir = self.execute_cmd(cmd=cmd, fail_on_err=True, return_output=True, attach_output_to_report=True)
+
+        # check if file exist
+        cmd = f'[ -f {path} ] && echo "{expected_message}"'
+        result_file = self.execute_cmd(cmd=cmd, fail_on_err=True, return_output=True, attach_output_to_report=True)
+
+        if (result_dir is not None and expected_message in result_dir) or (result_file is not None and expected_message in result_file):
+            Reporter.report(f"Path {path} exist!")
+            return True
+
+        Reporter.report(f"Path {path} is not exist")
+        return False
 
     @allure.step("Create new folder {folder_path}")
     def create_new_folder(self, folder_path: str):
-        expected_message = "directory exist"
-        cmd = f'[ -d {folder_path} ] && echo "{expected_message}"'
-        result = self.execute_cmd(cmd=cmd, fail_on_err=True, return_output=True, attach_output_to_report=True)
-        if result is not None and expected_message in result:
+        if self.is_path_exist(path=folder_path):
             return folder_path
 
         create_new_folder_command = f"mkdir -p {folder_path}"
@@ -252,3 +264,16 @@ class LinuxStation(OsStation):
             self.remove_mounted_drive(local_mounted_drive=mounted_dir_name)
             # remove file
             self.remove_folder(mounted_dir_name)
+
+    def get_last_modified_file_name_in_folder(self, folder_path: str) -> str:
+        cmd = f'ls -t {folder_path}'
+        output = self.execute_cmd(cmd=cmd, return_output=True, fail_on_err=True)
+        if output is None:
+            return None
+
+        files = output.split('\n')
+        if len(files) == 0:
+            return None
+
+        return files[0]
+

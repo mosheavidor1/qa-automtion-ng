@@ -242,11 +242,12 @@ class Management(FortiEdrLinuxStation):
     def clear_logs_from_all_system_components(self):
         all_sys_comp = [self] + self._aggregators + self._cores + self._collectors
         for sys_comp in all_sys_comp:
-            if isinstance(sys_comp, Collector) or isinstance(sys_comp, Core):
-                # TBD
-                continue
+            file_suffix = '.log'
 
-            sys_comp.clear_logs()
+            if isinstance(sys_comp, Collector) or isinstance(sys_comp, Core):
+                file_suffix = '.blg'
+
+            sys_comp.clear_logs(file_suffix=file_suffix)
 
     @allure.step("Append logs to report")
     def append_logs_to_report_from_all_system_components(self):

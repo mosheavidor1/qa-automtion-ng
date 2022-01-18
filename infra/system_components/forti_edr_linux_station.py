@@ -2,6 +2,7 @@ from abc import abstractmethod
 
 import allure
 
+import third_party_details
 from infra.allure_report_handler.reporter import Reporter
 from infra.enums import SystemState, ComponentType
 from infra.os_stations.linux_station import LinuxStation
@@ -20,6 +21,7 @@ class FortiEdrLinuxStation(LinuxStation):
                          password=password)
 
         self.__component_type = component_type
+        self._version_content_folder = "/tmp/blg_log_parser"
 
     @abstractmethod
     def get_logs_folder_path(self):
@@ -61,19 +63,31 @@ class FortiEdrLinuxStation(LinuxStation):
 
     @allure.step("Clear {0} logs")
     def clear_logs(self, file_suffix='.log'):
-        if self.__component_type == ComponentType.CORE:
-            raise Exception(f"Clearing logs operation for {self.__component_type.name} is not implemented yet")
-
         log_folder = self.get_logs_folder_path()
         files = self.get_list_of_files_in_folder(folder_path=log_folder,
                                                  file_suffix=file_suffix)
 
+        last_modified_file = None
+        if self.__component_type == ComponentType.CORE:
+            # extract the last modified file - which is the the file the system currently writing to
+            last_modified_file = self.get_last_modified_file_name_in_folder(folder_path=self.get_logs_folder_path())
+
         for single_file in files:
-            result = StringUtils.get_txt_by_regex(text=single_file, regex='.log.(\d+)', group=1)
-            if result is not None:
+
+            # in case of core - can remove all files except the last modified
+            if self.__component_type == ComponentType.CORE and last_modified_file is not None and last_modified_file not in single_file:
                 self.remove_file(single_file)
+
+            elif self.__component_type == ComponentType.AGGREGATOR or self.__component_type.MANAGEMENT:
+                # in case of management and aggregator
+                result = StringUtils.get_txt_by_regex(text=single_file, regex='.log.(\d+)', group=1)
+                if result is not None:
+                    self.remove_file(single_file)
+                else:
+                    self.clear_file_content(single_file)
+
             else:
-                self.clear_file_content(single_file)
+                raise Exception(f"There is not implementation of clearing logs for {self.__component_type.name}")
 
     @allure.step("Append {0} logs to report")
     def append_logs_to_report(self, file_suffix='.log'):
@@ -89,3 +103,17 @@ class FortiEdrLinuxStation(LinuxStation):
 
             Reporter.attach_str_as_file(file_name=file, file_content=content)
 
+    @allure.step("Copy version files from shared folder to {0}")
+    def copy_version_files_from_shared_folder(self, version: str = None):
+
+        if version is None:
+            version = self.get_version()
+
+        shared_drive_path = fr'{third_party_details.SHARED_DRIVE_VERSIONS_PATH}\{version}'
+        copied_files_dir = self.copy_files_from_shared_folder_to_local_machine(
+            target_path_in_local_machine=self._version_content_folder,
+            shared_drive_path=shared_drive_path,
+            shared_drive_user_name=third_party_details.USER_NAME,
+            shared_drive_password=third_party_details.PASSWORD)
+
+        return copied_files_dir
