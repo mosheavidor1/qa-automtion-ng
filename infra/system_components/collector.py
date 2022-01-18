@@ -16,11 +16,13 @@ class Collector:
                  user_name: str,
                  password: str,
                  os_type: OsTypeEnum,
-                 collector_details: CollectorDetails):
+                 collector_details: CollectorDetails,
+                 encrypted_connection: bool = True):
         self._os_station: OsStation = OsStationFactory.get_os_station_according_to_type(os_type=os_type,
                                                                                         host_ip=host_ip,
                                                                                         user_name=user_name,
-                                                                                        password=password)
+                                                                                        password=password,
+                                                                                        encrypted_connection=encrypted_connection)
         self._host_ip = host_ip
         self._user_name = user_name
         self._password = password

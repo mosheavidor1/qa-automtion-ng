@@ -7,7 +7,6 @@ import third_party_details
 from infra.allure_report_handler.reporter import Reporter
 from infra.containers.system_component_containers import CollectorDetails
 from infra.enums import SystemState, OsTypeEnum
-from infra.os_stations.windows_station import WindowsStation
 from infra.system_components.collector import Collector
 from infra.utils.utils import StringUtils
 
@@ -18,12 +17,14 @@ class WindowsCollector(Collector):
                  host_ip: str,
                  user_name: str,
                  password: str,
-                 collector_details: CollectorDetails):
+                 collector_details: CollectorDetails,
+                 encrypted_connection: bool = True):
         super().__init__(host_ip=host_ip,
                          user_name=user_name,
                          password=password,
                          collector_details=collector_details,
-                         os_type=OsTypeEnum.WINDOWS)
+                         os_type=OsTypeEnum.WINDOWS,
+                         encrypted_connection=encrypted_connection)
 
         self.__collector_installation_path = r"C:\Program Files\Fortinet\FortiEDR"
         self.__collector_service_exe = f"{self.__collector_installation_path}\FortiEDRCollectorService.exe"
@@ -72,9 +73,6 @@ class WindowsCollector(Collector):
 
         return version
 
-    def _init_os_station(self, host_ip: str, user_name: str, password: str):
-        self._os_station = WindowsStation(host_ip=host_ip, user_name=user_name, password=password)
-
     @allure.step("{0} - Stop collector")
     def stop_collector(self, password: str):
         cmd = f'"{self.__collector_service_exe}" --stop -rp:{password}'
@@ -113,6 +111,7 @@ class WindowsCollector(Collector):
             Reporter.report(f"Process ID was changed, last known ID is: {self.process_id}, current ID is: {curr_pid}")
 
         has_dump = self.has_crash_dumps(append_to_report=True)
+
         if is_pid_changed or has_dump:
             return True
 
@@ -120,6 +119,12 @@ class WindowsCollector(Collector):
 
     @allure.step("{0} - Checking if crash dumps exists")
     def has_crash_dumps(self, append_to_report: bool = False):
+
+        # TBD:
+        # 1. add here crash dumps logic, move folder content to different folder in machine and keep current folder clean
+        # 2. check if there is file under C:\Windows\System32\CrashDumps
+        # 3. check if there is MEMORY.DMP file under C:\Windows
+
         is_crash_folder_exist = self.os_station.is_path_exist(path=self.crash_dumps_dir)
 
         if not is_crash_folder_exist:
@@ -128,17 +133,20 @@ class WindowsCollector(Collector):
 
         crash_dump_files_list = self.os_station.get_list_of_files_in_folder(folder_path=self.crash_dumps_dir)
         if crash_dump_files_list is None or len(crash_dump_files_list) == 0:
-            Reporter.report("There is no crash files")
+            Reporter.report("There are no crash files")
             return False
 
         else:
             for single_crash_dump_files_list in crash_dump_files_list:
+                # need to change the logic according to what I wrote above
                 if append_to_report:
-                    full_file_path = fr'{self.crash_dumps_dir}\{single_crash_dump_files_list}'
-                    crash_file_content = self.os_station.get_file_content(file_path=full_file_path)
-                    Reporter.report("Crash dumps were found, attaching to report, please take a look")
-                    Reporter.attach_str_as_file(file_name=single_crash_dump_files_list, file_content=crash_file_content)
-                    self.os_station.remove_file(file_path=full_file_path)
+                    pass
+
+                    # full_file_path = fr'{self.crash_dumps_dir}\{single_crash_dump_files_list}'
+                    # crash_file_content = self.os_station.get_file_content(file_path=full_file_path)
+                    # Reporter.report("Crash dumps were found, attaching to report, please take a look")
+                    # Reporter.attach_str_as_file(file_name=single_crash_dump_files_list, file_content=crash_file_content)
+                    # self.os_station.remove_file(file_path=full_file_path)
 
             return True
 

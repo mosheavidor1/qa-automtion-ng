@@ -4,8 +4,10 @@ from typing import List
 import allure
 
 from pypsexec.client import Client
+from pypsexec.exceptions import SCMRException
 
 from infra.allure_report_handler.reporter import Reporter
+from infra.decorators import retry
 
 from infra.os_stations.os_station_base import OsStation
 from infra.utils.utils import StringUtils
@@ -16,15 +18,18 @@ class WindowsStation(OsStation):
     def __init__(self,
                  host_ip,
                  user_name,
-                 password):
+                 password,
+                 encrypted_connection: bool = True):
+        self.__encrypted_connection = encrypted_connection
         super().__init__(host_ip=host_ip,
                          user_name=user_name,
                          password=password)
 
+    @retry
     def connect(self):
         if self._remote_connection_session is None:
             try:
-                self._remote_connection_session = Client(self._host_ip, username=self._user_name, password=self._password, encrypt=True)
+                self._remote_connection_session = Client(self._host_ip, username=self._user_name, password=self._password, encrypt=self.__encrypted_connection)
                 self._remote_connection_session.connect()
                 self._remote_connection_session.create_service()
 
@@ -32,6 +37,7 @@ class WindowsStation(OsStation):
                 Reporter.report(f"Failed to connect to windows machine, original exception: {e}")
                 raise e
 
+    @retry
     @allure.step("Executing command: {cmd}")
     def execute_cmd(self, cmd: str, return_output: bool = True, fail_on_err: bool = False, timeout=180,
                     attach_output_to_report: bool = True,
@@ -69,6 +75,10 @@ class WindowsStation(OsStation):
                     if output is not None:
                         output = output.strip()
                     return output
+
+        except SCMRException as e:
+            Reporter.report("Failed to Execute command because somthing goes wrong with pypsexec library connection, connecting again")
+            self.connect()
 
         except Exception as e:
             Reporter.report(f"Failed to execute command: {cmd} on remote windows machine, original exception: {e}")

@@ -21,7 +21,7 @@ class FortiEdrLinuxStation(LinuxStation):
                          password=password)
 
         self.__component_type = component_type
-        self._version_content_folder = "/tmp/blg_log_parser"
+        self._version_content_folder = "/tmp/version_files"
 
     @abstractmethod
     def get_logs_folder_path(self):
