@@ -43,6 +43,9 @@ class StringUtils:
 
     @staticmethod
     def get_txt_by_regex(text: str, regex: str, group: int = None):
+        if text is None:
+            ValueError("text param can not be None")
+
         result = re.search(regex, text)
         if result is not None and group is not None:
             result = result.group(group)
