@@ -268,7 +268,7 @@ class LinuxStation(OsStation):
             # remove file
             self.remove_folder(mounted_dir_name)
 
-    def get_last_modified_file_name_in_folder(self, folder_path: str) -> str:
+    def get_last_modified_file_name_in_folder(self, folder_path: str, file_suffix: str = None) -> str:
         cmd = f'ls -t {folder_path}'
         output = self.execute_cmd(cmd=cmd, return_output=True, fail_on_err=True)
         if output is None:
@@ -277,6 +277,11 @@ class LinuxStation(OsStation):
         files = output.split('\n')
         if len(files) == 0:
             return None
+
+        if file_suffix is not None:
+            for i in range(len(files)):
+                if file_suffix in files[i]:
+                    return files[i]
 
         return files[0]
 

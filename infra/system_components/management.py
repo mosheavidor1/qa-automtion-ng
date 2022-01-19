@@ -5,10 +5,9 @@ import allure
 from ensilo.platform.rest.nslo_management_rest import NsloRest, NsloManagementConnection
 
 import sut_details
-from infra.allure_report_handler.reporter import Reporter
 from infra.containers.system_component_containers import AggregatorDetails, CoreDetails, CollectorDetails, \
     ManagementDetails
-from infra.enums import ComponentType, OsTypeEnum, SystemState, CollectorTypes
+from infra.enums import ComponentType, OsTypeEnum, SystemState
 from infra.singleton import Singleton
 from infra.system_components.aggregator import Aggregator
 from infra.system_components.collector import Collector
@@ -286,17 +285,15 @@ class Management(FortiEdrLinuxStation):
         all_sys_comp = [self] + self._aggregators + self._cores + self._collectors
         for sys_comp in all_sys_comp:
 
+            log_file_suffix = '.log'
             if isinstance(sys_comp, Collector):
                 # TBD
                 continue
 
             if isinstance(sys_comp, Core):
-                logs_folder_path = sys_comp.get_logs_folder_path()
-                blg_log_files = sys_comp.get_list_of_files_in_folder(logs_folder_path)
-                blg_log_files = [f'{logs_folder_path}/{single_file}' for single_file in blg_log_files]
-                sys_comp.parse_blg_log_files(blg_log_files_paths=blg_log_files)
+                log_file_suffix = '.blg'
 
-            sys_comp.append_logs_to_report(file_suffix='.log')
+            sys_comp.append_logs_to_report(file_suffix=log_file_suffix)
 
 
 

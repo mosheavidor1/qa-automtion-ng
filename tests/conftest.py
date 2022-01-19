@@ -31,7 +31,7 @@ def create_environment_properties_file_for_allure_report():
         f.write(f'Management IP {management.details.management_external_ip}, Version: {management.details.management_version}\r\n')
 
         for single_aggr in management.aggregators:
-            f.write(f'Aggregator IP {single_aggr.details.ip_address},  Version: {single_aggr.details.version}\r\n')
+            f.write(f'Aggregator IP {single_aggr.details.ip_address},  Version: {single_aggr.host_ip}\r\n')
 
         for single_core in management.cores:
             f.write(f'Core IP {single_core.details.ip}, Version: {single_core.details.version}\r\n')

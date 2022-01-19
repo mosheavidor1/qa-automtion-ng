@@ -5,6 +5,7 @@ import allure
 
 from pypsexec.client import Client
 from pypsexec.exceptions import SCMRException
+from smbprotocol.exceptions import PipeBroken
 
 from infra.allure_report_handler.reporter import Reporter
 from infra.decorators import retry
@@ -77,8 +78,11 @@ class WindowsStation(OsStation):
                     return output
 
         except SCMRException as e:
-            Reporter.report("Failed to Execute command because somthing goes wrong with pypsexec library connection, connecting again")
+            Reporter.report("Failed to Execute command because somthing went wrong with pypsexec library connection, connecting again")
             self.connect()
+
+        except PipeBroken as e:
+            Reporter.report("Failed to connect to windows machine, if you are connected via VPN, check that windows firewall is disabled")
 
         except Exception as e:
             Reporter.report(f"Failed to execute command: {cmd} on remote windows machine, original exception: {e}")
@@ -91,36 +95,38 @@ class WindowsStation(OsStation):
     @allure.step("Get OS architecture")
     def get_os_architecture(self):
         cmd = 'wmic os get osarchitecture'
-        result = self.execute_cmd(cmd)
+        result = self.execute_cmd(cmd=cmd, fail_on_err=True)
         result = result.replace('\r', '').replace('\n', '')
         arch = StringUtils.get_txt_by_regex(text=result, regex=r'OSArchitecture\s+(.+)', group=1)
         return arch
 
-    @allure.step("Get OS versuib")
+    @allure.step("Get OS version")
     def get_os_version(self):
         cmd = 'systeminfo | findstr /B /C:"OS Version"'
-        result = self.execute_cmd(cmd)
+        result = self.execute_cmd(cmd=cmd, fail_on_err=True)
         os_ver = StringUtils.get_txt_by_regex(text=result, regex=r'OS\s+Version:\s+(.+)', group=1)
         return os_ver
 
+    @retry
     @allure.step("Get OS name")
     def get_os_name(self):
+        # takes time to invoke this command, so if you are working from home or have high latency the result can be None
         cmd = 'systeminfo | findstr /B /C:"OS Name"'
-        result = self.execute_cmd(cmd)
-        result = self.execute_cmd(cmd)
+        result = self.execute_cmd(cmd=cmd, fail_on_err=True)
         os_ver = StringUtils.get_txt_by_regex(text=result, regex=r'OS\s+Name:\s+(.+)', group=1)
         return os_ver
 
     @allure.step("Get CPU usage")
     def get_cpu_usage(self) -> float:
-        cpu_info = self.execute_cmd(cmd="wmic cpu get loadpercentage /format:value")
+        cmd = "wmic cpu get loadpercentage /format:value"
+        cpu_info = self.execute_cmd(cmd=cmd, fail_on_err=True)
         cpu = re.search(r'LoadPercentage=(\d+)', cpu_info).group(1)
         Reporter.report(f'CPU usage: {cpu}')
         return float(cpu)
 
     @allure.step("Get memory usage")
     def get_memory_usage(self) -> float:
-        cpu_info = self.execute_cmd(cmd='systeminfo | find /I "Physical Memory"')
+        cpu_info = self.execute_cmd(cmd='systeminfo | find /I "Physical Memory"', fail_on_err=True)
         available_mem = int(re.search(r'Available\s+Physical\s+Memory:\s+(\d+,\d+)', cpu_info).group(1).replace(',', ''))
         total_mem = int(re.search(r'Total\s+Physical\s+Memory:\s+(\d+,\d+)', cpu_info).group(1).replace(',', ''))
         usage = float((total_mem - available_mem) / total_mem)
@@ -130,7 +136,7 @@ class WindowsStation(OsStation):
 
     @allure.step("Get disk usage")
     def get_disk_usage(self) -> float:
-        total_disk_size = self.execute_cmd(cmd='wmic logicaldisk get size')
+        total_disk_size = self.execute_cmd(cmd='wmic logicaldisk get size', fail_on_err=True)
         total_disk_size = int(re.search('\d+', total_disk_size).group(0))
 
         disk_free_space = self.execute_cmd(cmd='wmic logicaldisk get freespace')
@@ -143,7 +149,7 @@ class WindowsStation(OsStation):
 
     @allure.step("Get {service_name} service process ID")
     def get_process_id(self, service_name: str) -> int:
-        result = self.execute_cmd(f'TASKLIST | find "{service_name}"')
+        result = self.execute_cmd(cmd=f'TASKLIST | find "{service_name}"', fail_on_err=True)
 
         if result is None:
             return None
@@ -210,7 +216,7 @@ class WindowsStation(OsStation):
 
     @allure.step("Removing file {file_path}")
     def remove_file(self, file_path: str):
-        self.execute_cmd(cmd=f'del /f {file_path}')
+        self.execute_cmd(cmd=f'del /f {file_path}', fail_on_err=True)
 
     @allure.step("Removing folder {folder_path}")
     def remove_folder(self, folder_path: str):
