@@ -118,7 +118,10 @@ class Core(FortiEdrLinuxStation):
         # we won't try to copy it again
         is_fallback_parser_exist_for_current_version = False
         if self.__is_blg_parser_exist_for_current_version is True:
-            self.__is_blg_parser_exist_for_current_version = self._is_dedicated_blg_log_parser_exist_for_version(version=version)
+            try:
+                self.__is_blg_parser_exist_for_current_version = self._is_dedicated_blg_log_parser_exist_for_version(version=version)
+            except Exception as e: # workaround for case that there is blg2log file for current version in shared folder
+                self.__is_blg_parser_exist_for_current_version = False
 
         # note that it can not be else to the if above since we need to know the result of the methord inside the if.
         if self.__is_blg_parser_exist_for_current_version is False:
