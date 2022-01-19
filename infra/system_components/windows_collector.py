@@ -110,9 +110,10 @@ class WindowsCollector(Collector):
             self._process_id = curr_pid
             Reporter.report(f"Process ID was changed, last known ID is: {self.process_id}, current ID is: {curr_pid}")
 
-        has_dump = self.has_crash_dumps(append_to_report=True)
+        # has_dump = self.has_crash_dumps(append_to_report=True)
 
-        if is_pid_changed or has_dump:
+        # if is_pid_changed or has_dump:
+        if is_pid_changed:
             return True
 
         return False
