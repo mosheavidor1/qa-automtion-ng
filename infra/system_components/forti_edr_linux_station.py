@@ -67,19 +67,9 @@ class FortiEdrLinuxStation(LinuxStation):
         files = self.get_list_of_files_in_folder(folder_path=log_folder,
                                                  file_suffix=file_suffix)
 
-        # last_modified_file = None
-        # if self.__component_type == ComponentType.CORE:
-        #     # extract the last modified file - which is the the file the system currently writing to
-        #     last_modified_file = self.get_last_modified_file_name_in_folder(folder_path=self.get_logs_folder_path())
-
         for single_file in files:
 
-            # # in case of core - can remove all files except the last modified
-            # if self.__component_type == ComponentType.CORE and last_modified_file is not None and last_modified_file not in single_file:
-            #     self.remove_file(single_file)
-
             if self.__component_type == ComponentType.AGGREGATOR or self.__component_type.MANAGEMENT:
-            #in case of management and aggregator
 
                 result = StringUtils.get_txt_by_regex(text=single_file, regex='.log.(\d+)', group=1)
                 if result is not None:
@@ -87,8 +77,6 @@ class FortiEdrLinuxStation(LinuxStation):
                 else:
                     self.clear_file_content(single_file)
 
-            # else:
-            #     raise Exception(f"There is not implementation of clearing logs for {self.__component_type.name}")
 
     @allure.step("Append {0} logs to report")
     def append_logs_to_report(self, file_suffix='.log'):
