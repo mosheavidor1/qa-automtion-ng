@@ -168,6 +168,10 @@ class OsStation(metaclass=ABCMeta):
         pass
 
     @abstractmethod
+    def move_file(self, file_name: str, target_folder: str):
+        pass
+
+    @abstractmethod
     def remove_folder(self, folder_path: str):
         pass
 

@@ -1,5 +1,6 @@
 import time
 from datetime import datetime
+from typing import List
 
 import allure
 
@@ -26,15 +27,17 @@ class WindowsCollector(Collector):
                          os_type=OsTypeEnum.WINDOWS,
                          encrypted_connection=encrypted_connection)
 
-        self.__collector_installation_path = r"C:\Program Files\Fortinet\FortiEDR"
-        self.__collector_service_exe = f"{self.__collector_installation_path}\FortiEDRCollectorService.exe"
-        self.__program_data = r"C:\ProgramData\FortiEdr"
-        self.__counters_file = fr"{self.__program_data}\Logs\Driver\counters.txt"
-        self.__crash_dumps_dir = fr"{self.program_data}\CrashDumps\Collector"
-        self.__crash_dumps_file = fr"{self.__crash_dumps_dir}\crash_dumps_info.txt"
-        self.__target_versions_path = "C:\\Versions"
-        self.__target_helper_bat_files_path = "C:\\HelperBatFiles"
-        self.__install_uninstall_logs_file_path = "C:\\InstallUninstallLogs"
+        self.__collector_installation_path: str = r"C:\Program Files\Fortinet\FortiEDR"
+        self.__collector_service_exe: str = f"{self.__collector_installation_path}\FortiEDRCollectorService.exe"
+        self.__program_data: str = r"C:\ProgramData\FortiEdr"
+        self.__counters_file: str = fr"{self.__program_data}\Logs\Driver\counters.txt"
+        self.__crash_dumps_dir: str = fr"{self.program_data}\CrashDumps\Collector"
+        self.__crash_dumps_info: str = fr"{self.__crash_dumps_dir}\crash_dumps_info.txt"
+        self.__target_versions_path: str = "C:\\Versions"
+        self.__target_helper_bat_files_path: str = "C:\\HelperBatFiles"
+        self.__install_uninstall_logs_file_path: str = "C:\\InstallUninstallLogs"
+        self.__memory_dmp_file_path: str = r'C:\WINDOWS\memory.dmp'
+        self.__collected_crash_dump_dedicated_folder: str = r'C:\CrashDumpsCollected'
 
     @property
     def collector_installation_path(self) -> str:
@@ -59,8 +62,15 @@ class WindowsCollector(Collector):
     def get_collector_info_from_os(self):
         pass
 
-    def get_service_name(self):
+    def get_service_name(self) -> str:
         return "FortiEDRCollectorService."
+
+    def _get_crash_folders(self) -> List[str]:
+        """
+        :return: the directories that crash files written to
+        """
+        return [r'C:\WINDOWS\system32\crashdumps', r'C:\WINDOWS\crashdumps', r'C:\WINDOWS\minidump',
+                r'C:\WINDOWS\system32\config\systemprofile\AppData\Local\crashdumps']
 
     @allure.step("{0} - Get collector version")
     def get_version(self):
@@ -101,8 +111,24 @@ class WindowsCollector(Collector):
     def is_enabled(self):
         pass
 
+    @allure.step("{0} - Copy collected crash dumps to C:\CrashDumpsCollected")
+    def __move_crash_files_to_dedicated_crash_folder_files(self, dumps_files: List[str]):
+        """
+        The role of this method is to copy the dump files that collected during the test into specific folder
+        :param dumps_files: list of the collected dump file to move
+        """
+
+        if dumps_files is not None and len(dumps_files) > 0:
+            if not self.os_station.is_path_exist(self.__collected_crash_dump_dedicated_folder):
+                self.os_station.create_new_folder(folder_path=self.__collected_crash_dump_dedicated_folder)
+            for file in dumps_files:
+                self.os_station.move_file(file_name=file, target_folder=self.__collected_crash_dump_dedicated_folder)
+
+        else:
+            Reporter.report("dumps files does not passed to this method - nothing to move")
+
     @allure.step("{0} - Checking if collector has crash")
-    def has_crash(self):
+    def has_crash(self) -> bool:
         curr_pid = self.get_current_process_id()
         is_pid_changed = False
         if curr_pid != self.process_id:
@@ -110,46 +136,53 @@ class WindowsCollector(Collector):
             self._process_id = curr_pid
             Reporter.report(f"Process ID was changed, last known ID is: {self.process_id}, current ID is: {curr_pid}")
 
-        # has_dump = self.has_crash_dumps(append_to_report=True)
+        has_dump = self.has_crash_dumps(append_to_report=False)
 
-        # if is_pid_changed or has_dump:
-        if is_pid_changed:
+        if is_pid_changed or has_dump:
+            Reporter.report("Crash was detected :(")
             return True
 
+        Reporter.report("No crash detected :)")
         return False
 
     @allure.step("{0} - Checking if crash dumps exists")
-    def has_crash_dumps(self, append_to_report: bool = False):
+    def has_crash_dumps(self, append_to_report: bool = False) -> bool:
+        crash_dump_files = self.get_crash_dumps_files()
 
-        # TBD:
-        # 1. add here crash dumps logic, move folder content to different folder in machine and keep current folder clean
-        # 2. check if there is file under C:\Windows\System32\CrashDumps
-        # 3. check if there is MEMORY.DMP file under C:\Windows
-
-        is_crash_folder_exist = self.os_station.is_path_exist(path=self.crash_dumps_dir)
-
-        if not is_crash_folder_exist:
-            Reporter.report(f"The folder {self.crash_dumps_dir} does not exist")
-            return False
-
-        crash_dump_files_list = self.os_station.get_list_of_files_in_folder(folder_path=self.crash_dumps_dir)
-        if crash_dump_files_list is None or len(crash_dump_files_list) == 0:
-            Reporter.report("There are no crash files")
-            return False
-
+        found_crash_dumps = True if crash_dump_files is not None and len(crash_dump_files) else False
+        if found_crash_dumps:
+            Reporter.attach_str_as_file(file_name='crash_dumps', file_content=str('\r\n'.join(crash_dump_files)))
         else:
-            for single_crash_dump_files_list in crash_dump_files_list:
-                # need to change the logic according to what I wrote above
-                if append_to_report:
-                    pass
+            Reporter.report(f"No crash dump file found in {self}")
 
-                    # full_file_path = fr'{self.crash_dumps_dir}\{single_crash_dump_files_list}'
-                    # crash_file_content = self.os_station.get_file_content(file_path=full_file_path)
-                    # Reporter.report("Crash dumps were found, attaching to report, please take a look")
-                    # Reporter.attach_str_as_file(file_name=single_crash_dump_files_list, file_content=crash_file_content)
-                    # self.os_station.remove_file(file_path=full_file_path)
+        Reporter.report(f"Going to move crash dumps to {self.__collected_crash_dump_dedicated_folder}")
+        self.__move_crash_files_to_dedicated_crash_folder_files(dumps_files=crash_dump_files)
+        Reporter.report(f"!!!!!!! All the collected crash dumps moved to: {self.__collected_crash_dump_dedicated_folder} !!!!!!!")
 
-            return True
+        return found_crash_dumps
+
+    @allure.step("Get crash dump files")
+    def get_crash_dumps_files(self) -> List[str]:
+        folder_to_search = self._get_crash_folders()
+
+        crash_dumps_list = None
+        for single_folder in folder_to_search:
+            is_folder_exist = self.os_station.is_path_exist(single_folder)
+            if is_folder_exist:
+                files_in_folder = self.os_station.get_list_of_files_in_folder(folder_path=single_folder)
+                if files_in_folder is not None and len(files_in_folder) > 0:
+                    files_in_folder = [f'{single_folder}\{single_file}' for single_file in files_in_folder]
+
+                    if crash_dumps_list is None:
+                        crash_dumps_list = []
+
+                    crash_dumps_list += files_in_folder
+
+        is_memory_dump_exist = self.os_station.is_path_exist(path=self.__memory_dmp_file_path)
+        if is_memory_dump_exist:
+            crash_dumps_list += self.__memory_dmp_file_path
+
+        return crash_dumps_list
 
     @allure.step("{0} - Get collector status")
     def get_collector_status(self) -> SystemState:

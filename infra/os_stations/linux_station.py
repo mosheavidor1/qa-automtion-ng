@@ -285,3 +285,5 @@ class LinuxStation(OsStation):
 
         return files[0]
 
+    def move_file(self, file_name: str, target_folder: str):
+        raise Exception("There is no implementation yet")

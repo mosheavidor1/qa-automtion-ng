@@ -31,7 +31,7 @@ def create_environment_properties_file_for_allure_report():
         f.write(f'Management IP {management.details.management_external_ip}, Version: {management.details.management_version}\r\n')
 
         for single_aggr in management.aggregators:
-            f.write(f'Aggregator IP {single_aggr.details.ip_address},  Version: {single_aggr.host_ip}\r\n')
+            f.write(f'Aggregator IP {single_aggr.host_ip},  Version: {single_aggr.details.version}\r\n')
 
         for single_core in management.cores:
             f.write(f'Core IP {single_core.details.ip}, Version: {single_core.details.version}\r\n')
@@ -217,13 +217,17 @@ def management():
         Assertion.assert_all()
 
 
-@allure.step("Check if collector has crashed")
+@allure.step("Check if collectors has crashed")
 def check_if_collectors_has_crashed(collectors_list):
-
+    crashed_collectors = []
     if collectors_list is not None and len(collectors_list) > 0:
         for single_collector in collectors_list:
             has_crashed = single_collector.has_crash()
             if has_crashed:
-                Assertion.add_message_soft_assert(f"Crash was detected in {single_collector} collector")
+                crashed_collectors.append(f'{single_collector}')
+
+        if len(crashed_collectors) > 0:
+            assert False, f"Crash was detected in the collectors: {str(crashed_collectors)}"
+
     else:
         Reporter.report("Collectors list is None, can not check anything")
