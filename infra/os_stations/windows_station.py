@@ -161,7 +161,7 @@ class WindowsStation(OsStation):
         process_id = re.search(f"{service_name}\s+(\d+)", result).group(1)
         return int(process_id)
 
-    @allure.step("Checking if file {path} exist")
+    @allure.step("Checking if path {path} exist")
     def is_path_exist(self, path: str) -> bool:
 
         cmd = f"IF exist {path} (echo {str(True)}) ELSE (echo {str(False)})"
@@ -230,7 +230,7 @@ class WindowsStation(OsStation):
         if " " in folder_path:
             folder_path = f'"{folder_path}"'
         result = self.execute_cmd(cmd=f'dir /b {folder_path}', return_output=True, fail_on_err=False)
-        if result is None:
+        if result is None or 'file not found'.lower() in result:
             return None
 
         files = result.split('\n')
@@ -271,7 +271,17 @@ class WindowsStation(OsStation):
                                                        target_path_in_local_machine: str,
                                                        shared_drive_path: str,
                                                        shared_drive_user_name: str,
-                                                       shared_drive_password: str):
+                                                       shared_drive_password: str,
+                                                       files_to_copy: List[str]):
+        """
+        The role of this method is to copy files from the shared folder to target folder in the remote station
+        :param target_path_in_local_machine: target folder for copied files
+        :param shared_drive_path: path in shared drive folder, must be a path to folder
+        :param shared_drive_user_name: user name
+        :param shared_drive_password: password
+        :param files_to_copy: list of file names to copy, if you want to copy all files in folder, pass ['*']
+        :return: folder path of the copied files
+        """
 
         target_folder = self.create_new_folder(folder_path=target_path_in_local_machine)
         try:
@@ -285,9 +295,16 @@ class WindowsStation(OsStation):
             if not is_path_exist:
                 raise Exception("Mount failed, can not copy any file from shared file")
 
-            self.copy_files(source=fr'X:\\*', target=f'{target_folder}')
+            for single_file in files_to_copy:
+                self.copy_files(source=fr'X:\\{single_file}', target=f'{target_folder}')
+
             return target_folder
 
         finally:
             self.remove_mounted_drive()
+
+    @allure.step("Move file {file_name} to {target_folder}")
+    def move_file(self, file_name: str, target_folder: str):
+        cmd = rf"move {file_name} {target_folder}"
+        self.execute_cmd(cmd=cmd, fail_on_err=True, attach_output_to_report=True)
 
