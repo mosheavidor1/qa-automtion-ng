@@ -238,10 +238,10 @@ class WindowsCollector(Collector):
         install_log_file_name = fr"{logs_folder}\{install_logs_file_name}"
 
         shared_drive_path = rf'{third_party_details.SHARED_DRIVE_VERSIONS_PATH}\{version}'
-        installation_files_folder = self.os_station.copy_files_from_shared_folder_to_local_machine(target_path_in_local_machine=f'{self.__target_versions_path}\{version}',
-                                                                                                   shared_drive_path=shared_drive_path,
-                                                                                                   shared_drive_user_name=third_party_details.USER_NAME,
-                                                                                                   shared_drive_password=third_party_details.PASSWORD)
+        installation_files_folder = self.os_station.copy_files_from_shared_folder_to_local_machine(
+            target_path_in_local_machine=f'{self.__target_versions_path}\{version}',
+            shared_drive_path=shared_drive_path, shared_drive_user_name=third_party_details.USER_NAME,
+            shared_drive_password=third_party_details.PASSWORD, files_to_copy=['*'])
 
         list_of_file_in_folder = self.os_station.get_list_of_files_in_folder(folder_path=installation_files_folder, file_suffix=".msi")
 

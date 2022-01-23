@@ -100,9 +100,8 @@ class FortiEdrLinuxStation(LinuxStation):
 
         shared_drive_path = fr'{third_party_details.SHARED_DRIVE_VERSIONS_PATH}\{version}'
         copied_files_dir = self.copy_files_from_shared_folder_to_local_machine(
-            target_path_in_local_machine=self._version_content_folder,
-            shared_drive_path=shared_drive_path,
-            shared_drive_user_name=third_party_details.USER_NAME,
-            shared_drive_password=third_party_details.PASSWORD)
+            target_path_in_local_machine=self._version_content_folder, shared_drive_path=shared_drive_path,
+            shared_drive_user_name=third_party_details.USER_NAME, shared_drive_password=third_party_details.PASSWORD,
+            files_to_copy=['*'])
 
         return copied_files_dir

@@ -271,7 +271,17 @@ class WindowsStation(OsStation):
                                                        target_path_in_local_machine: str,
                                                        shared_drive_path: str,
                                                        shared_drive_user_name: str,
-                                                       shared_drive_password: str):
+                                                       shared_drive_password: str,
+                                                       files_to_copy: List[str]):
+        """
+        The role of this method is to copy files from the shared folder to target folder in the remote station
+        :param target_path_in_local_machine: target folder for copied files
+        :param shared_drive_path: path in shared drive folder, must be a path to folder
+        :param shared_drive_user_name: user name
+        :param shared_drive_password: password
+        :param files_to_copy: list of file names to copy, if you want to copy all files in folder, pass ['*']
+        :return: folder path of the copied files
+        """
 
         target_folder = self.create_new_folder(folder_path=target_path_in_local_machine)
         try:
@@ -285,7 +295,9 @@ class WindowsStation(OsStation):
             if not is_path_exist:
                 raise Exception("Mount failed, can not copy any file from shared file")
 
-            self.copy_files(source=fr'X:\\*', target=f'{target_folder}')
+            for single_file in files_to_copy:
+                self.copy_files(source=fr'X:\\{single_file}', target=f'{target_folder}')
+
             return target_folder
 
         finally:

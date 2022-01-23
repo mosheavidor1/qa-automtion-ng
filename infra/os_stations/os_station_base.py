@@ -152,11 +152,9 @@ class OsStation(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def copy_files_from_shared_folder_to_local_machine(self,
-                                                       target_path_in_local_machine: str,
-                                                       shared_drive_path: str,
-                                                       shared_drive_user_name: str,
-                                                       shared_drive_password: str):
+    def copy_files_from_shared_folder_to_local_machine(self, target_path_in_local_machine: str, shared_drive_path: str,
+                                                       shared_drive_user_name: str, shared_drive_password: str,
+                                                       files_to_copy: List[str]):
         pass
 
     @abstractmethod
