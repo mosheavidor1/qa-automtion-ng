@@ -35,6 +35,7 @@ class WindowsCollector(Collector):
         self.__target_versions_path = "C:\\Versions"
         self.__target_helper_bat_files_path = "C:\\HelperBatFiles"
         self.__install_uninstall_logs_file_path = "C:\\InstallUninstallLogs"
+        self.__target_malware_path = "C:\\qa"
 
     @property
     def collector_installation_path(self) -> str:
@@ -308,3 +309,13 @@ msiexec.exe /x %val% /qn UPWD="{registration_password}" RMCONFIG=1 /l*vx {uninst
         if not is_installation_folder_empty:
             # assert False, "Installation folder still contains files, should be empty"
             print("Installation folder still contains files, should be empty")
+
+    @allure.step("copy malware to collector")
+    def copy_malware_to_collector(self, malware_name="DynamicCodeTests"):
+        malware_path = rf'{third_party_details.SHARED_DRIVE_QA_PATH}\Automation\qapa\Resources\Executables\MalwareSimulationTests\{malware_name}.exe'
+        malware_folder = self.os_station.copy_files_from_shared_folder_to_local_machine(
+                target_path_in_local_machine=self.__target_malware_path,
+                shared_drive_path=malware_path,
+                shared_drive_user_name=third_party_details.USER_NAME,
+                shared_drive_password=third_party_details.PASSWORD)
+        return malware_folder
