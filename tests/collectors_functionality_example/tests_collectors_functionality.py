@@ -13,6 +13,7 @@ from tests.collectors_functionality_example.collectors_functionality_base import
 class CollectorFunctionalityExampleTests(CollectorsFunctionalityBaseExample):
 
     @pytest.mark.xray('EN-23329')
+    @pytest.mark.devops
     def test_stop_start_collector(self, management):
         """
         The role of this test is to check stop and start of fortiEDR collector service
