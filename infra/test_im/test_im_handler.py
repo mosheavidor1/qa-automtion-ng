@@ -83,6 +83,15 @@ class TestImHandler:
                 else:
                     assert False, f"Test Failed, look at TestIm link to see what happened: {test_link}"
 
+        if int(failed) != 0:
+            if assert_type == AssertTypeEnum.SOFT:
+                Assertion.add_message_soft_assert(message=f"The test step \ test from TestIM: {test_name} has failed")
+            else:
+                assert False, f"Test Failed, look at TestIm link to see what happened: {test_link}"
+
+        if output is None or passed is None or failed is None:
+            assert False, "Failed to run test or output is empty, something is wrong"
+
     def _create_param_file(self, json_params_name: str, data: dict):
 
         json_params_name_curr_dir = os.path.join(self.script_dir, json_params_name)
