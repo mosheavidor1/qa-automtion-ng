@@ -25,7 +25,8 @@ class TestImHandler:
                       build_number: str,
                       url: str,
                       json_name: str = "params-file.json",
-                      assert_type: AssertTypeEnum = AssertTypeEnum.HARD):
+                      assert_type: AssertTypeEnum = AssertTypeEnum.HARD,
+                      test_timeout=600):
 
         params_file = '' if json_name is None else f'--params-file "{json_name}"'
 
@@ -51,13 +52,15 @@ class TestImHandler:
         output = None
         status_code = 0
         try:
-            output = subprocess.check_output(testim_cmd, cwd=self.script_dir, shell=True, timeout=600)
+            Reporter.report(f"Going to run TestIM command from the dir: {self.script_dir}")
+            Reporter.attach_str_as_file(file_name="TestIM command", file_content=testim_cmd)
+            output = subprocess.check_output(testim_cmd, cwd=self.script_dir, shell=True, timeout=test_timeout)
         except subprocess.CalledProcessError as grepexc:
             status_code = grepexc.returncode
             output = grepexc.output
-            print("error code", grepexc.returncode, grepexc.output)
 
         output = output.decode('utf-8')
+        Reporter.attach_str_as_file(file_name=f'TestIm output', file_content=output)
 
         test_link_regex = r'Test\s+.+url:\s+(.+)\n'
         test_link = StringUtils.get_txt_by_regex(text=output, regex=test_link_regex, group=1)
@@ -70,7 +73,6 @@ class TestImHandler:
 
         Reporter.report(f"Test link: {test_link}")
         Reporter.report(f"Test Duration: {duration}")
-        Reporter.attach_str_as_file(file_name=f'TestIm output', file_content=output)
 
         if status_code != 0 and passed is not None and passed.isdigit():
             if int(passed) == 0:
