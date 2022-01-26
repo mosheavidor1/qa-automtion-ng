@@ -28,7 +28,12 @@ pipeline {
                 defaultValue: '',
                 description: 'Email List')	               
     }
-    agent { label 'cloud-agents' }
+    agent { 
+      node {
+        label 'cloud-agents' 
+        customWorkspace "/home/jenkins/workspace/forti_edr_automation/${env.BUILD_NUMBER}"
+      }
+    }
     stages {  
 
         stage('Checkout') {
