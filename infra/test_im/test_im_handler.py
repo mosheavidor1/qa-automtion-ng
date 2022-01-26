@@ -71,6 +71,9 @@ class TestImHandler:
         skipped = StringUtils.get_txt_by_regex(text=output, regex='SKIPPED:\s+(\d+)', group=1)
         duration = StringUtils.get_txt_by_regex(text=output, regex='Duration:\s+(\S+)', group=1)
 
+        if output is None or passed is None or failed is None:
+            assert False, "Failed to run test or output is empty, something is wrong"
+
         Reporter.report(f"Test link: {test_link}")
         Reporter.report(f"Test Duration: {duration}")
 
@@ -88,9 +91,6 @@ class TestImHandler:
                 Assertion.add_message_soft_assert(message=f"The test step \ test from TestIM: {test_name} has failed")
             else:
                 assert False, f"Test Failed, look at TestIm link to see what happened: {test_link}"
-
-        if output is None or passed is None or failed is None:
-            assert False, "Failed to run test or output is empty, something is wrong"
 
     def _create_param_file(self, json_params_name: str, data: dict):
 
@@ -114,7 +114,8 @@ class TestImHandler:
                  buildnumber: str,
                  management_ui_ip: str,
                  assert_type: AssertTypeEnum = AssertTypeEnum.HARD,
-                 data: dict = None):
+                 data: dict = None,
+                 test_timeout=600):
         """
         test name: has to be equal to the test name in TESTIM
         """
@@ -128,6 +129,7 @@ class TestImHandler:
                                build_number=buildnumber,
                                url=management_ui_ip,
                                json_name=json_name,
-                               assert_type=assert_type)
+                               assert_type=assert_type,
+                               test_timeout=test_timeout)
         finally:
             os.remove(os.path.join(self.script_dir, json_name))
