@@ -9,4 +9,4 @@ pip install ensilo-platform-rest@git+ssh://git@dops-git106.fortinet-us.com/ecs/e
 
 export PATH=$PATH:./.local/bin
 
-pytest -v -m "${suite_name}" --alluredir="./allure-results" --jira-xray
+pytest -v -m "${tests}" --alluredir="./allure-results" --jira-xray

@@ -14,13 +14,16 @@ pipeline {
                 description: 'Branch to build')	
         string( name: 'management_host_ip',
                 defaultValue: '',
-                description: 'Management Host IP')	               
-        string( name: 'suite_name',
-                defaultValue: '',
-                description: 'Suite Name')	               
-        string( name: 'single_test_name',
-                defaultValue: '',
-                description: 'Single Test Name')	               
+                description: 'Management Host IP')
+        choice(name: 'tests_discover_type',
+               choices: ['suite', 'keyword'],
+               description: 'choose suite to run suite\\s of tests or keyword to run all tests including the keyword')
+        string( name: 'tests',
+                defaultValue: 'sanity',
+                description: 'suites or tests to run according to given keyword')
+        booleanParam(name: 'report_results_to_jira',
+                    defaultValue: false,
+                    description: 'create test execution in jira and report tests results')
         string( name: 'email_list',
                 defaultValue: '',
                 description: 'Email List')	               
