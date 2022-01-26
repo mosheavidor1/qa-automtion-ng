@@ -14,7 +14,7 @@ export PATH=$PATH:./.local/bin
 
 pytest_cmd="pytest -v "
 
-if [ "$test_discover_type" = "suite" ]; then
+if [ "$tests_discover_type" = "suite" ]; then
     pytest_cmd="${pytest_cmd} -m "
 else
     pytest_cmd="${pytest_cmd} -k "
