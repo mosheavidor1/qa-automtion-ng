@@ -99,8 +99,7 @@ pipeline {
                                 println("Start Building docker image")
 
 
-                                sh                           
-                                    '''                                                
+                                sh '''                                                
                                         echo $PASSWORD | docker login $HARBOR_DOCKER_REGISTRY  -u $USERNAME --password-stdin                                             
                                         docker image prune -a --force --filter "until=48h"
                                         docker build -t $IMAGE_NAME:$IMAGE_TAG  .
@@ -138,14 +137,13 @@ pipeline {
                     try 
                     {
 
-                    env.HARBOR_DOCKER_REGISTRY = HARBOR_DOCKER_REGISTRY             
-                    env.IMAGE_NAME = IMAGE_NAME             
-                    env.DOCKER_SHA256SUM = DOCKER_SHA256SUM             
-                    
-                    sh                            
-                        '''                                                                                                                      
-                            docker run --volume $(pwd):/home/jenkins -w /home/jenkins --rm  --env-file ./myenv.txt -u $(id -u ${USER}):$(id -g ${USER}) $HARBOR_DOCKER_REGISTRY/$IMAGE_NAME:$DOCKER_SHA256SUM ./run_test.sh
-                        '''
+                        env.HARBOR_DOCKER_REGISTRY = HARBOR_DOCKER_REGISTRY             
+                        env.IMAGE_NAME = IMAGE_NAME             
+                        env.DOCKER_SHA256SUM = DOCKER_SHA256SUM             
+                        
+                        sh  '''                                                                                                                      
+                                docker run --volume $(pwd):/home/jenkins -w /home/jenkins --rm  --env-file ./myenv.txt -u $(id -u ${USER}):$(id -g ${USER}) $HARBOR_DOCKER_REGISTRY/$IMAGE_NAME:$DOCKER_SHA256SUM ./run_test.sh
+                            '''
                                                  
                                              
                         
