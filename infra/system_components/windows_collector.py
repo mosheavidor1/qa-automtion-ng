@@ -66,7 +66,7 @@ class WindowsCollector(Collector):
     def get_collector_info_from_os(self):
         pass
 
-    def get_service_name(self):
+    def get_service_name(self) -> str:
         return "FortiEDRCollectorService."
 
     def _get_crash_folders(self) -> List[str]:
@@ -184,8 +184,6 @@ class WindowsCollector(Collector):
 
         is_memory_dump_exist = self.os_station.is_path_exist(path=self.__memory_dmp_file_path)
         if is_memory_dump_exist:
-            if crash_dumps_list is None:
-                crash_dumps_list = []
             crash_dumps_list += self.__memory_dmp_file_path
 
         return crash_dumps_list
@@ -347,14 +345,3 @@ msiexec.exe /x %val% /qn UPWD="{registration_password}" RMCONFIG=1 /l*vx {uninst
         if not is_installation_folder_empty:
             # assert False, "Installation folder still contains files, should be empty"
             print("Installation folder still contains files, should be empty")
-
-    @allure.step("copy malware to collector")
-    def copy_malware_to_collector(self, malware_name="DynamicCodeTests"):
-        malware_path = rf'{third_party_details.SHARED_DRIVE_QA_PATH}\automation_ng\malware_sample'
-        malware_folder = self.os_station.copy_files_from_shared_folder(
-                target_path_in_local_machine=self.__target_malware_path,
-                shared_drive_path=malware_path,
-                shared_drive_user_name=third_party_details.USER_NAME,
-                shared_drive_password=third_party_details.PASSWORD,
-                files_to_copy=[f'{malware_name}.exe'])
-        return malware_folder

@@ -29,6 +29,7 @@ class CollectorsFunctionalityBaseExample(BaseTest):
 
     @allure.step("Test prerequisites")
     def prerequisites(self):
+
         if self.test_type == CollectorFunctionalityTestType.STOP_START_COLLECTOR or\
                 self.test_type == CollectorFunctionalityTestType.STOP_COLLECTOR_CHECK_IS_UP_FAIL_ON_PURPOSE:
 
@@ -36,6 +37,7 @@ class CollectorsFunctionalityBaseExample(BaseTest):
             self.validate_collector_service_is_running(collector=self.management.collectors[0])
 
         elif self.test_type == CollectorFunctionalityTestType.CREATE_FAKE_DUMP_FILE:
+            self.management.collectors[0].os_station.copy_files(source='C:\CrashDumpsCollected\*', target='C:\Windows\crashdumps')
             self.management.collectors[0].os_station.create_new_folder(folder_path=self.crash_folder_path)
             self.management.collectors[0].os_station.execute_cmd(
                 cmd=rf'echo "This is a dummy crash file with dummy content" > {self.crash_folder_path}\{self.crash_file_name} ')
