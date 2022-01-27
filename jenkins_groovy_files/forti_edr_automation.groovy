@@ -6,6 +6,7 @@ def HARBOR_DOCKER_REGISTRY='dops-registry.fortinet-us.com'
 def IMAGE_NAME="fedr/python3_nodejs"
 def DOCKER_SHA256SUM=""
 
+
 pipeline {
      
     parameters {
@@ -26,7 +27,12 @@ pipeline {
                     description: 'create test execution in jira and report tests results')
         string( name: 'email_list',
                 defaultValue: '',
-                description: 'Email List')	               
+                description: 'Email List, comma delimiter')	   
+                    
+        string( name: 'platfom_rest_branch',
+                defaultValue: 'master',
+                description: 'Platfom Rest Branch')	   
+                           
     }
     agent { 
       node {
@@ -41,6 +47,7 @@ pipeline {
                 script {
                     cleanWs()              
                     checkout scm    
+                    stdout_list.add("<div><h3><a href=\"${env.BUILD_URL}\">${env.BUILD_URL}</a></h3></div>")
                 }
             }
         }      
@@ -56,7 +63,6 @@ pipeline {
                     }
                     sh "echo BUILD_URL=${BUILD_URL} >> ./myenv.txt"
                     
-                    step_out = ""
                     try 
                     {
 
@@ -79,29 +85,34 @@ pipeline {
 
                             DOCKER_SHA256SUM = sh( script: "sha256sum Dockerfile | cut -d' ' -f1", returnStdout: true).trim()
                             env.DOCKER_SHA256SUM = DOCKER_SHA256SUM
+                            REQUIREMENTS_SHA256SUM = sh( script: "sha256sum resources/requirements.txt | cut -d' ' -f1", returnStdout: true).trim()
+                            env.REQUIREMENTS_SHA256SUM = REQUIREMENTS_SHA256SUM                                                        
                             docker_exists = sh( script: '''
                                         echo $PASSWORD | docker login $HARBOR_DOCKER_REGISTRY  -u $USERNAME --password-stdin > /dev/null 2>&1
                                         echo $(docker inspect $HARBOR_DOCKER_REGISTRY/$IMAGE_NAME:$DOCKER_SHA256SUM  > /dev/null 2>&1 ; echo $?)
                                         ''', returnStdout: true ).trim()  
-                            if ( docker_exists != "0" ) {
+                            requirements_no_change = sh( script: '''
+                                        echo $PASSWORD | docker login $HARBOR_DOCKER_REGISTRY  -u $USERNAME --password-stdin > /dev/null 2>&1
+                                        echo $(docker inspect $HARBOR_DOCKER_REGISTRY/$IMAGE_NAME:$REQUIREMENTS_SHA256SUM  > /dev/null 2>&1 ; echo $?)
+                                        ''', returnStdout: true ).trim()  
+                            if ( docker_exists != "0" || requirements_no_change != "0" ) {
                                 println("Start Building docker image")
 
 
-                                step_out = sh(
-                                            script:                            
-                                            '''                                                
-                                                echo $PASSWORD | docker login $HARBOR_DOCKER_REGISTRY  -u $USERNAME --password-stdin                                             
-                                                docker image prune -a --force --filter "until=48h"
-                                                docker build -t $IMAGE_NAME:$IMAGE_TAG  .
-                                                docker tag $IMAGE_NAME:$IMAGE_TAG $HARBOR_DOCKER_REGISTRY/$IMAGE_NAME:$IMAGE_TAG
-                                                docker push $HARBOR_DOCKER_REGISTRY/$IMAGE_NAME:$IMAGE_TAG
-                                                docker tag $IMAGE_NAME:$IMAGE_TAG $HARBOR_DOCKER_REGISTRY/$IMAGE_NAME:latest
-                                                docker push $HARBOR_DOCKER_REGISTRY/$IMAGE_NAME:latest    
-                                                docker tag $IMAGE_NAME:$IMAGE_TAG $HARBOR_DOCKER_REGISTRY/$IMAGE_NAME:$DOCKER_SHA256SUM
-                                                docker push $HARBOR_DOCKER_REGISTRY/$IMAGE_NAME:$DOCKER_SHA256SUM                                                           
-                                            ''',
-                                            returnStdout: true
-                                            )  
+                                sh                           
+                                    '''                                                
+                                        echo $PASSWORD | docker login $HARBOR_DOCKER_REGISTRY  -u $USERNAME --password-stdin                                             
+                                        docker image prune -a --force --filter "until=48h"
+                                        docker build -t $IMAGE_NAME:$IMAGE_TAG  .
+                                        docker tag $IMAGE_NAME:$IMAGE_TAG $HARBOR_DOCKER_REGISTRY/$IMAGE_NAME:$IMAGE_TAG
+                                        docker push $HARBOR_DOCKER_REGISTRY/$IMAGE_NAME:$IMAGE_TAG
+                                        docker tag $IMAGE_NAME:$IMAGE_TAG $HARBOR_DOCKER_REGISTRY/$IMAGE_NAME:latest
+                                        docker push $HARBOR_DOCKER_REGISTRY/$IMAGE_NAME:latest    
+                                        docker tag $IMAGE_NAME:$IMAGE_TAG $HARBOR_DOCKER_REGISTRY/$IMAGE_NAME:$DOCKER_SHA256SUM
+                                        docker push $HARBOR_DOCKER_REGISTRY/$IMAGE_NAME:$DOCKER_SHA256SUM                                                           
+                                        docker tag $IMAGE_NAME:$IMAGE_TAG $HARBOR_DOCKER_REGISTRY/$IMAGE_NAME:$REQUIREMENTS_SHA256SUM
+                                        docker push $HARBOR_DOCKER_REGISTRY/$IMAGE_NAME:$REQUIREMENTS_SHA256SUM                                                           
+                                    '''
                             }
                             else {
                                 println("Docker image didn't change")
@@ -109,9 +120,12 @@ pipeline {
                         }                            
                         
                     } catch(Exception e) {
+                        println "Exception: ${e}"
                         currentBuild.result = 'FAILURE'
                     } finally {
-                        println ( step_out )
+                        
+                        println "Stage $STAGE_NAME done"
+                       
                     }                                      
                 }
             }
@@ -120,7 +134,7 @@ pipeline {
         {
             steps {
                 script {
-                    step_out = ""
+                  
                     try 
                     {
 
@@ -128,20 +142,18 @@ pipeline {
                     env.IMAGE_NAME = IMAGE_NAME             
                     env.DOCKER_SHA256SUM = DOCKER_SHA256SUM             
                     
-                    step_out = sh(
-                                script:                            
-                                '''                                                                                                                      
-                                    docker run --volume $(pwd):/home/jenkins -w /home/jenkins --rm  --env-file ./myenv.txt -u $(id -u ${USER}):$(id -g ${USER}) $HARBOR_DOCKER_REGISTRY/$IMAGE_NAME:$DOCKER_SHA256SUM ./run_test.sh
-                                ''',
-                                returnStdout: true
-                                )  
+                    sh                            
+                        '''                                                                                                                      
+                            docker run --volume $(pwd):/home/jenkins -w /home/jenkins --rm  --env-file ./myenv.txt -u $(id -u ${USER}):$(id -g ${USER}) $HARBOR_DOCKER_REGISTRY/$IMAGE_NAME:$DOCKER_SHA256SUM ./run_test.sh
+                        '''
                                                  
                                              
                         
                     } catch(Exception e) {
                         currentBuild.result = 'FAILURE'
+                        println "Exception: ${e}"
                     } finally {
-                        println ( step_out )
+                        println "Stage $STAGE_NAME done"
                     }                                      
                 }
             }
@@ -162,8 +174,9 @@ pipeline {
                     reportBuildPolicy: 'ALWAYS',
                     results: [[path: './allure-results']]
                 ])
+                 
 
-                recipients=[ env.email_list ]
+                recipients= env.email_list.split( "[\\s,]+" )
 
                 if ((env.TRIGGER_USER) && (env.TRIGGER_USER != "")){
                     recipients += env.TRIGGER_USER + "@ensilo.com"
