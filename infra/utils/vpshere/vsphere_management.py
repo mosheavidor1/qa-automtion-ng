@@ -159,7 +159,6 @@ class VsphereMachine(object):
                                                description=snapshot_description,
                                                memory=memory,
                                                quiesce=quiesce))
-        self.snapshots_list.append(task)
         print(f"Snapshot creation status: {task}")
 
     def snapshot_revert(self, snapshot_name):
