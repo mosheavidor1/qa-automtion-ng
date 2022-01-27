@@ -2,7 +2,7 @@ import json
 from typing import List
 
 import allure
-from ensilo.platform.rest.nslo_management_rest import NsloRest, NsloManagementConnection
+from infra.rest.rest_commands import RestCommands
 
 import sut_details
 from infra.containers.system_component_containers import AggregatorDetails, CoreDetails, CollectorDetails, \
@@ -38,10 +38,11 @@ class Management(FortiEdrLinuxStation):
         self._collectors: [Collector] = []
 
         self._test_im_client: TestImHandler = TestImHandler()
-        self._rest_ui_client = NsloRest(NsloManagementConnection(self.host_ip,
-                                                                 self._ui_admin_user_name,
-                                                                 self._ui_admin_password,
-                                                                 organization=None))
+
+        self._rest_ui_client = RestCommands(self.host_ip,
+                                            self._ui_admin_user_name,
+                                            self._ui_admin_password,
+                                            organization=None)
 
         self._details: ManagementDetails = self._get_management_details()
         self.init_system_objects()
@@ -87,7 +88,7 @@ class Management(FortiEdrLinuxStation):
         self._collectors = collectors
 
     @property
-    def rest_ui_client(self) -> NsloRest:
+    def rest_ui_client(self) -> RestCommands:
         return self._rest_ui_client
 
     @property
@@ -105,9 +106,7 @@ class Management(FortiEdrLinuxStation):
         return '/opt/FortiEDR/webapp/logs'
 
     def _get_management_details(self):
-        response = self._rest_ui_client.admin.GetSystemSummary()
-        response = response[1]
-        as_dict = json.loads(response.content)
+        as_dict = self._rest_ui_client.get_system_summery()
         return ManagementDetails(license_expiration_date=as_dict.get('licenseExpirationDate'),
                                  management_version=as_dict.get('managementVersion'),
                                  management_hostname=as_dict.get('managementHostname'),
@@ -125,9 +124,7 @@ class Management(FortiEdrLinuxStation):
 
     @allure.step("Init aggregator objects")
     def init_aggregator_objects(self):
-        response = self._rest_ui_client.inventory.ListAggregators()
-        response = response[1]
-        aggregators = json.loads(response.content)
+        aggregators = self._rest_ui_client.get_aggregator_info()
         for single_aggr in aggregators:
 
             ip_addr, port = StringUtils.get_ip_port_as_tuple(single_aggr.get('ipAddress'))
@@ -150,9 +147,7 @@ class Management(FortiEdrLinuxStation):
 
     @allure.step("Init core objects")
     def init_core_objects(self):
-        response = self._rest_ui_client.inventory.ListCores()
-        response = response[1]
-        cores = json.loads(response.content)
+        cores = self._rest_ui_client.get_core_info()
         for single_core in cores:
             ip_addr, port = StringUtils.get_ip_port_as_tuple(single_core.get('ip'))
 
@@ -170,9 +165,7 @@ class Management(FortiEdrLinuxStation):
 
     @allure.step("Init collector objects")
     def init_collector_objects(self):
-        response = self._rest_ui_client.inventory.ListCollectors()
-        response = response[1]
-        collectors = json.loads(response.text)
+        collectors = self._rest_ui_client.get_collector_info()
 
         for single_collector in collectors:
             collector_details = CollectorDetails(system_id=single_collector.get('id'),
@@ -272,11 +265,11 @@ class Management(FortiEdrLinuxStation):
 
             if isinstance(sys_comp, Collector) or isinstance(sys_comp, Core):
 
-                if isinstance(sys_comp, Collector):
-                    # TBD - not implement yet, this if should be removed after the implementation
-                    continue
+                # if isinstance(sys_comp, Collector):
+                #     # TBD - not implement yet, this if should be removed after the implementation
+                continue
 
-                file_suffix = '.blg'
+                # file_suffix = '.blg'
 
             sys_comp.clear_logs(file_suffix=file_suffix)
 
@@ -292,6 +285,7 @@ class Management(FortiEdrLinuxStation):
 
             if isinstance(sys_comp, Core):
                 log_file_suffix = '.blg'
+                continue
 
             sys_comp.append_logs_to_report(file_suffix=log_file_suffix)
 

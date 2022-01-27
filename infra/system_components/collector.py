@@ -28,7 +28,6 @@ class Collector:
         self._password = password
         self._details = collector_details
         self._process_id = self.get_current_process_id()
-        self.__qa_files_path = None
 
     def __repr__(self):
         return f"Collector  {self._host_ip}"
@@ -59,6 +58,10 @@ class Collector:
 
     @abstractmethod
     def get_collector_info_from_os(self):
+        pass
+
+    @abstractmethod
+    def get_qa_files_path(self):
         pass
 
     @abstractmethod
