@@ -1,10 +1,10 @@
 #!/bin/bash
 
 
-env
+
 ln -s /home/pip_lib/.local .local
 
-pip install ensilo-platform-rest@git+ssh://git@dops-git106.fortinet-us.com/ecs/ensilo-platform-rest.git@master
+pip install ensilo-platform-rest@git+ssh://git@dops-git106.fortinet-us.com/ecs/ensilo-platform-rest.git@${platfom_rest_branch}
 
 
 export PATH=$PATH:./.local/bin
