@@ -132,7 +132,6 @@ class VsphereMachine(object):
         """
         for vm_obj in self.service_instance.content.rootFolder.childEntity[0].vmFolder.childEntity:
             try:
-                print(vm_obj.guest.ipAddress)
                 if ip_address == vm_obj.guest.ipAddress and vm_obj.guest.ipAddress and vm_obj.configStatus == 'green':
                     self.vm_obj = vm_obj
             except Exception as e:
@@ -192,7 +191,7 @@ class VsphereMachine(object):
         print(f"Snapshot creation status: {task}")
 
     def snapshot_revert(self, snapshot_name=None):
-        # raise Exception("Not implemented yet.")
+        raise Exception("Not implemented yet.")
 
         task = WaitForTask(self.vm_obj.snapshot.RevertToSnapshot_Task(), self.service_instance)
 
@@ -225,7 +224,7 @@ class VsphereMachine(object):
             print(e)
 
 
-    def _get_snapshot_by_name(self, snapshot_name=None):
+    def get_snapshot_by_name(self, snapshot_name=None):
         raise Exception("Not implemented yet.")
 
         try:
