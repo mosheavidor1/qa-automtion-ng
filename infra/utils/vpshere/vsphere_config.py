@@ -1,3 +1,7 @@
+"""
+
+"""
+
 __author__ = "Dmitry Banny"
 
 
@@ -5,11 +9,16 @@ class Credentials:
     API_KEY = None
 
 
+class Constants:
+    MAX_DEPTH = 10
+    TIMEOUT = 1500
+    
+
 class Cluster(object):
     """ Clusters information.
     
     The information is stored in dict structure:
-        1. ensilo_vcsa1 - Dev environment
+        1. ensilo_vcsa10 - Dev environment
         2. ensilo_vcsa20 - General automation
         3. ensilo_vcsa30 - Malware environment
         4. ensilo_vcsa40 - General automation and performance
@@ -21,7 +30,6 @@ class Cluster(object):
         Ensilo_vcsa1.resource_pools
         Ensilo_vcsa1.datastore_name
     """
-
     def __init__(self, vhost, name, resource_pools, datastore_name):
         self.vhost = vhost
         self.name = name
