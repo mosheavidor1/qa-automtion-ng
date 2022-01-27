@@ -100,16 +100,45 @@ class VsphereMachine(object):
             print(f"Something went wrong while trying to parse the vm_info {e}")
 
     def search_vm_by_name(self, vm_name):
+        """Searching VM name in the vSphere cluster, after it found, VM object set.
+
+        Parameters
+        ----------
+        vm_name : str
+            VM name that you want to search in the vSphere
+
+        Returns
+        -------
+        object
+            Returns a VM object
+        """
         for vm_obj in self.service_instance.content.rootFolder.childEntity[0].vmFolder.childEntity:
             if vm_name == vm_obj.name:
                 self.vm_obj = vm_obj
         return self.vm_obj
 
     def search_vm_by_ip(self, ip_address):
+        """Searching VM name in the vSphere cluster, after it found, VM object set.
+
+        Parameters
+        ----------
+        ip_address : str
+            IP address that you want to search in the vSphere
+
+        Returns
+        -------
+        object
+            Returns a VM object
+        """
         for vm_obj in self.service_instance.content.rootFolder.childEntity[0].vmFolder.childEntity:
-            if ip_address == vm_obj.guest.ipAddress:
-                self.vm_obj = vm_obj
+            try:
+                print(vm_obj.guest.ipAddress)
+                if ip_address == vm_obj.guest.ipAddress and vm_obj.guest.ipAddress and vm_obj.configStatus == 'green':
+                    self.vm_obj = vm_obj
+            except Exception as e:
+                print(e)
         return self.vm_obj
+
 
     def connect_to_vsphere(self):
         try:
@@ -159,14 +188,15 @@ class VsphereMachine(object):
                                                description=snapshot_description,
                                                memory=memory,
                                                quiesce=quiesce))
+        self.snapshots_list.append(self.vm_obj.snapshot.rootSnapshotList)
         print(f"Snapshot creation status: {task}")
 
-    def snapshot_revert(self, snapshot_name):
-        raise Exception("Not implemented yet.")
-        task = WaitForTask(self.vm_obj.snapshot.RevertToSnapshot_Task())
+    def snapshot_revert(self, snapshot_name=None):
+        # raise Exception("Not implemented yet.")
+
+        task = WaitForTask(self.vm_obj.snapshot.RevertToSnapshot_Task(), self.service_instance)
 
         print(task)
-        raise Exception("Not implemented yet.")
 
     def snapshot_remove(self, snapshot_name):
         raise Exception("Not implemented yet.")        
@@ -178,14 +208,54 @@ class VsphereMachine(object):
             print(f"Snapshot removal status: {task}")
         
 
-    def get_all_snapshots(self):
+    def get_all_snapshots(self, snapshots=None):
         raise Exception("Not implemented yet.")
-        pass
+
+        snapshots_list = []
+        try:
+            for snapshot in self.vm_obj.snapshot.rootSnapshotList:
+                snapshot_dict = dict()
+                snapshot_dict["snap_name"] = snapshot.name
+                snapshot_dict["snap_obj"] = snapshot.snapshot
+                snapshots_list.append(snapshot_dict)
+                snapshots_list.append(self.snapshots_list + self.get_all_snapshots(snapshot.childSnapshotList))
+            print(f"{self.snapshots_list}")
+            return self.snapshots_list
+        except Exception as e:
+            print(e)
+
+
+    def _get_snapshot_by_name(self, snapshot_name=None):
+        raise Exception("Not implemented yet.")
+
+        try:
+            snapshots = self.get_all_snapshots(self.vm_obj.snapshot.rootSnapshotList)
+            for snapshot in snapshots:
+                if snapshot_name == snapshot["snap_name"]:
+                    self.snap_obj += snapshot["snap_obj"]
+                    return True
+            print(f"Couldn't find snapshot: {snapshot_name}")
+            return False
+        except AttributeError as e:
+            print(f"There are no snapshots")
+            return False
 
     def reboot(self):
         raise Exception("Not implemented yet.")
+
+        print(f"Machine restart: {task.info.state}")
         pass
 
     def task_status(self,task_id):
         raise Exception("Not implemented yet.")
+        pass
+
+    def power_off(self):
+        task = self.vm_obj.PowerOffVM_Task()
+        WaitForTask(task, self.service_instance)
+
+    def start(self):
+        raise Exception("Not implemented yet.")
+
+        print(f"Machine state change to power off: {task.info.state}")
         pass

@@ -67,8 +67,8 @@ class VsphereConnection(object):
 
 
 if __name__ == '__main__':
-    vm = VsphereConnection(vm_name="dima_colletor10x64").cluster(vsphere_config.Ensilo_vcsa20)
-    # vm.get_all_snapshots()
+    vm = VsphereConnection().cluster(vsphere_config.Ensilo_vcsa20)
+    vm.search_vm_by_ip('10.151.120.252')
     # vm.snapshot_create(snapshot_name="test 1", snapshot_description="test description")
     vm.snapshot_remove(snapshot_name="test 1")
     vm.reboot()
