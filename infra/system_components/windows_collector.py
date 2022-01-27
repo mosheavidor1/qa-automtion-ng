@@ -184,7 +184,10 @@ class WindowsCollector(Collector):
 
         is_memory_dump_exist = self.os_station.is_path_exist(path=self.__memory_dmp_file_path)
         if is_memory_dump_exist:
-            crash_dumps_list += self.__memory_dmp_file_path
+            if crash_dumps_list is None:
+                crash_dumps_list = []
+
+            crash_dumps_list += [self.__memory_dmp_file_path]
 
         return crash_dumps_list
 
