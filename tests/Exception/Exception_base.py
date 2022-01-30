@@ -18,12 +18,7 @@ class ExceptionBase(BaseTest):
     def prerequisites(self):
 
         Reporter.report("create event")
-        malware_name = "DynamicCodeTests.exe"
-        malware_folder = rf'{third_party_details.SHARED_DRIVE_QA_PATH}\automation_ng\malware_sample'
-        target_folder = self.collector.os_station.copy_files_from_shared_folder(self.collector.get_qa_files_path(),
-                                                                malware_folder, [malware_name])
-
-        self.collector.os_station.execute_cmd(f'{target_folder}\\{malware_name}', asynchronous=True)
+        self.collector.create_event(malware_name="DynamicCodeTests.exe")
 
     @allure.step("Run and validate")
     def run_and_validate(self):

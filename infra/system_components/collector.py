@@ -136,5 +136,5 @@ class Collector:
         pass
 
     @abstractmethod
-    def copy_malware_to_collector(self, malware_name="DynamicCodeTests"):
+    def create_event(self, malware_name="DynamicCodeTests"):
         pass
