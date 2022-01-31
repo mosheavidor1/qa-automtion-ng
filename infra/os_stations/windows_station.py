@@ -285,7 +285,7 @@ class WindowsStation(OsStation):
         """
 
         target_folder = self.create_new_folder(folder_path=target_path_in_local_machine)
-        files_exist = self.check_if_exist(target_path_in_local_machine, files_to_copy)
+        files_exist = self.is_files_exist(target_path_in_local_machine, files_to_copy)
         if files_exist:
             return target_folder
         try:
@@ -302,7 +302,7 @@ class WindowsStation(OsStation):
             for single_file in files_to_copy:
                 self.copy_files(source=fr'X:\\{single_file}', target=f'{target_folder}')
 
-            files_exist = self.check_if_exist(target_path_in_local_machine, files_to_copy)
+            files_exist = self.is_files_exist(target_path_in_local_machine, files_to_copy)
             if not files_exist:
                     raise Exception(f"files copy failed in {self.host_ip}")
 
@@ -316,7 +316,7 @@ class WindowsStation(OsStation):
         cmd = rf"move {file_name} {target_folder}"
         self.execute_cmd(cmd=cmd, fail_on_err=True, attach_output_to_report=True)
 
-    def check_if_exist(self, target_path, files_to_copy):
+    def is_files_exist(self, target_path, files_to_copy):
         files = self.get_list_of_files_in_folder(target_path)
         for single_file in files_to_copy:
             if single_file not in files:
