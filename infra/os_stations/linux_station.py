@@ -240,12 +240,12 @@ class LinuxStation(OsStation):
         raise Exception("Not implemented yet")
 
     @allure.step("Copy files from shared folder to local machine")
-    def copy_files_from_shared_folder_to_local_machine(self,
-                                                       target_path_in_local_machine: str,
-                                                       shared_drive_path: str,
-                                                       shared_drive_user_name: str,
-                                                       shared_drive_password: str,
-                                                       files_to_copy: List[str]):
+    def copy_files_from_shared_folder(self,
+                                      target_path_in_local_machine: str,
+                                      shared_drive_path: str,
+                                      shared_drive_user_name: str,
+                                      shared_drive_password: str,
+                                      files_to_copy: List[str]):
         """
         The role of this method is to copy files from the shared folder to target folder in the remote station
         :param target_path_in_local_machine: target folder for copied files

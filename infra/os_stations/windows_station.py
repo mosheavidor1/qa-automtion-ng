@@ -7,6 +7,7 @@ from pypsexec.client import Client
 from pypsexec.exceptions import SCMRException
 from smbprotocol.exceptions import PipeBroken
 
+import third_party_details
 from infra.allure_report_handler.reporter import Reporter
 from infra.decorators import retry
 
@@ -70,7 +71,7 @@ class WindowsStation(OsStation):
                         Reporter.report(f"command output: {output}")
 
                 if (fail_on_err and stderr_err_output != '') or (fail_on_err and status_code != 0):
-                    assert False, "Failing because stderr was returned"
+                    assert False, f"Failing because stderr was returned, {output}"
 
                 if return_output:
                     if output is not None:
@@ -267,12 +268,12 @@ class WindowsStation(OsStation):
         self.execute_cmd(cmd=cmd_builder, fail_on_err=True)
 
     @allure.step("Copy files from shared folder to local machine")
-    def copy_files_from_shared_folder_to_local_machine(self,
-                                                       target_path_in_local_machine: str,
-                                                       shared_drive_path: str,
-                                                       shared_drive_user_name: str,
-                                                       shared_drive_password: str,
-                                                       files_to_copy: List[str]):
+    def copy_files_from_shared_folder(self,
+                                      target_path_in_local_machine: str,
+                                      shared_drive_path: str,
+                                      files_to_copy: List[str],
+                                      shared_drive_user_name: str = third_party_details.USER_NAME,
+                                      shared_drive_password: str = third_party_details.PASSWORD):
         """
         The role of this method is to copy files from the shared folder to target folder in the remote station
         :param target_path_in_local_machine: target folder for copied files
@@ -284,6 +285,9 @@ class WindowsStation(OsStation):
         """
 
         target_folder = self.create_new_folder(folder_path=target_path_in_local_machine)
+        files_exist = self.is_files_exist(target_path_in_local_machine, files_to_copy)
+        if files_exist:
+            return target_folder
         try:
             self.remove_mounted_drive()
             self.mount_shared_drive_locally(desired_local_drive='X:',
@@ -298,6 +302,10 @@ class WindowsStation(OsStation):
             for single_file in files_to_copy:
                 self.copy_files(source=fr'X:\\{single_file}', target=f'{target_folder}')
 
+            files_exist = self.is_files_exist(target_path_in_local_machine, files_to_copy)
+            if not files_exist:
+                    raise Exception(f"files copy failed in {self.host_ip}")
+
             return target_folder
 
         finally:
@@ -307,4 +315,11 @@ class WindowsStation(OsStation):
     def move_file(self, file_name: str, target_folder: str):
         cmd = rf"move {file_name} {target_folder}"
         self.execute_cmd(cmd=cmd, fail_on_err=True, attach_output_to_report=True)
+
+    def is_files_exist(self, target_path, files_to_copy):
+        files = self.get_list_of_files_in_folder(target_path)
+        for single_file in files_to_copy:
+            if single_file not in files:
+                return False
+        return True
 

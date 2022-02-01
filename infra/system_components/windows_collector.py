@@ -38,6 +38,7 @@ class WindowsCollector(Collector):
         self.__install_uninstall_logs_file_path: str = "C:\\InstallUninstallLogs"
         self.__memory_dmp_file_path: str = r'C:\WINDOWS\memory.dmp'
         self.__collected_crash_dump_dedicated_folder: str = r'C:\CrashDumpsCollected'
+        self.__qa_files_path: str = "C:\\qa"
 
     @property
     def collector_installation_path(self) -> str:
@@ -58,6 +59,9 @@ class WindowsCollector(Collector):
     @property
     def crash_dumps_dir(self) -> str:
         return self.__crash_dumps_dir
+
+    def get_qa_files_path(self):
+        return self.__qa_files_path
 
     def get_collector_info_from_os(self):
         pass
@@ -182,7 +186,7 @@ class WindowsCollector(Collector):
         if is_memory_dump_exist:
             if crash_dumps_list is None:
                 crash_dumps_list = []
-                
+
             crash_dumps_list += [self.__memory_dmp_file_path]
 
         return crash_dumps_list
@@ -241,7 +245,7 @@ class WindowsCollector(Collector):
         install_log_file_name = fr"{logs_folder}\{install_logs_file_name}"
 
         shared_drive_path = rf'{third_party_details.SHARED_DRIVE_VERSIONS_PATH}\{version}'
-        installation_files_folder = self.os_station.copy_files_from_shared_folder_to_local_machine(
+        installation_files_folder = self.os_station.copy_files_from_shared_folder(
             target_path_in_local_machine=f'{self.__target_versions_path}\{version}',
             shared_drive_path=shared_drive_path, shared_drive_user_name=third_party_details.USER_NAME,
             shared_drive_password=third_party_details.PASSWORD, files_to_copy=['*'])
@@ -344,3 +348,11 @@ msiexec.exe /x %val% /qn UPWD="{registration_password}" RMCONFIG=1 /l*vx {uninst
         if not is_installation_folder_empty:
             # assert False, "Installation folder still contains files, should be empty"
             print("Installation folder still contains files, should be empty")
+
+    def create_event(self, malware_name: str="DynamicCodeTests.exe"):
+        malware_folder = rf'{third_party_details.SHARED_DRIVE_QA_PATH}\automation_ng\malware_sample'
+        target_folder = self.os_station.copy_files_from_shared_folder(
+            target_path_in_local_machine=self.get_qa_files_path(), shared_drive_path=malware_folder,
+            files_to_copy=[malware_name])
+
+        self.os_station.execute_cmd(f'{target_folder}\\{malware_name}', asynchronous=True)

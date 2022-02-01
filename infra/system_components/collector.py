@@ -61,6 +61,10 @@ class Collector:
         pass
 
     @abstractmethod
+    def get_qa_files_path(self):
+        pass
+
+    @abstractmethod
     def stop_collector(self, password: str):
         pass
 
@@ -129,4 +133,8 @@ class Collector:
 
     @abstractmethod
     def uninstall_collector(self, registration_password: str = '12345678', append_log_to_report=True):
+        pass
+
+    @abstractmethod
+    def create_event(self, malware_name="DynamicCodeTests"):
         pass
