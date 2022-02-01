@@ -64,19 +64,19 @@ class Management(FortiEdrLinuxStation):
         self._ui_admin_password = ui_admin_password
 
     @property
-    def aggregators(self) -> [Aggregator]:
+    def aggregators(self) -> List[Aggregator]:
         return self._aggregators
 
     @aggregators.setter
-    def aggregators(self, aggregators: [Aggregator]):
+    def aggregators(self, aggregators: List[Aggregator]):
         self._aggregators = aggregators
 
     @property
-    def cores(self) -> [Core]:
+    def cores(self) -> List[Core]:
         return self._cores
 
     @cores.setter
-    def cores(self, cores: [Core]):
+    def cores(self, cores: List[Core]):
         self._cores = cores
 
     @property
@@ -84,7 +84,7 @@ class Management(FortiEdrLinuxStation):
         return self._collectors
 
     @collectors.setter
-    def collectors(self, collectors: [Collector]):
+    def collectors(self, collectors: List[Collector]):
         self._collectors = collectors
 
     @property
@@ -249,46 +249,12 @@ class Management(FortiEdrLinuxStation):
 
     @allure.step("Check all system components services are up and running")
     def validate_all_system_components_are_running(self):
+        # non collector system components inherited from fortiEDRLinuxStation
         non_collector_sys_components = [self] + self._aggregators + self._cores
 
+        # classic example of polymorphism
         for sys_comp in non_collector_sys_components:
             sys_comp.validate_system_component_is_in_desired_state(desired_state=SystemState.RUNNING)
 
         for single_collector in self._collectors:
             single_collector.validate_collector_is_up_and_running(use_health_monitor=True)
-
-    @allure.step("Clear logs from all system components")
-    def clear_logs_from_all_system_components(self):
-        all_sys_comp = [self] + self._aggregators + self._cores + self._collectors
-        for sys_comp in all_sys_comp:
-            file_suffix = '.log'
-
-            if isinstance(sys_comp, Collector) or isinstance(sys_comp, Core):
-
-                # if isinstance(sys_comp, Collector):
-                #     # TBD - not implement yet, this if should be removed after the implementation
-                continue
-
-                # file_suffix = '.blg'
-
-            sys_comp.clear_logs(file_suffix=file_suffix)
-
-    @allure.step("Append logs to report")
-    def append_logs_to_report_from_all_system_components(self):
-        all_sys_comp = [self] + self._aggregators + self._cores + self._collectors
-        for sys_comp in all_sys_comp:
-
-            log_file_suffix = '.log'
-            if isinstance(sys_comp, Collector):
-                # TBD
-                continue
-
-            if isinstance(sys_comp, Core):
-                log_file_suffix = '.blg'
-                continue
-
-            sys_comp.append_logs_to_report(file_suffix=log_file_suffix)
-
-
-
-

@@ -12,7 +12,7 @@ from tests.collectors_functionality_example.collectors_functionality_base import
 @allure.feature("Collectors Functionality")
 @pytest.mark.full_regression_example
 @pytest.mark.collectors_functionality_example
-@pytest.mark.sanity
+@pytest.mark.fake_sanity
 class CollectorFunctionalityExampleTests(CollectorsFunctionalityBaseExample):
 
     @pytest.mark.xray('EN-23329')
@@ -68,7 +68,7 @@ class CollectorFunctionalityExampleTests(CollectorsFunctionalityBaseExample):
         self.test_type = CollectorFunctionalityTestType.INSTALL_UNINSTALL
         self.play_test()
 
-    # @pytest.mark.xray('EN-14924')
+    @pytest.mark.xray('EN-68879')
     def test_with_soft_assert(self, management):
         """
         The role of this test is to check stop and start of fortiEDR collector service
@@ -83,6 +83,7 @@ class CollectorFunctionalityExampleTests(CollectorsFunctionalityBaseExample):
         self.play_test()
 
     @pytest.mark.test_im_example
+    @pytest.mark.xray('EN-68892')
     def test_im_example(self, management):
         test_name = "Organizations | create organization"
         params = {"OrganizationName": "Org3"}

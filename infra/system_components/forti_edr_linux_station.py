@@ -1,4 +1,6 @@
 from abc import abstractmethod
+from datetime import datetime
+from typing import List
 
 import allure
 
@@ -30,13 +32,25 @@ class FortiEdrLinuxStation(LinuxStation):
     @allure.step("Get {0} version")
     def get_version(self):
         cli_cmd = 'fortiedr version'
-        result = self.execute_cmd(cmd=cli_cmd)
+        result = self.execute_cmd(cmd=cli_cmd, fail_on_err=True, return_output=True, attach_output_to_report=True)
         return result
 
     @allure.step("Get {0} service status")
     def get_status(self):
         cli_cmd = f'fortiedr {self.__component_type.value} status'
-        result = self.execute_cmd(cmd=cli_cmd)
+        result = self.execute_cmd(cmd=cli_cmd, fail_on_err=True, return_output=True, attach_output_to_report=True)
+        return result
+
+    @allure.step("{0} Stop service")
+    def stop_service(self):
+        cli_cmd = f'fortiedr {self.__component_type.value} stop'
+        result = self.execute_cmd(cmd=cli_cmd, fail_on_err=True, return_output=True, attach_output_to_report=True)
+        return result
+
+    @allure.step("{0} start service")
+    def start_service(self):
+        cli_cmd = f'fortiedr {self.__component_type.value} start'
+        result = self.execute_cmd(cmd=cli_cmd, fail_on_err=True, return_output=True, attach_output_to_report=True)
         return result
 
     @allure.step('Validate {0} service state is "{desired_state}"')
@@ -63,6 +77,13 @@ class FortiEdrLinuxStation(LinuxStation):
 
     @allure.step("Clear {0} logs")
     def clear_logs(self, file_suffix='.log'):
+        """
+        The role of this method is to remove all old log files
+        determine old log file by suffix, for example if file name is xxxx.log.1, it will be removed
+        :param file_suffix: consider only files with .log suffix
+        :return: None
+        """
+
         log_folder = self.get_logs_folder_path()
         files = self.get_list_of_files_in_folder(folder_path=log_folder,
                                                  file_suffix=file_suffix)
@@ -71,12 +92,11 @@ class FortiEdrLinuxStation(LinuxStation):
 
             if self.__component_type == ComponentType.AGGREGATOR or self.__component_type.MANAGEMENT:
 
-                result = StringUtils.get_txt_by_regex(text=single_file, regex='.log.(\d+)', group=1)
+                result = StringUtils.get_txt_by_regex(text=single_file, regex=f'{file_suffix}.(\d+)', group=1)
                 if result is not None:
                     self.remove_file(single_file)
                 else:
                     self.clear_file_content(single_file)
-
 
     @allure.step("Append {0} logs to report")
     def append_logs_to_report(self, file_suffix='.log'):
@@ -93,7 +113,7 @@ class FortiEdrLinuxStation(LinuxStation):
             Reporter.attach_str_as_file(file_name=file, file_content=content)
 
     @allure.step("Copy version files from shared folder to {0}")
-    def copy_version_files_from_shared_folder(self, version: str = None):
+    def copy_version_files_from_shared_folder(self, version: str = None) -> List[str]:
 
         if version is None:
             version = self.get_version()
@@ -105,3 +125,28 @@ class FortiEdrLinuxStation(LinuxStation):
             files_to_copy=['*'])
 
         return copied_files_dir
+
+    def _get_first_log_row_that_macthing_to_date_regex(self, file_path, machine_timestamp_regex='(\d+)\/(\d+)\/(\d+)\s+(\d+):(\d+):(\d+)') -> str:
+        first_row_log_with_date = self.execute_cmd(f"egrep '[0-9]{{2}}/[0-9]{{2}}/[0-9]{{4}} [0-9]{{2}}:[0-9]{{2}}:[0-9]{{2}}' {file_path} | head -n 1")
+        first_date_only = StringUtils.get_txt_by_regex(text=first_row_log_with_date, regex=f'({machine_timestamp_regex})', group=1)
+        return first_date_only
+
+    @allure.step("Checking if log file created after the given timestamp {given_timestamp}")
+    def _is_log_file_created_after_given_timestamp(self, log_file_path, given_timestamp) -> bool:
+        first_timestamp_in_log = self._get_first_log_row_that_macthing_to_date_regex(file_path=log_file_path)
+
+        first_time_stamp_datetime = datetime.strptime(first_timestamp_in_log, "%d/%m/%Y %H:%M:%S")
+        given_time_stamp_datetime = datetime.strptime(given_timestamp, "%d/%m/%Y %H:%M:%S")
+
+        if first_time_stamp_datetime >= given_time_stamp_datetime:
+            Reporter.report(f"Log file was created after given time stamp: {given_timestamp}")
+            return True
+
+        Reporter.report(f"Log file was not created after given time stamp: {given_timestamp}")
+        return False
+
+
+
+
+
+

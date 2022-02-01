@@ -108,6 +108,12 @@ class WindowsStation(OsStation):
         os_ver = StringUtils.get_txt_by_regex(text=result, regex=r'OS\s+Version:\s+(.+)', group=1)
         return os_ver
 
+    @allure.step("Get current windows machine date time")
+    def get_current_machine_datetime(self, date_format="-UFormat '%d/%m/%Y %T'"):
+        cmd = f"""powershell "Get-Date {date_format}"""
+        result = self.execute_cmd(cmd=cmd, fail_on_err=True, return_output=True, attach_output_to_report=True)
+        return result
+
     @retry
     @allure.step("Get OS name")
     def get_os_name(self):
@@ -150,7 +156,7 @@ class WindowsStation(OsStation):
 
     @allure.step("Get {service_name} service process ID")
     def get_process_id(self, service_name: str) -> int:
-        result = self.execute_cmd(cmd=f'TASKLIST | find "{service_name}"', fail_on_err=True)
+        result = self.execute_cmd(cmd=f'TASKLIST | find "{service_name}"')
 
         if result is None:
             return None
@@ -177,10 +183,8 @@ class WindowsStation(OsStation):
 
     @allure.step("Get {file_path} content")
     def get_file_content(self, file_path: str) -> str:
-        if not self.is_path_exist(path=file_path):
-            return None
-
-        cmd = f'type {file_path}'
+        # cmd = f'type {file_path}'
+        cmd = f'powershell "get-content -path {file_path}"'
         file_content = self.execute_cmd(cmd=cmd,
                                         return_output=True,
                                         fail_on_err=True,
@@ -221,7 +225,7 @@ class WindowsStation(OsStation):
 
     @allure.step("Removing folder {folder_path}")
     def remove_folder(self, folder_path: str):
-        raise Exception("Not  implemented yet")
+        self.execute_cmd(cmd=f'rmdir /s /q {folder_path}', fail_on_err=True)
 
     @allure.step("Get list of files inside {folder_path} with the suffix {file_suffix}")
     def get_list_of_files_in_folder(self,
@@ -323,3 +327,9 @@ class WindowsStation(OsStation):
                 return False
         return True
 
+
+    @allure.step("Get file last modify date")
+    def get_file_last_modify_date(self, file_path: str, date_format: str = "'u'") -> str:
+        cmd = f"""powershell "(Get-Item "{file_path}").LastWriteTime.GetDateTimeFormats({date_format})"""
+        result = self.execute_cmd(cmd=cmd, fail_on_err=True, return_output=True, attach_output_to_report=True)
+        return result

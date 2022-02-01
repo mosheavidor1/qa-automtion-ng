@@ -1,7 +1,12 @@
+from typing import List
+
 import allure
 
 from infra.allure_report_handler.reporter import Reporter
 from infra.assertion.assertion import Assertion
+from infra.system_components.aggregator import Aggregator
+from infra.system_components.collector import Collector
+from infra.system_components.core import Core
 from infra.system_components.management import Management
 
 import json
@@ -17,6 +22,18 @@ from infra.jira_handler.jira_xray_handler import JiraXrayHandler, TestStatusEnum
 tests_results = dict()
 
 
+# consider uncomment it - remove all log file at the beginning of automation run
+# @pytest.fixture(scope="session", autouse=True)
+# @allure.step("Clear all logs from cores and collectors at the beginning of the run")
+# def clear_all_logs_from_cores_and_collectors():
+#     management = Management.instance()
+#     for single_core in management.cores:
+#         single_core.clear_logs()
+#
+#     for single_collector in management.collectors:
+#         single_collector.clear_logs()
+
+
 @pytest.fixture(scope="session", autouse=True)
 @allure.step("Create environment properties file for allure report")
 def create_environment_properties_file_for_allure_report():
@@ -28,7 +45,7 @@ def create_environment_properties_file_for_allure_report():
 
     file_path = os.path.join(alluredir, 'environment.properties')
     with open(file_path, 'a+') as f:
-        f.write(f'Management IP {management.details.management_external_ip}, Version: {management.details.management_version}\r\n')
+        f.write(f'Management IP {management.host_ip}, Version: {management.details.management_version}\r\n')
 
         for single_aggr in management.aggregators:
             f.write(f'Aggregator IP {single_aggr.host_ip},  Version: {single_aggr.details.version}\r\n')
@@ -206,15 +223,72 @@ def management():
     management: Management = Management.instance()
 
     management.validate_all_system_components_are_running()
-    management.clear_logs_from_all_system_components()
+
+    clear_logs_from_management(management=management)
+    clear_logs_from_all_aggregators(aggregators=management.aggregators)
+    start_time_dict = get_core_and_collector_machine_time(cores=management.cores, collectors=management.collectors)
 
     yield management
 
     try:
-        management.append_logs_to_report_from_all_system_components()
+        append_logs_from_management(management)
+        append_logs_from_aggregators(management.aggregators)
+        append_logs_from_cores(cores=management.cores, initial_time_stamp_dict=start_time_dict)
+        append_logs_from_collectors(collectors=management.collectors, initial_time_stamp_dict=start_time_dict)
+
         check_if_collectors_has_crashed(management.collectors)
     finally:
         Assertion.assert_all()
+
+
+@allure.step("Clear logs from management")
+def clear_logs_from_management(management: Management):
+    management.clear_logs()
+
+
+@allure.step("Clear logs from aggregators")
+def clear_logs_from_all_aggregators(aggregators: List[Aggregator]):
+    for single_aggr in aggregators:
+        single_aggr.clear_logs()
+
+
+@allure.step("Get cores and collectors machine time at the beginning of the test")
+def get_core_and_collector_machine_time(cores: List[Core], collectors: List[Collector]) -> dict:
+    new_dict = {}
+    for single_collector in collectors:
+        date_time = single_collector.os_station.get_current_machine_datetime(date_format="-UFormat '%d/%m/%Y %T'")
+        new_dict[single_collector] = date_time
+
+    for single_core in cores:
+        date_time = single_core.get_current_machine_datetime(date_format="'+%d/%m/%Y %H:%M:%S'")
+        new_dict[single_core] = date_time
+
+    return new_dict
+
+
+@allure.step("Append logs from Management")
+def append_logs_from_management(management: Management):
+    management.append_logs_to_report()
+
+
+@allure.step("Append logs from Aggregators")
+def append_logs_from_aggregators(aggregators: List[Aggregator]):
+    for single_aggregator in aggregators:
+        single_aggregator.append_logs_to_report()
+
+
+@allure.step("Append logs from cores")
+def append_logs_from_cores(cores: List[Core], initial_time_stamp_dict: dict):
+    for single_core in cores:
+        time_stamp = initial_time_stamp_dict.get(single_core)
+        single_core.append_logs_to_report_by_given_timestamp(first_log_timestamp=time_stamp)
+
+
+@allure.step("Append logs from collectors")
+def append_logs_from_collectors(collectors: List[Collector], initial_time_stamp_dict: dict):
+    for single_collector in collectors:
+        time_stamp = initial_time_stamp_dict.get(single_collector)
+        single_collector.append_logs_to_report(first_log_timestamp_to_append=time_stamp)
 
 
 @allure.step("Check if collectors has crashed")
