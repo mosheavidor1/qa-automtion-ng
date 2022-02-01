@@ -101,7 +101,9 @@ class Collector:
         pass
 
     @abstractmethod
-    def validate_collector_is_up_and_running(self, use_health_monitor: bool=False):
+    def validate_collector_is_up_and_running(self, use_health_monitor: bool = False,
+                                             timeout: int = 60,
+                                             validation_delay: int = 5):
         pass
 
     @allure.step("Get current collector process ID")
@@ -132,7 +134,19 @@ class Collector:
         pass
 
     @abstractmethod
+    def copy_log_parser_to_machine(self):
+        pass
+
+    @abstractmethod
     def uninstall_collector(self, registration_password: str = '12345678', append_log_to_report=True):
+        pass
+
+    @abstractmethod
+    def clear_logs(self):
+        pass
+
+    @abstractmethod
+    def append_logs_to_report(self, first_log_timestamp_to_append, file_suffix='.blg'):
         pass
 
     @abstractmethod

@@ -99,6 +99,12 @@ class LinuxStation(OsStation):
         os_name = StringUtils.get_txt_by_regex(text=result, regex='Operating\s+System:\s+(.+)', group=1)
         return os_name
 
+    @allure.step("Get current linux machine date time")
+    def get_current_machine_datetime(self, date_format="'+%d/%m/%Y %H:%M:%S'"):
+        cmd = f"date {date_format}"
+        result = self.execute_cmd(cmd=cmd, return_output=True, fail_on_err=True, attach_output_to_report=True)
+        return result
+
     @allure.step("Get number of rows in file: {file_path}")
     def get_number_of_lines_in_file(self, file_path):
         cmd = f"wc -l < {file_path}"
@@ -115,13 +121,26 @@ class LinuxStation(OsStation):
         return output
 
     @allure.step("Get file content within range")
-    def get_file_content_within_range(self, file_path, start_index, end_index):
+    def get_file_content_within_range(self, file_path, start_index, end_index=None):
         if start_index == end_index or start_index > end_index:
             return ""
 
         cmd = f"sed -n '{str(start_index)},{str(end_index)}p; {str(end_index+1)}q' {file_path}"
+
+        if end_index is None:
+            cmd = f"sed -n '{str(start_index)},%p' {file_path}"
+
         output = self.execute_cmd(cmd=cmd)
         return output
+
+    @allure.step("Get Line numbers that matching to pattern")
+    def get_line_numbers_matching_to_pattern(self, file_path, pattern):
+        cmd = f'cat {file_path} | grep -n "{pattern}" | cut -d : -f 1'
+        output = self.execute_cmd(cmd=cmd)
+        if output is None:
+            return None
+        lines = output.split('\n')
+        return lines
 
     @allure.step("Get list of files inside {folder_path} with the suffix {file_suffix}")
     def get_list_of_files_in_folder(self,
@@ -258,6 +277,7 @@ class LinuxStation(OsStation):
 
         curr_time = datetime.now().strftime('%Y_%m_%d_%H_%M_%S_%f')
         mounted_dir_name = f'/mnt/{curr_time}'
+        mounted_successfully = False
         try:
             target_folder = self.create_new_folder(folder_path=target_path_in_local_machine)
             mounted_dir_name = self.create_new_folder(folder_path=mounted_dir_name)
@@ -278,9 +298,10 @@ class LinuxStation(OsStation):
 
         finally:
             # unmount
-            self.remove_mounted_drive(local_mounted_drive=mounted_dir_name)
-            # remove file
-            self.remove_folder(mounted_dir_name)
+            if mounted_successfully is True:
+                self.remove_mounted_drive(local_mounted_drive=mounted_dir_name)
+                # remove file
+                self.remove_folder(mounted_dir_name)
 
     def get_last_modified_file_name_in_folder(self, folder_path: str, file_suffix: str = None) -> str:
         cmd = f'ls -t {folder_path}'
@@ -301,3 +322,9 @@ class LinuxStation(OsStation):
 
     def move_file(self, file_name: str, target_folder: str):
         raise Exception("There is no implementation yet")
+
+    @allure.step("Get file last modify date")
+    def get_file_last_modify_date(self, file_path: str, date_format: str='"%d/%m/%Y %H:%M:%S"') -> str:
+        cmd = f'date -r {file_path} -u +{date_format}'
+        output = self.execute_cmd(cmd=cmd, return_output=True, fail_on_err=True)
+        return output

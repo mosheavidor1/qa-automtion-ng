@@ -101,6 +101,10 @@ class OsStation(metaclass=ABCMeta):
         pass
 
     @abstractmethod
+    def get_current_machine_datetime(self, date_format: str):
+        pass
+
+    @abstractmethod
     def get_os_architecture(self):
         pass
 
@@ -134,6 +138,10 @@ class OsStation(metaclass=ABCMeta):
 
     @abstractmethod
     def get_file_content(self, file_path: str) -> str:
+        pass
+
+    @abstractmethod
+    def get_file_last_modify_date(self, file_path: str, date_format: str) -> str:
         pass
 
     @abstractmethod
