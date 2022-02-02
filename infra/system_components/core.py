@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import List
 
 import allure
@@ -6,6 +7,7 @@ from infra.allure_report_handler.reporter import Reporter
 from infra.containers.system_component_containers import CoreDetails
 from infra.enums import ComponentType
 from infra.system_components.forti_edr_linux_station import FortiEdrLinuxStation
+from infra.utils.utils import StringUtils
 
 
 class Core(FortiEdrLinuxStation):
@@ -51,19 +53,116 @@ class Core(FortiEdrLinuxStation):
 
         return True
 
-    @allure.step("Get parsed log files")
-    def parse_blg_log_files(self,
-                            blg_log_files_paths: List[str],
-                            default_blg_version_parser: str = '5.0.10.202'):
+    @allure.step("{0} - Clear logs")
+    def clear_logs(self,
+                   file_suffix='.blg'):
+        """
+        This method role is to clear all log files except the last modified file.
+
+        :param file_suffix: consider only files with .blg suffix
+        :return: None
+        """
+
+        # better to stop service since we don't know what will happen if we remove file during service writing to it.
+        self.stop_service()
+        log_folder = self.get_logs_folder_path()
+        Reporter.report("Going to remove all core .blg log files")
+        self.remove_file(file_path=f'{log_folder}/*.*')
+        self.start_service()
+
+    @allure.step("{0} - Append logs to report")
+    def append_logs_to_report(self, file_suffix='.blg'):
+        """
+        This method is used to append logs to report
+        it will parse ALL .blg logs that found under /opt/FortiEDR/core/Logs/Core and attach it to allure report
+        :param file_suffix: log files to parse with the given suffix
+        """
+        if file_suffix != '.blg':
+            file_suffix = '.blg'
+
+        log_folder = self.get_logs_folder_path()
+
+        blg_log_files = self.get_list_of_files_in_folder(log_folder, file_suffix=file_suffix)
+
+        parsed_log_paths = self._parse_blg_log_files(blg_log_files_paths=blg_log_files)
+
+        for single_file in parsed_log_paths:
+            content = self.get_file_content(file_path=single_file)
+
+            if content is None:
+                Reporter.report(f"There is no new logs in file: {single_file} - nothing to attach")
+
+            Reporter.attach_str_as_file(file_name=single_file, file_content=content)
+
+    @allure.step("{0} - Append logs to report from a given log timestamp {first_log_timestamp}")
+    def append_logs_to_report_by_given_timestamp(self, first_log_timestamp: str):
+        """
+        This method will append logs to report from the given initial timestamp
+        :param first_log_timestamp: should be in the format: 25/01/2022 16:11:38
+        """
+
+        first_log_timestamp_date_time = datetime.strptime(first_log_timestamp, "%d/%m/%Y %H:%M:%S")
+
+        machine_timestamp_regex = '(\d+)\/(\d+)\/(\d+)\s+(\d+):(\d+):(\d+)'
+
+        log_folder = self.get_logs_folder_path()
+
+        blg_log_files = self.get_list_of_files_in_folder(log_folder, file_suffix='.blg')
+
+        # parse only files that was last modified after the first_log_timestamp
+        parsed_log_paths = self._parse_blg_log_files(blg_log_files_paths=blg_log_files, modified_after_date_time=first_log_timestamp)
+
+        for single_file in parsed_log_paths:
+
+            content = None
+
+            lines_with_matching_date = self.get_line_numbers_matching_to_pattern(file_path=single_file, pattern=machine_timestamp_regex)
+            if lines_with_matching_date is not None and len(lines_with_matching_date) > 0:
+                # if date exist in logs file -> get the data between the initial date till end
+                first_matching_log_line = lines_with_matching_date[0]
+                content = self.get_file_content_within_range(file_path=single_file, start_index=first_matching_log_line, end_index=None)
+
+            elif self._is_log_file_created_after_given_timestamp(log_file_path=single_file, given_timestamp=first_log_timestamp):
+                content = self.get_file_content(file_path=single_file)
+
+            else:
+                tmp_content = self.get_file_content(file_path=single_file)
+                tmp_content_splitted = tmp_content.split('\n')
+                for single_line in tmp_content_splitted:
+                    line_date = StringUtils.get_txt_by_regex(text=single_line, regex=f'({machine_timestamp_regex})', group=1)
+
+                    if line_date is not None:
+                        if datetime.strptime(line_date, "%d/%m/%Y %H:%M:%S") > first_log_timestamp_date_time:
+                            first_index = tmp_content.index(line_date)
+                            content = tmp_content[first_index:]
+                            break
+
+            if content is not None:
+                Reporter.attach_str_as_file(file_name=single_file, file_content=content)
+
+    @allure.step("{0} - Get parsed log files")
+    def _parse_blg_log_files(self,
+                             blg_log_files_paths: List[str],
+                             default_blg_version_parser: str = '5.0.10.202',
+                             modified_after_date_time=None):
 
         version = self.get_version()
 
         # will try to copy blg2log for current version only 1 time, if there is no such file in shared folder
         # we won't try to copy it again
+        is_fallback_parser_exist_for_current_version = False
         if self.__is_blg_parser_exist_for_current_version is True:
-            self.__is_blg_parser_exist_for_current_version = self._is_dedicated_blg_log_parser_exist_for_version(version=version)
+            try:
+                self.__is_blg_parser_exist_for_current_version = self._is_dedicated_blg_log_parser_exist_for_version(version=version)
+            except Exception as e: # workaround for case that there is blg2log file for current version in shared folder
+                self.__is_blg_parser_exist_for_current_version = False
 
-        is_fallback_parser_exist_for_current_version = self._is_dedicated_blg_log_parser_exist_for_version(version=default_blg_version_parser)
+        # note that it can not be else to the if above since we need to know the result of the methord inside the if.
+        if self.__is_blg_parser_exist_for_current_version is False:
+            is_fallback_parser_exist_for_current_version = self._is_dedicated_blg_log_parser_exist_for_version(version=default_blg_version_parser)
+
+            if is_fallback_parser_exist_for_current_version is False:
+                raise Exception("Can not parse since there is no blg2log for log parsing")
 
         log_parser_name = f'blg2log_{version}'
         if self.__is_blg_parser_exist_for_current_version:
@@ -81,9 +180,20 @@ class Core(FortiEdrLinuxStation):
         converted_files_paths = []
 
         for blg_log_file_path in blg_log_files_paths:
+
+            if modified_after_date_time is not None:
+                # check if file modified after initial timestamp
+                current_file_modified_date = self.get_file_last_modify_date(file_path=blg_log_file_path, date_format='"%d/%m/%Y %H:%M:%S"')
+
+                first_timestamp_date_time = datetime.strptime(modified_after_date_time, "%d/%m/%Y %H:%M:%S")
+                current_file_modified_date_time = datetime.strptime(current_file_modified_date, "%d/%m/%Y %H:%M:%S")
+
+                if current_file_modified_date_time < first_timestamp_date_time:
+                    continue
+
             cmd = f"{parser_full_path} -q {blg_log_file_path}"
             output = self.execute_cmd(cmd=cmd, return_output=True, fail_on_err=False, attach_output_to_report=True)
-            if output != f'converting {blg_log_file_path}':
+            if f'converting {blg_log_file_path}' not in output:
                 assert False, "Failed to parse log file"
 
             # check that .log file is exist
@@ -97,6 +207,3 @@ class Core(FortiEdrLinuxStation):
             converted_files_paths.append(blg_log_file_path.replace('.blg', '.log'))
 
         return converted_files_paths
-
-
-

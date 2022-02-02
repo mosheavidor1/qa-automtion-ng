@@ -6,6 +6,7 @@ import allure
 
 from infra.allure_report_handler.reporter import Reporter
 from infra.utils.utils import StringUtils
+import third_party_details
 
 
 class OsStation(metaclass=ABCMeta):
@@ -100,6 +101,10 @@ class OsStation(metaclass=ABCMeta):
         pass
 
     @abstractmethod
+    def get_current_machine_datetime(self, date_format: str):
+        pass
+
+    @abstractmethod
     def get_os_architecture(self):
         pass
 
@@ -136,6 +141,10 @@ class OsStation(metaclass=ABCMeta):
         pass
 
     @abstractmethod
+    def get_file_last_modify_date(self, file_path: str, date_format: str) -> str:
+        pass
+
+    @abstractmethod
     def create_new_folder(self, folder_path: str) -> str:
         pass
 
@@ -152,11 +161,12 @@ class OsStation(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def copy_files_from_shared_folder_to_local_machine(self,
-                                                       target_path_in_local_machine: str,
-                                                       shared_drive_path: str,
-                                                       shared_drive_user_name: str,
-                                                       shared_drive_password: str):
+    def copy_files_from_shared_folder(self,
+                                      target_path_in_local_machine: str,
+                                      shared_drive_path: str,
+                                      files_to_copy: List[str],
+                                      shared_drive_user_name: str = third_party_details.USER_NAME,
+                                      shared_drive_password: str = third_party_details.PASSWORD):
         pass
 
     @abstractmethod
@@ -165,6 +175,10 @@ class OsStation(metaclass=ABCMeta):
 
     @abstractmethod
     def remove_file(self, file_path: str):
+        pass
+
+    @abstractmethod
+    def move_file(self, file_name: str, target_folder: str):
         pass
 
     @abstractmethod

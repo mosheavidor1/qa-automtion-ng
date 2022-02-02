@@ -5,7 +5,9 @@ import allure
 
 from pypsexec.client import Client
 from pypsexec.exceptions import SCMRException
+from smbprotocol.exceptions import PipeBroken
 
+import third_party_details
 from infra.allure_report_handler.reporter import Reporter
 from infra.decorators import retry
 
@@ -69,7 +71,7 @@ class WindowsStation(OsStation):
                         Reporter.report(f"command output: {output}")
 
                 if (fail_on_err and stderr_err_output != '') or (fail_on_err and status_code != 0):
-                    assert False, "Failing because stderr was returned"
+                    assert False, f"Failing because stderr was returned, {output}"
 
                 if return_output:
                     if output is not None:
@@ -77,8 +79,11 @@ class WindowsStation(OsStation):
                     return output
 
         except SCMRException as e:
-            Reporter.report("Failed to Execute command because somthing goes wrong with pypsexec library connection, connecting again")
+            Reporter.report("Failed to Execute command because somthing went wrong with pypsexec library connection, connecting again")
             self.connect()
+
+        except PipeBroken as e:
+            Reporter.report("Failed to connect to windows machine, if you are connected via VPN, check that windows firewall is disabled")
 
         except Exception as e:
             Reporter.report(f"Failed to execute command: {cmd} on remote windows machine, original exception: {e}")
@@ -91,36 +96,44 @@ class WindowsStation(OsStation):
     @allure.step("Get OS architecture")
     def get_os_architecture(self):
         cmd = 'wmic os get osarchitecture'
-        result = self.execute_cmd(cmd)
+        result = self.execute_cmd(cmd=cmd, fail_on_err=True)
         result = result.replace('\r', '').replace('\n', '')
         arch = StringUtils.get_txt_by_regex(text=result, regex=r'OSArchitecture\s+(.+)', group=1)
         return arch
 
-    @allure.step("Get OS versuib")
+    @allure.step("Get OS version")
     def get_os_version(self):
         cmd = 'systeminfo | findstr /B /C:"OS Version"'
-        result = self.execute_cmd(cmd)
+        result = self.execute_cmd(cmd=cmd, fail_on_err=True)
         os_ver = StringUtils.get_txt_by_regex(text=result, regex=r'OS\s+Version:\s+(.+)', group=1)
         return os_ver
 
+    @allure.step("Get current windows machine date time")
+    def get_current_machine_datetime(self, date_format="-UFormat '%d/%m/%Y %T'"):
+        cmd = f"""powershell "Get-Date {date_format}"""
+        result = self.execute_cmd(cmd=cmd, fail_on_err=True, return_output=True, attach_output_to_report=True)
+        return result
+
+    @retry
     @allure.step("Get OS name")
     def get_os_name(self):
+        # takes time to invoke this command, so if you are working from home or have high latency the result can be None
         cmd = 'systeminfo | findstr /B /C:"OS Name"'
-        result = self.execute_cmd(cmd)
-        result = self.execute_cmd(cmd)
+        result = self.execute_cmd(cmd=cmd, fail_on_err=True)
         os_ver = StringUtils.get_txt_by_regex(text=result, regex=r'OS\s+Name:\s+(.+)', group=1)
         return os_ver
 
     @allure.step("Get CPU usage")
     def get_cpu_usage(self) -> float:
-        cpu_info = self.execute_cmd(cmd="wmic cpu get loadpercentage /format:value")
+        cmd = "wmic cpu get loadpercentage /format:value"
+        cpu_info = self.execute_cmd(cmd=cmd, fail_on_err=True)
         cpu = re.search(r'LoadPercentage=(\d+)', cpu_info).group(1)
         Reporter.report(f'CPU usage: {cpu}')
         return float(cpu)
 
     @allure.step("Get memory usage")
     def get_memory_usage(self) -> float:
-        cpu_info = self.execute_cmd(cmd='systeminfo | find /I "Physical Memory"')
+        cpu_info = self.execute_cmd(cmd='systeminfo | find /I "Physical Memory"', fail_on_err=True)
         available_mem = int(re.search(r'Available\s+Physical\s+Memory:\s+(\d+,\d+)', cpu_info).group(1).replace(',', ''))
         total_mem = int(re.search(r'Total\s+Physical\s+Memory:\s+(\d+,\d+)', cpu_info).group(1).replace(',', ''))
         usage = float((total_mem - available_mem) / total_mem)
@@ -130,7 +143,7 @@ class WindowsStation(OsStation):
 
     @allure.step("Get disk usage")
     def get_disk_usage(self) -> float:
-        total_disk_size = self.execute_cmd(cmd='wmic logicaldisk get size')
+        total_disk_size = self.execute_cmd(cmd='wmic logicaldisk get size', fail_on_err=True)
         total_disk_size = int(re.search('\d+', total_disk_size).group(0))
 
         disk_free_space = self.execute_cmd(cmd='wmic logicaldisk get freespace')
@@ -143,7 +156,7 @@ class WindowsStation(OsStation):
 
     @allure.step("Get {service_name} service process ID")
     def get_process_id(self, service_name: str) -> int:
-        result = self.execute_cmd(f'TASKLIST | find "{service_name}"')
+        result = self.execute_cmd(cmd=f'TASKLIST | find "{service_name}"')
 
         if result is None:
             return None
@@ -155,7 +168,7 @@ class WindowsStation(OsStation):
         process_id = re.search(f"{service_name}\s+(\d+)", result).group(1)
         return int(process_id)
 
-    @allure.step("Checking if file {path} exist")
+    @allure.step("Checking if path {path} exist")
     def is_path_exist(self, path: str) -> bool:
 
         cmd = f"IF exist {path} (echo {str(True)}) ELSE (echo {str(False)})"
@@ -170,10 +183,8 @@ class WindowsStation(OsStation):
 
     @allure.step("Get {file_path} content")
     def get_file_content(self, file_path: str) -> str:
-        if not self.is_path_exist(path=file_path):
-            return None
-
-        cmd = f'type {file_path}'
+        # cmd = f'type {file_path}'
+        cmd = f'powershell "get-content -path {file_path}"'
         file_content = self.execute_cmd(cmd=cmd,
                                         return_output=True,
                                         fail_on_err=True,
@@ -210,11 +221,11 @@ class WindowsStation(OsStation):
 
     @allure.step("Removing file {file_path}")
     def remove_file(self, file_path: str):
-        self.execute_cmd(cmd=f'del /f {file_path}')
+        self.execute_cmd(cmd=f'del /f {file_path}', fail_on_err=True)
 
     @allure.step("Removing folder {folder_path}")
     def remove_folder(self, folder_path: str):
-        raise Exception("Not  implemented yet")
+        self.execute_cmd(cmd=f'rmdir /s /q {folder_path}', fail_on_err=True)
 
     @allure.step("Get list of files inside {folder_path} with the suffix {file_suffix}")
     def get_list_of_files_in_folder(self,
@@ -224,7 +235,7 @@ class WindowsStation(OsStation):
         if " " in folder_path:
             folder_path = f'"{folder_path}"'
         result = self.execute_cmd(cmd=f'dir /b {folder_path}', return_output=True, fail_on_err=False)
-        if result is None:
+        if result is None or 'file not found'.lower() in result:
             return None
 
         files = result.split('\n')
@@ -261,13 +272,26 @@ class WindowsStation(OsStation):
         self.execute_cmd(cmd=cmd_builder, fail_on_err=True)
 
     @allure.step("Copy files from shared folder to local machine")
-    def copy_files_from_shared_folder_to_local_machine(self,
-                                                       target_path_in_local_machine: str,
-                                                       shared_drive_path: str,
-                                                       shared_drive_user_name: str,
-                                                       shared_drive_password: str):
+    def copy_files_from_shared_folder(self,
+                                      target_path_in_local_machine: str,
+                                      shared_drive_path: str,
+                                      files_to_copy: List[str],
+                                      shared_drive_user_name: str = third_party_details.USER_NAME,
+                                      shared_drive_password: str = third_party_details.PASSWORD):
+        """
+        The role of this method is to copy files from the shared folder to target folder in the remote station
+        :param target_path_in_local_machine: target folder for copied files
+        :param shared_drive_path: path in shared drive folder, must be a path to folder
+        :param shared_drive_user_name: user name
+        :param shared_drive_password: password
+        :param files_to_copy: list of file names to copy, if you want to copy all files in folder, pass ['*']
+        :return: folder path of the copied files
+        """
 
         target_folder = self.create_new_folder(folder_path=target_path_in_local_machine)
+        files_exist = self.is_files_exist(target_path_in_local_machine, files_to_copy)
+        if files_exist:
+            return target_folder
         try:
             self.remove_mounted_drive()
             self.mount_shared_drive_locally(desired_local_drive='X:',
@@ -279,9 +303,33 @@ class WindowsStation(OsStation):
             if not is_path_exist:
                 raise Exception("Mount failed, can not copy any file from shared file")
 
-            self.copy_files(source=fr'X:\\*', target=f'{target_folder}')
+            for single_file in files_to_copy:
+                self.copy_files(source=fr'X:\\{single_file}', target=f'{target_folder}')
+
+            files_exist = self.is_files_exist(target_path_in_local_machine, files_to_copy)
+            if not files_exist:
+                    raise Exception(f"files copy failed in {self.host_ip}")
+
             return target_folder
 
         finally:
             self.remove_mounted_drive()
 
+    @allure.step("Move file {file_name} to {target_folder}")
+    def move_file(self, file_name: str, target_folder: str):
+        cmd = rf"move {file_name} {target_folder}"
+        self.execute_cmd(cmd=cmd, fail_on_err=True, attach_output_to_report=True)
+
+    def is_files_exist(self, target_path, files_to_copy):
+        files = self.get_list_of_files_in_folder(target_path)
+        for single_file in files_to_copy:
+            if single_file not in files:
+                return False
+        return True
+
+
+    @allure.step("Get file last modify date")
+    def get_file_last_modify_date(self, file_path: str, date_format: str = "'u'") -> str:
+        cmd = f"""powershell "(Get-Item "{file_path}").LastWriteTime.GetDateTimeFormats({date_format})"""
+        result = self.execute_cmd(cmd=cmd, fail_on_err=True, return_output=True, attach_output_to_report=True)
+        return result

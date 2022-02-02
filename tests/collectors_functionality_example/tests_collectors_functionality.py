@@ -1,6 +1,9 @@
 import allure
 import pytest
 
+from infra.allure_report_handler.reporter import Reporter
+from infra.assertion.assertion import AssertTypeEnum
+from infra.test_im.test_im_handler import TestImHandler
 from tests.collectors_functionality_example.collectors_functionality_base import CollectorsFunctionalityBaseExample, \
     CollectorFunctionalityTestType
 
@@ -9,10 +12,11 @@ from tests.collectors_functionality_example.collectors_functionality_base import
 @allure.feature("Collectors Functionality")
 @pytest.mark.full_regression_example
 @pytest.mark.collectors_functionality_example
-@pytest.mark.sanity
+@pytest.mark.fake_sanity
 class CollectorFunctionalityExampleTests(CollectorsFunctionalityBaseExample):
 
     @pytest.mark.xray('EN-23329')
+    @pytest.mark.devops
     def test_stop_start_collector(self, management):
         """
         The role of this test is to check stop and start of fortiEDR collector service
@@ -64,7 +68,7 @@ class CollectorFunctionalityExampleTests(CollectorsFunctionalityBaseExample):
         self.test_type = CollectorFunctionalityTestType.INSTALL_UNINSTALL
         self.play_test()
 
-    # @pytest.mark.xray('EN-14924')
+    @pytest.mark.xray('EN-68879')
     def test_with_soft_assert(self, management):
         """
         The role of this test is to check stop and start of fortiEDR collector service
@@ -77,3 +81,16 @@ class CollectorFunctionalityExampleTests(CollectorsFunctionalityBaseExample):
         self.collector = self.management.collectors[0]
         self.test_type = CollectorFunctionalityTestType.TEST_WITH_SOFT_ASSERT
         self.play_test()
+
+    @pytest.mark.test_im_example
+    @pytest.mark.xray('EN-68892')
+    def test_im_example(self, management):
+        test_name = "Organizations | create organization"
+        params = {"OrganizationName": "Org3"}
+        mgmt_version = management.get_version()
+        management.test_im_client.run_test(test_name=test_name,
+                                           buildnumber=mgmt_version,
+                                           management_ui_ip=management.host_ip,
+                                           data=params,
+                                           assert_type=AssertTypeEnum.HARD)
+        Reporter.report("Just a print")

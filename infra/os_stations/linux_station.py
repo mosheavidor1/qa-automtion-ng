@@ -1,5 +1,6 @@
 import re
 from datetime import datetime
+from typing import List
 
 import allure
 import paramiko
@@ -98,6 +99,12 @@ class LinuxStation(OsStation):
         os_name = StringUtils.get_txt_by_regex(text=result, regex='Operating\s+System:\s+(.+)', group=1)
         return os_name
 
+    @allure.step("Get current linux machine date time")
+    def get_current_machine_datetime(self, date_format="'+%d/%m/%Y %H:%M:%S'"):
+        cmd = f"date {date_format}"
+        result = self.execute_cmd(cmd=cmd, return_output=True, fail_on_err=True, attach_output_to_report=True)
+        return result
+
     @allure.step("Get number of rows in file: {file_path}")
     def get_number_of_lines_in_file(self, file_path):
         cmd = f"wc -l < {file_path}"
@@ -114,13 +121,26 @@ class LinuxStation(OsStation):
         return output
 
     @allure.step("Get file content within range")
-    def get_file_content_within_range(self, file_path, start_index, end_index):
+    def get_file_content_within_range(self, file_path, start_index, end_index=None):
         if start_index == end_index or start_index > end_index:
             return ""
 
         cmd = f"sed -n '{str(start_index)},{str(end_index)}p; {str(end_index+1)}q' {file_path}"
+
+        if end_index is None:
+            cmd = f"sed -n '{str(start_index)},%p' {file_path}"
+
         output = self.execute_cmd(cmd=cmd)
         return output
+
+    @allure.step("Get Line numbers that matching to pattern")
+    def get_line_numbers_matching_to_pattern(self, file_path, pattern):
+        cmd = f'cat {file_path} | grep -n "{pattern}" | cut -d : -f 1'
+        output = self.execute_cmd(cmd=cmd)
+        if output is None:
+            return None
+        lines = output.split('\n')
+        return lines
 
     @allure.step("Get list of files inside {folder_path} with the suffix {file_suffix}")
     def get_list_of_files_in_folder(self,
@@ -239,14 +259,25 @@ class LinuxStation(OsStation):
         raise Exception("Not implemented yet")
 
     @allure.step("Copy files from shared folder to local machine")
-    def copy_files_from_shared_folder_to_local_machine(self,
-                                                       target_path_in_local_machine: str,
-                                                       shared_drive_path: str,
-                                                       shared_drive_user_name: str,
-                                                       shared_drive_password: str):
+    def copy_files_from_shared_folder(self,
+                                      target_path_in_local_machine: str,
+                                      shared_drive_path: str,
+                                      shared_drive_user_name: str,
+                                      shared_drive_password: str,
+                                      files_to_copy: List[str]):
+        """
+        The role of this method is to copy files from the shared folder to target folder in the remote station
+        :param target_path_in_local_machine: target folder for copied files
+        :param shared_drive_path: path in shared drive folder, must be a path to folder
+        :param shared_drive_user_name: user name
+        :param shared_drive_password: password
+        :param files_to_copy: list of file names to copy, if you want to copy all files in folder, pass ['*']
+        :return: folder path of the copied files
+        """
 
         curr_time = datetime.now().strftime('%Y_%m_%d_%H_%M_%S_%f')
         mounted_dir_name = f'/mnt/{curr_time}'
+        mounted_successfully = False
         try:
             target_folder = self.create_new_folder(folder_path=target_path_in_local_machine)
             mounted_dir_name = self.create_new_folder(folder_path=mounted_dir_name)
@@ -259,16 +290,20 @@ class LinuxStation(OsStation):
                                             shared_drive=shared_drive_path_for_command,
                                             user_name=shared_drive_user_name,
                                             password=shared_drive_password)
-            self.copy_files(source=f'{mounted_dir_name}/*', target=target_folder)
+
+            for single_file in files_to_copy:
+                self.copy_files(source=f'{mounted_dir_name}/{single_file}', target=target_folder)
+
             return target_folder
 
         finally:
             # unmount
-            self.remove_mounted_drive(local_mounted_drive=mounted_dir_name)
-            # remove file
-            self.remove_folder(mounted_dir_name)
+            if mounted_successfully is True:
+                self.remove_mounted_drive(local_mounted_drive=mounted_dir_name)
+                # remove file
+                self.remove_folder(mounted_dir_name)
 
-    def get_last_modified_file_name_in_folder(self, folder_path: str) -> str:
+    def get_last_modified_file_name_in_folder(self, folder_path: str, file_suffix: str = None) -> str:
         cmd = f'ls -t {folder_path}'
         output = self.execute_cmd(cmd=cmd, return_output=True, fail_on_err=True)
         if output is None:
@@ -278,5 +313,18 @@ class LinuxStation(OsStation):
         if len(files) == 0:
             return None
 
+        if file_suffix is not None:
+            for i in range(len(files)):
+                if file_suffix in files[i]:
+                    return files[i]
+
         return files[0]
 
+    def move_file(self, file_name: str, target_folder: str):
+        raise Exception("There is no implementation yet")
+
+    @allure.step("Get file last modify date")
+    def get_file_last_modify_date(self, file_path: str, date_format: str='"%d/%m/%Y %H:%M:%S"') -> str:
+        cmd = f'date -r {file_path} -u +{date_format}'
+        output = self.execute_cmd(cmd=cmd, return_output=True, fail_on_err=True)
+        return output

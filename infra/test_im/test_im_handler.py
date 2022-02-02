@@ -25,7 +25,8 @@ class TestImHandler:
                       build_number: str,
                       url: str,
                       json_name: str = "params-file.json",
-                      assert_type: AssertTypeEnum = AssertTypeEnum.HARD):
+                      assert_type: AssertTypeEnum = AssertTypeEnum.HARD,
+                      test_timeout=600):
 
         params_file = '' if json_name is None else f'--params-file "{json_name}"'
 
@@ -51,13 +52,15 @@ class TestImHandler:
         output = None
         status_code = 0
         try:
-            output = subprocess.check_output(testim_cmd, cwd=self.script_dir, shell=True, timeout=600)
+            Reporter.report(f"Going to run TestIM command from the dir: {self.script_dir}")
+            Reporter.attach_str_as_file(file_name="TestIM command", file_content=testim_cmd)
+            output = subprocess.check_output(testim_cmd, cwd=self.script_dir, shell=True, timeout=test_timeout)
         except subprocess.CalledProcessError as grepexc:
             status_code = grepexc.returncode
             output = grepexc.output
-            print("error code", grepexc.returncode, grepexc.output)
 
         output = output.decode('utf-8')
+        Reporter.attach_str_as_file(file_name=f'TestIm output', file_content=output)
 
         test_link_regex = r'Test\s+.+url:\s+(.+)\n'
         test_link = StringUtils.get_txt_by_regex(text=output, regex=test_link_regex, group=1)
@@ -68,9 +71,11 @@ class TestImHandler:
         skipped = StringUtils.get_txt_by_regex(text=output, regex='SKIPPED:\s+(\d+)', group=1)
         duration = StringUtils.get_txt_by_regex(text=output, regex='Duration:\s+(\S+)', group=1)
 
+        if output is None or passed is None or failed is None:
+            assert False, "Failed to run test or output is empty, something is wrong"
+
         Reporter.report(f"Test link: {test_link}")
         Reporter.report(f"Test Duration: {duration}")
-        Reporter.attach_str_as_file(file_name=f'TestIm output', file_content=output)
 
         if status_code != 0 and passed is not None and passed.isdigit():
             if int(passed) == 0:
@@ -80,6 +85,12 @@ class TestImHandler:
 
                 else:
                     assert False, f"Test Failed, look at TestIm link to see what happened: {test_link}"
+
+        if int(failed) != 0:
+            if assert_type == AssertTypeEnum.SOFT:
+                Assertion.add_message_soft_assert(message=f"The test step \ test from TestIM: {test_name} has failed")
+            else:
+                assert False, f"Test Failed, look at TestIm link to see what happened: {test_link}"
 
     def _create_param_file(self, json_params_name: str, data: dict):
 
@@ -103,7 +114,8 @@ class TestImHandler:
                  buildnumber: str,
                  management_ui_ip: str,
                  assert_type: AssertTypeEnum = AssertTypeEnum.HARD,
-                 data: dict = None):
+                 data: dict = None,
+                 test_timeout=600):
         """
         test name: has to be equal to the test name in TESTIM
         """
@@ -117,6 +129,7 @@ class TestImHandler:
                                build_number=buildnumber,
                                url=management_ui_ip,
                                json_name=json_name,
-                               assert_type=assert_type)
+                               assert_type=assert_type,
+                               test_timeout=test_timeout)
         finally:
             os.remove(os.path.join(self.script_dir, json_name))

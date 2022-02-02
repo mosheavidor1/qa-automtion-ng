@@ -2,13 +2,12 @@ import json
 from typing import List
 
 import allure
-from ensilo.platform.rest.nslo_management_rest import NsloRest, NsloManagementConnection
+from infra.rest.rest_commands import RestCommands
 
 import sut_details
-from infra.allure_report_handler.reporter import Reporter
 from infra.containers.system_component_containers import AggregatorDetails, CoreDetails, CollectorDetails, \
     ManagementDetails
-from infra.enums import ComponentType, OsTypeEnum, SystemState, CollectorTypes
+from infra.enums import ComponentType, OsTypeEnum, SystemState
 from infra.singleton import Singleton
 from infra.system_components.aggregator import Aggregator
 from infra.system_components.collector import Collector
@@ -39,10 +38,11 @@ class Management(FortiEdrLinuxStation):
         self._collectors: [Collector] = []
 
         self._test_im_client: TestImHandler = TestImHandler()
-        self._rest_ui_client = NsloRest(NsloManagementConnection(self.host_ip,
-                                                                 self._ui_admin_user_name,
-                                                                 self._ui_admin_password,
-                                                                 organization=None))
+
+        self._rest_ui_client = RestCommands(self.host_ip,
+                                            self._ui_admin_user_name,
+                                            self._ui_admin_password,
+                                            organization=None)
 
         self._details: ManagementDetails = self._get_management_details()
         self.init_system_objects()
@@ -64,19 +64,19 @@ class Management(FortiEdrLinuxStation):
         self._ui_admin_password = ui_admin_password
 
     @property
-    def aggregators(self) -> [Aggregator]:
+    def aggregators(self) -> List[Aggregator]:
         return self._aggregators
 
     @aggregators.setter
-    def aggregators(self, aggregators: [Aggregator]):
+    def aggregators(self, aggregators: List[Aggregator]):
         self._aggregators = aggregators
 
     @property
-    def cores(self) -> [Core]:
+    def cores(self) -> List[Core]:
         return self._cores
 
     @cores.setter
-    def cores(self, cores: [Core]):
+    def cores(self, cores: List[Core]):
         self._cores = cores
 
     @property
@@ -84,11 +84,11 @@ class Management(FortiEdrLinuxStation):
         return self._collectors
 
     @collectors.setter
-    def collectors(self, collectors: [Collector]):
+    def collectors(self, collectors: List[Collector]):
         self._collectors = collectors
 
     @property
-    def rest_ui_client(self) -> NsloRest:
+    def rest_ui_client(self) -> RestCommands:
         return self._rest_ui_client
 
     @property
@@ -106,9 +106,7 @@ class Management(FortiEdrLinuxStation):
         return '/opt/FortiEDR/webapp/logs'
 
     def _get_management_details(self):
-        response = self._rest_ui_client.admin.GetSystemSummary()
-        response = response[1]
-        as_dict = json.loads(response.content)
+        as_dict = self._rest_ui_client.get_system_summery()
         return ManagementDetails(license_expiration_date=as_dict.get('licenseExpirationDate'),
                                  management_version=as_dict.get('managementVersion'),
                                  management_hostname=as_dict.get('managementHostname'),
@@ -126,9 +124,7 @@ class Management(FortiEdrLinuxStation):
 
     @allure.step("Init aggregator objects")
     def init_aggregator_objects(self):
-        response = self._rest_ui_client.inventory.ListAggregators()
-        response = response[1]
-        aggregators = json.loads(response.content)
+        aggregators = self._rest_ui_client.get_aggregator_info()
         for single_aggr in aggregators:
 
             ip_addr, port = StringUtils.get_ip_port_as_tuple(single_aggr.get('ipAddress'))
@@ -151,9 +147,7 @@ class Management(FortiEdrLinuxStation):
 
     @allure.step("Init core objects")
     def init_core_objects(self):
-        response = self._rest_ui_client.inventory.ListCores()
-        response = response[1]
-        cores = json.loads(response.content)
+        cores = self._rest_ui_client.get_core_info()
         for single_core in cores:
             ip_addr, port = StringUtils.get_ip_port_as_tuple(single_core.get('ip'))
 
@@ -171,9 +165,7 @@ class Management(FortiEdrLinuxStation):
 
     @allure.step("Init collector objects")
     def init_collector_objects(self):
-        response = self._rest_ui_client.inventory.ListCollectors()
-        response = response[1]
-        collectors = json.loads(response.text)
+        collectors = self._rest_ui_client.get_collector_info()
 
         for single_collector in collectors:
             collector_details = CollectorDetails(system_id=single_collector.get('id'),
@@ -257,47 +249,12 @@ class Management(FortiEdrLinuxStation):
 
     @allure.step("Check all system components services are up and running")
     def validate_all_system_components_are_running(self):
+        # non collector system components inherited from fortiEDRLinuxStation
         non_collector_sys_components = [self] + self._aggregators + self._cores
 
+        # classic example of polymorphism
         for sys_comp in non_collector_sys_components:
             sys_comp.validate_system_component_is_in_desired_state(desired_state=SystemState.RUNNING)
 
         for single_collector in self._collectors:
             single_collector.validate_collector_is_up_and_running(use_health_monitor=True)
-
-    @allure.step("Clear logs from all system components")
-    def clear_logs_from_all_system_components(self):
-        all_sys_comp = [self] + self._aggregators + self._cores + self._collectors
-        for sys_comp in all_sys_comp:
-            file_suffix = '.log'
-
-            if isinstance(sys_comp, Collector) or isinstance(sys_comp, Core):
-
-                if isinstance(sys_comp, Collector):
-                    # TBD - not implement yet, this if should be removed after the implementation
-                    continue
-
-                file_suffix = '.blg'
-
-            sys_comp.clear_logs(file_suffix=file_suffix)
-
-    @allure.step("Append logs to report")
-    def append_logs_to_report_from_all_system_components(self):
-        all_sys_comp = [self] + self._aggregators + self._cores + self._collectors
-        for sys_comp in all_sys_comp:
-
-            if isinstance(sys_comp, Collector):
-                # TBD
-                continue
-
-            if isinstance(sys_comp, Core):
-                logs_folder_path = sys_comp.get_logs_folder_path()
-                blg_log_files = sys_comp.get_list_of_files_in_folder(logs_folder_path)
-                blg_log_files = [f'{logs_folder_path}/{single_file}' for single_file in blg_log_files]
-                sys_comp.parse_blg_log_files(blg_log_files_paths=blg_log_files)
-
-            sys_comp.append_logs_to_report(file_suffix='.log')
-
-
-
-

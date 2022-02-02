@@ -7,6 +7,7 @@ from infra.system_components.collector import Collector
 
 class LinuxCollector(Collector):
 
+
     def __init__(self,
                  host_ip: str,
                  user_name: str,
@@ -61,7 +62,7 @@ class LinuxCollector(Collector):
     def get_collector_status(self):
         pass
 
-    def validate_collector_is_up_and_running(self, use_health_monitor: bool = False):
+    def validate_collector_is_up_and_running(self, use_health_monitor: bool = False, timeout=60, validation_delay=5):
         pass
 
     def start_health_mechanism(self):
@@ -72,4 +73,13 @@ class LinuxCollector(Collector):
         pass
 
     def uninstall_collector(self, registration_password: str = '12345678', append_log_to_report=True):
+        pass
+
+    def copy_log_parser_to_machine(self):
+        pass
+
+    def append_logs_to_report(self, first_log_timestamp_to_append: str = None, file_suffix='.blg'):
+        pass
+
+    def clear_logs(self):
         pass
