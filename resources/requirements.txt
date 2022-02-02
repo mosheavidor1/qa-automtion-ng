@@ -6,3 +6,4 @@ pywinrm==0.4.2
 pypsexec==0.3.0
 paramiko==2.8.1
 deepdiff==5.7.0
+pyvmomi==7.0.3
