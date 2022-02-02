@@ -5,10 +5,10 @@ import allure
 from pyVim.connect import SmartConnectNoSSL, Disconnect
 
 from infra.allure_report_handler.reporter import Reporter
-from infra.vpshere import vsphere_details
-from infra.vpshere.vsphere_operations import VsphereMachineOperations
+from infra.vpshere import vsphere_cluster_details
+from infra.vpshere.vsphere_vm_operations import VsphereMachineOperations
 from third_party_details import USER_NAME_DOMAIN, PASSWORD
-from vsphere_details import ClusterDetails
+from vsphere_cluster_details import ClusterDetails
 
 __author__ = "Dmitry Banny"
 

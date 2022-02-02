@@ -1,5 +1,5 @@
 import requests
-import vsphere_details
+import vsphere_cluster_details
 from pyVim.connect import SmartConnectNoSSL
 
 
