@@ -38,12 +38,12 @@ class VsphereClusterHandler(object):
                 pwd=password
             )
             atexit.register(Disconnect, self._service_instance)
-            # return self._service_instance
+
         except IOError as io_error:
             Reporter.report(io_error)
             return False
 
-    @allure.step("Get VM by name")
+    @allure.step("Search for VM by name")
     def get_vm_by_name(self, vm_name: str):
         """Searching VM name in the vSphere cluster, after it found, VM object set.
 
@@ -64,6 +64,7 @@ class VsphereClusterHandler(object):
 
         return None
 
+    @allure.step("Search for VM by ip")
     def search_vm_by_ip(self, ip_address: str):
         """Searching VM name in the vSphere cluster, after it found, VM object set.
 
@@ -81,13 +82,15 @@ class VsphereClusterHandler(object):
             try:
                 Reporter.report(vm_obj.guest.ipAddress)
                 if ip_address == vm_obj.guest.ipAddress and vm_obj.guest.ipAddress and vm_obj.configStatus == 'green':
+                    Reporter.report(f"IP address '{ip_address}' of a collector {vm_obj.name} found. ")
                     return vm_obj
             except Exception as e:
+                Reporter.report(f"IP address '{ip_address}' of a collector {vm_obj.name} not found. ")
                 Reporter.report(str(e))
 
-        # didn't found machine by IP
         return None
 
+    @allure.step("Get a VM from the cluster")
     def get_specific_vm_from_cluster(self,
                                      vm_search_type: VmSearchTypeEnum,
                                      txt_to_search: str,
@@ -97,7 +100,6 @@ class VsphereClusterHandler(object):
             self.connect_to_vsphere(user_name=user_name,
                                     password=password)
 
-        vm_obj = None
         if vm_search_type == VmSearchTypeEnum.VM_NAME:
             vm_obj = self.get_vm_by_name(vm_name=txt_to_search)
 
@@ -114,9 +116,14 @@ class VsphereClusterHandler(object):
 
 
 if __name__ == '__main__':
-    cluster_details = vsphere_details.ENSILO_VCSA_20
+    cluster_details = vsphere_cluster_details.ENSILO_VCSA_20
     vsphere_cluster_handler = VsphereClusterHandler(cluster_details=cluster_details)
     vm_ops = vsphere_cluster_handler.get_specific_vm_from_cluster(vm_search_type=VmSearchTypeEnum.VM_NAME, txt_to_search='dima_colletor10x64')
     vm_ops.snapshot_create(snapshot_name='dima test')
-    vm_ops.snapshot_revert_by_name(snapshot_name='dima test')
+    vm_ops.snapshot_create(snapshot_name='dima test2')
+    vm_ops.power_off()
+    vm_ops.power_on()
+    vm_ops.remove_all_snapshots()
+    # vm_ops.snapshot_revert_by_name(snapshot_name='dima test')
+
 

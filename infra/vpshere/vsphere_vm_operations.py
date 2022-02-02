@@ -7,11 +7,11 @@ References
     - https://github.com/vmware/pyvmomi/ - pyVmomi is the Python SDK for the vSphere
 """
 
+import allure
 from pyVim.task import WaitForTask
+from infra.allure_report_handler.reporter import Reporter
 
 __author__ = "Dmitry Banny"
-
-from infra.allure_report_handler.reporter import Reporter
 
 
 class VsphereMachineOperations:
@@ -64,16 +64,7 @@ class VsphereMachineOperations:
         else:
             raise Exception("No VM object created")
 
-    def reset_vm(self, vm_name: str=None):
-        # raise Exception("Not implemented yet.")
-        try:
-            WaitForTask(self._vm_obj.VmResettingEvent(), self._service_instance)
-            Reporter.report(f"Task: Successfully restarted vm: {vm_name}")
-            return True
-        except Exception as e:
-            Reporter.report(str(e))
-            return False
-
+    @allure.step("Create VM snapshot")
     def snapshot_create(self, snapshot_name, snapshot_description="", memory=False, quiesce=False):
         if self._vm_obj:
             task = self._vm_obj.CreateSnapshot_Task(name=snapshot_name,
@@ -90,6 +81,7 @@ class VsphereMachineOperations:
         else:
             raise Exception("No VM object created")
 
+    @allure.step("Revert to VM snapshot by name")
     def snapshot_revert_by_name(self, snapshot_name: str):
         """Revert to snapshot by name of the snapshot.
 
@@ -109,6 +101,7 @@ class VsphereMachineOperations:
                 except Exception as e:
                     Reporter.report(str(e))
 
+    @allure.step("Revert to VM snapshot creation order")
     def snapshot_revert_by_creation_order(self, number: int):
         """This function reverts to a snapshot by a number.
         The order made by snapshots creation order.
@@ -117,7 +110,6 @@ class VsphereMachineOperations:
         ----------
         number : int
             The number of the snapshot from a list
-
         """
         if self._snapshots_list:
             revert_name, revert_object = self._snapshots_list[number]
@@ -130,72 +122,63 @@ class VsphereMachineOperations:
                 Reporter.report(str(e))
                 raise "Revert to snapshot by creation order has failed"
 
-    def vsphere_tests(self):
-        result = self._vm_obj.VirtualMachineSnapshotInfo()
-
-        return result
-
+    @allure.step("Remove VM snapshot")
     def snapshot_remove(self, snapshot_object: object):
-        raise Exception("Not implemented yet.")
+        # raise Exception("Not implemented yet.")
 
-        # task = snapshot_object.RemoveSnapshot_Task()
-        # WaitForTask(task, self.service_instance)
-        # try:
-        #     self.snapshots_dict.pop(snapshot_object)
-        # except Exception as e:
-        #     Reporter.report(str(e))
-        # Reporter.report(f"Snapshot removal status: {task}")
+        task = snapshot_object.RemoveSnapshot_Task()
+        WaitForTask(task, self.service_instance)
+        try:
+            self._snapshots_list.pop(snapshot_object)
+        except Exception as e:
+            Reporter.report(str(e))
+        Reporter.report(f"Snapshot removal status: {task}")
 
+    @allure.step("Rename VM snapshot")
     def snapshot_rename(self, snapshot_object: object, new_name: str):
         raise Exception("Not implemented yet.")
 
+    @allure.step("Remove all snapshots")
+    def remove_all_snapshots(self):
+        task = self._vm_objRemoveAllSnapshots()
+        WaitForTask(task, self.service_instance)
+        Reporter.report(f"All Snapshots removal status: {task}")
+
+    @allure.step("Print all snapshots")
     def get_all_snapshots(self, snapshots=None):
         raise Exception("Not implemented yet.")
-
-        # snapshots_list = []
-        # try:
-        #     for snapshot in self.vm_obj.snapshot.rootSnapshotList:
-        #         snapshot_dict = dict()
-        #         snapshot_dict["snap_name"] = snapshot.name
-        #         snapshot_dict["snap_obj"] = snapshot.snapshot
-        #         snapshots_list.append(snapshot_dict)
-        #         snapshots_list.append(self.snapshots_list + self.get_all_snapshots(snapshot.childSnapshotList))
-        #     Reporter.report(f"{self.snapshots_list}")
-        #     return self.snapshots_list
-        # except Exception as e:
-        #     Reporter.report(str(e))
-
-    def get_snapshot_by_name(self, snapshot_name=None):
+        # TODO: get_all_snapshots
+        # Print all the snapshots names
+        # Print all the snapshots IDs ('vim.vm.Snapshot:snapshot-40013')
+        # for snapshot_object in self._snapshots_list:
+        #     snapshot_name, snapshot_object = self._snapshots_list
         # raise Exception("Not implemented yet.")
+
+    @allure.step("Get VM snapshot id by name")
+    def get_snapshot_by_name(self, snapshot_name=None):
         try:
-            if snapshot_name in self._snapshots_list:
+            if snapshot_name in self._snapshots_list[0]:
                 Reporter.report("Snapshot found")
-                return self._snapshots_list[snapshot_name]
+                return self._snapshots_list[0][snapshot_name]
         except AttributeError as e:
-            Reporter.report(f"There are no snapshots")
+            Reporter.report(f"No snapshot found")
             return False
 
+    @allure.step("VM power reboot")
     def reboot(self):
         task = self._vm_obj.RebootGuest()
         WaitForTask(task, self._service_instance)
-        raise Exception("Not implemented yet.")
+        Reporter.report(f"Machine restart: {task.info.state}")
 
-        # Reporter.report(f"Machine restart: {task.info.state}")
-        # pass
-
-    def task_status(self, task_id):
-        raise Exception("Not implemented yet.")
-
+    @allure.step("VM power on")
     def power_on(self):
         task = self._vm_obj.PowerOnVM_Task()
         WaitForTask(task, self._service_instance)
+        Reporter.report(f"Machine power on: {task.info.state}")
 
+    @allure.step("VM power off")
     def power_off(self):
         task = self._vm_obj.PowerOffVM_Task()
         WaitForTask(task, self._service_instance)
-
-    def start(self):
-        raise Exception("Not implemented yet.")
-
-        # Reporter.report(f"Machine state change to power off: {task.info.state}")
+        Reporter.report(f"Machine power off: {task.info.state}")
 
