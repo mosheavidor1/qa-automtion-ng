@@ -1,5 +1,6 @@
 """
-
+This file holds details of the clusters.
+The variables of the clusters are objects representing the clusters.
 """
 
 __author__ = "Dmitry Banny"
@@ -14,7 +15,7 @@ class Constants:
     TIMEOUT = 1500
     
 
-class Cluster(object):
+class Cluster:
     """ Clusters information.
     
     The information is stored in dict structure:
@@ -31,10 +32,26 @@ class Cluster(object):
         Ensilo_vcsa1.datastore_name
     """
     def __init__(self, vhost, name, resource_pools, datastore_name):
-        self.vhost = vhost
-        self.name = name
-        self.resource_pools = resource_pools
-        self.datastore_name = datastore_name
+        self._vhost = vhost
+        self._name = name
+        self._resource_pools = resource_pools
+        self._datastore_name = datastore_name
+
+    @property
+    def cluster_vhost(self):
+        return self._vhost
+
+    @property
+    def cluster_name(self):
+        return self._name
+
+    @property
+    def cluster_resources_pool(self):
+        return self._resource_pools
+
+    @property
+    def cluster_datastore_name(self):
+        return self._datastore_name
 
 
 Ensilo_vcsa10 = Cluster("10.51.100.110", "Ensilo_vcsa10", ["VT13-Testing"], "loc-vt13-r10-d1")
