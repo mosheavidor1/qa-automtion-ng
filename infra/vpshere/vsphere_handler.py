@@ -1,84 +1,122 @@
-import vsphere_details
-import vsphere_operations
-from third_party_details import USER_NAME, PASSWORD
+import atexit
+from enum import Enum
+
+import allure
+from pyVim.connect import SmartConnectNoSSL, Disconnect
+
+from infra.allure_report_handler.reporter import Reporter
+from infra.vpshere import vsphere_details
+from infra.vpshere.vsphere_operations import VsphereMachineOperations
+from third_party_details import USER_NAME_DOMAIN, PASSWORD
+from vsphere_details import ClusterDetails
 
 __author__ = "Dmitry Banny"
 
 
-class VsphereConnection(object):
+class VmSearchTypeEnum(Enum):
+    VM_NAME = 'VM_NAME'
+    VM_IP_V4 = 'VM_IP_V4'
+
+
+class VsphereClusterHandler(object):
     """ This class provides a connection to a Vsphere """
 
-    def __init__(self, username=f"ensilo\\{USER_NAME}", password=PASSWORD, vm_name=None, malware=False):
-        """Providing a connection information to a Vsphere is required.
+    def __init__(self, cluster_details: ClusterDetails):
+        self._cluster_details = cluster_details
+        self._service_instance = None
+
+    @property
+    def cluster_details(self):
+        return self._cluster_details
+
+    @allure.step("Connect to vsphere")
+    def connect_to_vsphere(self, user_name: str = USER_NAME_DOMAIN, password: str = PASSWORD):
+        try:
+            self._service_instance = SmartConnectNoSSL(
+                host=self.cluster_details.cluster_vhost,
+                user=user_name,
+                pwd=password
+            )
+            atexit.register(Disconnect, self._service_instance)
+            # return self._service_instance
+        except IOError as io_error:
+            Reporter.report(io_error)
+            return False
+
+    @allure.step("Get VM by name")
+    def get_vm_by_name(self, vm_name: str):
+        """Searching VM name in the vSphere cluster, after it found, VM object set.
 
         Parameters
         ----------
-        password : str
-            Password to connect to Vsphere
-        username : str
-            Username to connect to Vsphere
-            Virtual machine name to use for manipulation
-        malware : bool, optional
-            Set to True is the environment is DENGER to other clusters , by default False
-        """
-        self.username: str = username
-        self.password: str = password
-        self.vm_name: str = vm_name
-        self._malware: bool = malware
-        self.vsphere_obj: object = None
-        self.cluster_details: object = None
-
-    def virtual_machine(self, cluster_name=None):
-        """This function represents a VM object.
-
-        Usage example
-        ----------
-        vm = VsphereConnection().cluster(vsphere_config.Ensilo_vcsa20)
-        vm.snapshot_create(snapshot_name="test 1", snapshot_description="test description")
-
-        Parameters
-        ----------
-        cluster_name : object
-            cluster information, should be provided from a 'vsphere_config'
+        vm_name : str
+            VM name that you want to search in the vSphere
 
         Returns
         -------
-        VM object
-            Returns a VM object with options to manipulate the machines.
+        object
+            Returns a VM object
         """
-        if self._malware:
-            self.vsphere_obj = vsphere_operations.VsphereMachine(
-                username=self.username,
-                password=self.password,
-                vm_name=self.vm_name,
-                datastore_name=vsphere_details.Ensilo_vcsa30.cluster_datastore_name,
-                datacenter_name=vsphere_details.Ensilo_vcsa30.cluster_name,
-                resource_pool=vsphere_details.Ensilo_vcsa30.cluster_resources_pool
-            )
-            return self.vsphere_obj
-        elif cluster_name:
-            self.vsphere_obj = vsphere_operations.VsphereMachine(
-                username=self.username,
-                password=self.password,
-                vm_name=self.vm_name,
-                datastore_name=cluster_name.cluster_datastore_name,
-                datacenter_name=cluster_name.cluster_name,
-                resource_pool=cluster_name.cluster_resources_pool,
-                vshost=cluster_name.cluster_vhost
-            )
-            return self.vsphere_obj
+        for vm_obj in self._service_instance.content.rootFolder.childEntity[0].vmFolder.childEntity:
+            if vm_name == vm_obj.name:
+                Reporter.report(f"VM found by name: {vm_name}")
+                return vm_obj
+
+        return None
+
+    def search_vm_by_ip(self, ip_address: str):
+        """Searching VM name in the vSphere cluster, after it found, VM object set.
+
+        Parameters
+        ----------
+        ip_address : str
+            IP address that you want to search in the vSphere
+
+        Returns
+        -------
+        object
+            Returns a VM object
+        """
+        for vm_obj in self._service_instance.content.rootFolder.childEntity[0].vmFolder.childEntity:
+            try:
+                Reporter.report(vm_obj.guest.ipAddress)
+                if ip_address == vm_obj.guest.ipAddress and vm_obj.guest.ipAddress and vm_obj.configStatus == 'green':
+                    return vm_obj
+            except Exception as e:
+                Reporter.report(str(e))
+
+        # didn't found machine by IP
+        return None
+
+    def get_specific_vm_from_cluster(self,
+                                     vm_search_type: VmSearchTypeEnum,
+                                     txt_to_search: str,
+                                     user_name: str = USER_NAME_DOMAIN,
+                                     password: str = PASSWORD) -> VsphereMachineOperations:
+        if self._service_instance is None:
+            self.connect_to_vsphere(user_name=user_name,
+                                    password=password)
+
+        vm_obj = None
+        if vm_search_type == VmSearchTypeEnum.VM_NAME:
+            vm_obj = self.get_vm_by_name(vm_name=txt_to_search)
+
+        elif vm_search_type == VmSearchTypeEnum.VM_IP_V4:
+            vm_obj = self.search_vm_by_ip(ip_address=txt_to_search)
+
         else:
-            return False
+            raise Exception(f'Unknown vm_search_type: {vm_search_type.name}')
+
+        vsphere_operations = VsphereMachineOperations(service_instance=self._service_instance,
+                                                      vm_obj=vm_obj)
+
+        return vsphere_operations
 
 
 if __name__ == '__main__':
-    vm = VsphereConnection().virtual_machine(vsphere_details.Ensilo_vcsa20)
-    
-    vm.search_vm_by_name("dima_colletor10x64")
-    test = vm.vsphere_tests()
-    snapshot_one = vm.snapshot_create(snapshot_name="test1")
-    snapshot_two = vm.snapshot_create(snapshot_name="test2")
+    cluster_details = vsphere_details.ENSILO_VCSA_20
+    vsphere_cluster_handler = VsphereClusterHandler(cluster_details=cluster_details)
+    vm_ops = vsphere_cluster_handler.get_specific_vm_from_cluster(vm_search_type=VmSearchTypeEnum.VM_NAME, txt_to_search='dima_colletor10x64')
+    vm_ops.snapshot_create(snapshot_name='dima test')
+    vm_ops.snapshot_revert_by_name(snapshot_name='dima test')
 
-    vm.snapshot_revert_by_name("test1")
-
-    vm.search_vm_by_name("dima_colletor10x64")
