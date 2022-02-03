@@ -78,15 +78,16 @@ class VsphereClusterHandler(object):
         object
             Returns a VM object
         """
-        for vm_obj in self._service_instance.content.rootFolder.childEntity[0].vmFolder.childEntity:
-            try:
-                Reporter.report(vm_obj.guest.ipAddress)
-                if ip_address == vm_obj.guest.ipAddress and vm_obj.guest.ipAddress and vm_obj.configStatus == 'green':
-                    Reporter.report(f"IP address '{ip_address}' of a collector {vm_obj.name} found. ")
-                    return vm_obj
-            except Exception as e:
-                Reporter.report(f"IP address '{ip_address}' of a collector {vm_obj.name} not found. ")
-                Reporter.report(str(e))
+        vm_obj = self.service_instance.content.searchIndex.FindByIp(None, ip_address, True)
+
+        try:
+            Reporter.report(vm_obj.guest.ipAddress)
+            if ip_address == vm_obj.guest.ipAddress and vm_obj.guest.ipAddress and vm_obj.configStatus == 'green':
+                Reporter.report(f"IP address '{ip_address}' of a collector {vm_obj.name} found. ")
+                return vm_obj
+        except Exception as e:
+            Reporter.report(f"IP address '{ip_address}' of a collector {vm_obj.name} not found. ")
+            Reporter.report(str(e))
 
         return None
 
