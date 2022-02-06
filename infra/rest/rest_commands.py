@@ -1,10 +1,6 @@
-from time import sleep
 from ensilo.platform.rest.nslo_management_rest import NsloManagementConnection, NsloRest
 from json import loads
-import os
 import json
-import ast
-from spnego.__main__ import yaml
 from infra.allure_report_handler.reporter import Reporter
 
 
@@ -135,7 +131,7 @@ class RestCommands(object):
         status, response = self.rest.inventory.ListCores()
         return self._get_info(status, response, 'core', validation_data, output_parameters)
 
-    def get_security_events(self, validation_data, translate_to_list_of_dictionaries=True):
+    def get_security_events(self, validation_data):
         """
         :param validation_data: dictionary of the data to get.
                                 options of parameters: Event ID, Device, Collector Group, operatingSystems, deviceIps,
@@ -146,7 +142,7 @@ class RestCommands(object):
                  if the request failed or there were no events found -> False
         """
 
-        status, response = self.rest.events.ListEvents(validation_data)
+        status, response = self.rest.events.ListEvents(**validation_data)
         if not status:
             assert False, f'Could not get response from the management. \n{response}'
 

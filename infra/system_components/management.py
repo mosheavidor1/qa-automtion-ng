@@ -1,4 +1,3 @@
-import json
 from typing import List
 
 import allure
@@ -13,10 +12,7 @@ from infra.system_components.aggregator import Aggregator
 from infra.system_components.collector import Collector
 from infra.system_components.core import Core
 from infra.system_components.forti_edr_linux_station import FortiEdrLinuxStation
-from infra.system_components.linux_collector import LinuxCollector
-from infra.system_components.os_x_collector import OsXCollector
 from infra.system_components.windows_collector import WindowsCollector
-from infra.test_im.test_im_handler import TestImHandler
 from infra.utils.utils import StringUtils
 
 
@@ -36,8 +32,6 @@ class Management(FortiEdrLinuxStation):
         self._aggregators: [Aggregator] = []
         self._cores: [Core] = []
         self._collectors: [Collector] = []
-
-        self._test_im_client: TestImHandler = TestImHandler()
 
         self._rest_ui_client = RestCommands(self.host_ip,
                                             self._ui_admin_user_name,
@@ -94,10 +88,6 @@ class Management(FortiEdrLinuxStation):
     @property
     def details(self) -> ManagementDetails:
         return self._details
-
-    @property
-    def test_im_client(self) -> TestImHandler:
-        return self._test_im_client
 
     def __repr__(self):
         return f"Management {self._host_ip}"

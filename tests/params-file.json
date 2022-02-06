@@ -1,0 +1,9 @@
+{
+	"loginUser": "admin",
+	"loginPassword": "12345678",
+	"loginOrganization":"",
+
+	"organization": "Default",
+
+	"collectorName": "collector1"
+}
