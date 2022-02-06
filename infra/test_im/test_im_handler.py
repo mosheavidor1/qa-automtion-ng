@@ -10,22 +10,22 @@ import requests
 import third_party_details
 from infra.allure_report_handler.reporter import Reporter
 from infra.assertion.assertion import AssertTypeEnum, Assertion
+from infra.system_components.management import Management
 from infra.utils.utils import StringUtils
 
 
 class TestImHandler:
     script_dir = pathlib.Path(__file__).parent.resolve()
 
-    def __init__(self, branch="master", local=True, headless=True):
+    def __init__(self, branch="master"):
         self.branch = branch
-        self.local = local
-        self.headless = headless
+        self.local = third_party_details.TEST_IM_LOCAL
+        self.headless = third_party_details.TEST_IM_HEADLESS
 
     @allure.step("Run TestIM ---{test_name}--- on {management_ui_ip} UI")
     def run_test(self,
                  test_name: str,
-                 management_version: str,
-                 management_ui_ip: str,
+                 management_ui_ip: str = Management.instance().host_ip,
                  data: dict = None,
                  assert_type: AssertTypeEnum = AssertTypeEnum.HARD,
                  test_timeout=600):
@@ -52,17 +52,15 @@ class TestImHandler:
         else:
             testim_cmd = fr'testim --token "jlSw4kxFGDMLPHORAp9uGnAxSFVuY2NOqnpDQDc98ykPcC9JXP" --project ' \
                          fr'"IxC1N5cIf88Pa3ktjRmX" --grid "Testim-Grid" ' \
-                         fr'--report-file test-results\testim-tests-{test_name}-{management_version}-report.xml --name "{test_name}" ' \
+                         fr'--report-file test-results\testim-tests-{test_name}-report.xml --name "{test_name}" ' \
                          fr'{params_file} --base-url  https://{management_ui_ip}'
 
         output = None
         status_code = 0
 
         if third_party_details.RUN_TEST_IM_ON_PROXY is True:
-            # read json file
             status_code, output = self._send_commands_via_test_im_proxy(test_name=test_name,
                                                                         management_ui_ip=management_ui_ip,
-                                                                        management_version=management_version,
                                                                         data=data,
                                                                         test_timeout=test_timeout)
         else:
@@ -136,13 +134,11 @@ class TestImHandler:
     @allure.step("Run testIM through proxy windows machine")
     def _send_commands_via_test_im_proxy(self,
                                          management_ui_ip: str,
-                                         management_version: str,
                                          test_name: str,
                                          data: dict,
                                          test_timeout: int = 600):
         data = {
             'management_ui_ip': management_ui_ip,
-            'management_version': management_version,
             'test_name': test_name,
             'params': data
         }
