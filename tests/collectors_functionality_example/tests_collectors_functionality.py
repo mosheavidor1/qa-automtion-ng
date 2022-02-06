@@ -89,7 +89,7 @@ class CollectorFunctionalityExampleTests(CollectorsFunctionalityBaseExample):
         params = {"OrganizationName": "Org3"}
         mgmt_version = management.get_version()
         management.test_im_client.run_test(test_name=test_name,
-                                           buildnumber=mgmt_version,
+                                           management_version=mgmt_version,
                                            management_ui_ip=management.host_ip,
                                            data=params,
                                            assert_type=AssertTypeEnum.HARD)
