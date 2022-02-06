@@ -31,7 +31,11 @@ pipeline {
                     
         string( name: 'platfom_rest_branch',
                 defaultValue: 'master',
-                description: 'Platfom Rest Branch')	   
+                description: 'Platfom Rest Branch')
+
+        booleanParam(name: 'use_test_im_proxy',
+                    defaultValue: true,
+                    description: 'run testIM tests on proxy windows machine since they are not support running on linux')
                            
     }
     agent { 

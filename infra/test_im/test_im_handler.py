@@ -5,7 +5,9 @@ import json
 from datetime import datetime
 
 import allure
+import requests
 
+import third_party_details
 from infra.allure_report_handler.reporter import Reporter
 from infra.assertion.assertion import AssertTypeEnum, Assertion
 from infra.utils.utils import StringUtils
@@ -19,16 +21,20 @@ class TestImHandler:
         self.local = local
         self.headless = headless
 
-    @allure.step("Invoke TestIm command to start test")
-    def _send_command(self,
-                      test_name: str,
-                      build_number: str,
-                      url: str,
-                      json_name: str = "params-file.json",
-                      assert_type: AssertTypeEnum = AssertTypeEnum.HARD,
-                      test_timeout=600):
+    @allure.step("Run TestIM ---{test_name}--- on {management_ui_ip} UI")
+    def run_test(self,
+                 test_name: str,
+                 management_version: str,
+                 management_ui_ip: str,
+                 data: dict = None,
+                 assert_type: AssertTypeEnum = AssertTypeEnum.HARD,
+                 test_timeout=600):
 
-        params_file = '' if json_name is None else f'--params-file "{json_name}"'
+        params_file = ''
+        json_name = None
+        if data is not None and data != {} and not third_party_details.RUN_TEST_IM_ON_PROXY:
+            json_name = self._create_param_file(data=data)
+            params_file = f'--params-file "{json_name}"'
 
         if self.local:
 
@@ -40,26 +46,38 @@ class TestImHandler:
             testim_cmd = fr'testim --token "jlSw4kxFGDMLPHORAp9uGnAxSFVuY2NOqnpDQDc98ykPcC9JXP" --project ' \
                          fr'"IxC1N5cIf88Pa3ktjRmX"  --name "{test_name}" ' \
                          fr'--use-local-chrome-driver  {headless} ' \
-                         fr'{params_file} --base-url  https://{url} ' \
+                         fr'{params_file} --base-url  https://{management_ui_ip} ' \
                          fr'--branch "{self.branch}" --test-config "FHD 1920x1080" '
 
         else:
             testim_cmd = fr'testim --token "jlSw4kxFGDMLPHORAp9uGnAxSFVuY2NOqnpDQDc98ykPcC9JXP" --project ' \
                          fr'"IxC1N5cIf88Pa3ktjRmX" --grid "Testim-Grid" ' \
-                         fr'--report-file test-results\testim-tests-{test_name}-{build_number}-report.xml --name "{test_name}" ' \
-                         fr'{params_file} --base-url  https://{url}'
+                         fr'--report-file test-results\testim-tests-{test_name}-{management_version}-report.xml --name "{test_name}" ' \
+                         fr'{params_file} --base-url  https://{management_ui_ip}'
 
         output = None
         status_code = 0
-        try:
-            Reporter.report(f"Going to run TestIM command from the dir: {self.script_dir}")
-            Reporter.attach_str_as_file(file_name="TestIM command", file_content=testim_cmd)
-            output = subprocess.check_output(testim_cmd, cwd=self.script_dir, shell=True, timeout=test_timeout)
-        except subprocess.CalledProcessError as grepexc:
-            status_code = grepexc.returncode
-            output = grepexc.output
 
-        output = output.decode('utf-8')
+        if third_party_details.RUN_TEST_IM_ON_PROXY is True:
+            # read json file
+            status_code, output = self._send_commands_via_test_im_proxy(test_name=test_name,
+                                                                        management_ui_ip=management_ui_ip,
+                                                                        management_version=management_version,
+                                                                        data=data,
+                                                                        test_timeout=test_timeout)
+        else:
+            try:
+                Reporter.report(f"Going to run TestIM command from the dir: {self.script_dir}")
+                Reporter.attach_str_as_file(file_name="TestIM command", file_content=testim_cmd)
+                output = subprocess.check_output(testim_cmd, cwd=self.script_dir, shell=True, timeout=test_timeout)
+                output = output.decode('utf-8')
+            except subprocess.CalledProcessError as grepexc:
+                status_code = grepexc.returncode
+                output = grepexc.output
+            finally:
+                if json_name is not None:
+                    os.remove(os.path.join(self.script_dir, json_name))
+
         Reporter.attach_str_as_file(file_name=f'TestIm output', file_content=output)
 
         test_link_regex = r'Test\s+.+url:\s+(.+)\n'
@@ -92,7 +110,10 @@ class TestImHandler:
             else:
                 assert False, f"Test Failed, look at TestIm link to see what happened: {test_link}"
 
-    def _create_param_file(self, json_params_name: str, data: dict):
+    def _create_param_file(self, data: dict):
+
+        curr_time = datetime.now().strftime('%Y-%m-%d_%H-%M-%S-%f')
+        json_params_name = f"params-file-{curr_time}.json".replace(" ", "_").replace("|", "")
 
         json_params_name_curr_dir = os.path.join(self.script_dir, json_params_name)
 
@@ -108,28 +129,33 @@ class TestImHandler:
             with open(json_params_name_curr_dir, "w") as file:
                 file.write(content)
 
-    @allure.step("Run TestIM ---{test_name}--- on {management_ui_ip} UI")
-    def run_test(self,
-                 test_name: str,
-                 buildnumber: str,
-                 management_ui_ip: str,
-                 assert_type: AssertTypeEnum = AssertTypeEnum.HARD,
-                 data: dict = None,
-                 test_timeout=600):
-        """
-        test name: has to be equal to the test name in TESTIM
-        """
-        curr_time = datetime.now().strftime('%Y-%m-%d_%H-%M-%S-%f')
-        json_name = f"params-file-{test_name}-{buildnumber}-{curr_time}.json".replace(" ", "_").replace("|", "")
+        file_name_to_return = json_params_name_curr_dir.replace(str(self.script_dir), '').replace('\\', ''.replace('/', ''))
 
-        try:
-            self._create_param_file(json_params_name=json_name, data=data)
+        return file_name_to_return
 
-            self._send_command(test_name=test_name,
-                               build_number=buildnumber,
-                               url=management_ui_ip,
-                               json_name=json_name,
-                               assert_type=assert_type,
-                               test_timeout=test_timeout)
-        finally:
-            os.remove(os.path.join(self.script_dir, json_name))
+    @allure.step("Run testIM through proxy windows machine")
+    def _send_commands_via_test_im_proxy(self,
+                                         management_ui_ip: str,
+                                         management_version: str,
+                                         test_name: str,
+                                         data: dict,
+                                         test_timeout: int = 600):
+        data = {
+            'management_ui_ip': management_ui_ip,
+            'management_version': management_version,
+            'test_name': test_name,
+            'params': data
+        }
+
+        Reporter.report("Going to start TEST IM - through proxy windows machine")
+        url = f'http://{third_party_details.TEST_IM_PROXY_IP}:{third_party_details.TEST_IM_PROXY_PORT}/startTestim'
+        Reporter.attach_str_as_file(file_name=url, file_content=json.dumps(data, indent=4))
+
+        response = requests.post(url=url, json=data, timeout=test_timeout)
+        assert response.status_code == 200, f"Proxy Machine returned {response.status_code} , failed to proccess the request and run the test"
+        resp_as_dict = json.loads(response.content)
+        test_im_cmd_status_code = resp_as_dict.get('status_code')
+        test_im_cmd_output = resp_as_dict.get('output')
+        return test_im_cmd_status_code, test_im_cmd_output
+
+
