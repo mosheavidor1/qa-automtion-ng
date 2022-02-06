@@ -88,6 +88,7 @@ class JiraXrayHandler:
                 # 'fixVersions':  [{"add" : {"name" : "release_TEST"}}],
                 'assignee': {'name': JiraConfiguration.user_name},
                 'customfield_11324': [f'{collector_os_name}_{collector_os_architecture}'], # Test environments
+                'customfield_11326': ['EN-73386'], # Test Plan (master test plan for automation purposes)
                 # 'customfield_12500': 'place_holder', # collector name
                 'customfield_12413': collector_version, # collector version
                 'customfield_12414': core_version, # core version
