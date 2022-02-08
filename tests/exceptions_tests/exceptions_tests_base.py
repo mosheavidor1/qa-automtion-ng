@@ -1,3 +1,4 @@
+from enum import Enum
 import allure
 
 from infra.allure_report_handler.reporter import Reporter
@@ -8,7 +9,14 @@ from infra.test_im.test_im_handler import TestImHandler
 from time import sleep
 
 
+class ExceptionTestType(Enum):
+    E2E = 'E2E'
+    CREATE_FULL_COVERED_EXCEPTION = "CREATE_FULL_COVERED_EXCEPTION"
+    CREATE_PARTIALLY_COVERED_EXCEPTION = "CREATE_PARTIALLY_COVERED_EXCEPTION"
+
+
 class ExceptionsTestsBase(BaseTest):
+    test_type: ExceptionTestType = ExceptionTestType.E2E
     malware_name = "DynamicCodeTests.exe"
     test_im_params = {"eventName": malware_name}
 
@@ -24,13 +32,21 @@ class ExceptionsTestsBase(BaseTest):
 
     @allure.step("Run and validate")
     def run_and_validate(self):
-        test_name = "Exceptions | Delete all exception"
-        self.testim_handler.run_test(test_name=test_name,
-                                     data=self.test_im_params)
+        if self.test_type == ExceptionTestType.CREATE_FULL_COVERED_EXCEPTION:
+            self.create_full_covered_exception()
 
-        test_name = "Security event | Archive all"
-        self.testim_handler.run_test(test_name=test_name,
-                                     data=self.test_im_params)
+        elif self.test_type == ExceptionTestType.CREATE_PARTIALLY_COVERED_EXCEPTION:
+            self.create_partially_covered_exception()
+
+        elif self.test_type == ExceptionTestType.E2E:
+            self.exception_e2e_sanity()
+
+    @allure.step("Reorder environment")
+    def cleanup(self):
+        self.management.rest_ui_client.delete_event_by_name(self.malware_name)
+
+    def exception_e2e_sanity(self):
+        self.delete_and_archive()
 
         self.collector.create_event(malware_name=self.malware_name)
 
@@ -38,13 +54,7 @@ class ExceptionsTestsBase(BaseTest):
         self.testim_handler.run_test(test_name=test_name,
                                      data=self.test_im_params)
 
-        test_name = "Exceptions | Delete all exception"
-        self.testim_handler.run_test(test_name=test_name,
-                                     data=self.test_im_params)
-
-        test_name = "Security event | Archive all"
-        self.testim_handler.run_test(test_name=test_name,
-                                     data=self.test_im_params)
+        self.delete_and_archive()
 
         self.collector.create_event(malware_name=self.malware_name)
 
@@ -68,6 +78,28 @@ class ExceptionsTestsBase(BaseTest):
         self.testim_handler.run_test(test_name=test_name,
                                      data=self.test_im_params)
 
-    @allure.step("Reorder environment")
-    def cleanup(self):
-        self.management.rest_ui_client.delete_event_by_name(self.malware_name)
+    def delete_and_archive(self):
+        test_name = "Exceptions | Delete all exception"
+        self.testim_handler.run_test(test_name=test_name,
+                                     data=self.test_im_params)
+
+        test_name = "Security event | Archive all"
+        self.testim_handler.run_test(test_name=test_name,
+                                     data=self.test_im_params)
+
+    def create_full_covered_exception(self):
+        test_name = "Exceptions | Create exception"
+        self.testim_handler.run_test(test_name=test_name,
+                                     data=self.test_im_params)
+
+    def create_partially_covered_exception(self):
+        test_name = "Exceptions | Create exception"
+        group_name = "empty"
+
+        self.management.rest_ui_client.create_group(group_name)
+
+        self.test_im_params = {"eventName": self.malware_name,
+                               "groups": [group_name]}
+        self.testim_handler.run_test(test_name=test_name,
+                                     data=self.test_im_params)
+

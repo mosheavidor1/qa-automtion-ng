@@ -3,7 +3,6 @@ import pytest
 
 from infra.allure_report_handler.reporter import Reporter
 from infra.assertion.assertion import AssertTypeEnum
-from infra.test_im.test_im_handler import TestImHandler
 from tests.collectors_functionality_example.collectors_functionality_base import CollectorsFunctionalityBaseExample, \
     CollectorFunctionalityTestType
 
@@ -87,7 +86,7 @@ class CollectorFunctionalityExampleTests(CollectorsFunctionalityBaseExample):
     def test_im_example(self, management):
         test_name = "Organizations | create organization"
         params = {"OrganizationName": "Org3"}
-        TestImHandler().run_test(test_name=test_name,
+        self.testim_handler.run_test(test_name=test_name,
                                  management_ui_ip=management.host_ip,
                                  data=params,
                                  assert_type=AssertTypeEnum.HARD)

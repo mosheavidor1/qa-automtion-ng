@@ -8,6 +8,7 @@ from infra.enums import SystemState
 from infra.system_components.aggregator import Aggregator
 from infra.system_components.collector import Collector
 from tests.basic_test_lifecycle.base_test import BaseTest
+from infra.test_im.test_im_handler import TestImHandler
 
 
 class CollectorFunctionalityTestType(Enum):
@@ -23,7 +24,7 @@ class CollectorsFunctionalityBaseExample(BaseTest):
     test_type: CollectorFunctionalityTestType = CollectorFunctionalityTestType.STOP_START_COLLECTOR
     crash_folder_path = r"C:\ProgramData\FortiEdr\CrashDumps\Collector"
     crash_file_name = "crash_dumps_info.txt"
-
+    testim_handler: TestImHandler = TestImHandler()
     aggregator: Aggregator = None
     collector: Collector = None
 
