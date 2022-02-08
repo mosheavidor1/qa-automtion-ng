@@ -206,3 +206,34 @@ class RestCommands(object):
                 return summery[0]
 
         return summery
+
+    def create_group(self, name, organization=None):
+        """
+        :param name: string, the name of the group.
+        :return: True if succeeded creating the group, False if failed.
+        """
+        group_status, group_response = self.rest.inventory.ListCollectorGroups(organization=organization)
+        groups_list = self._get_info(group_status, group_response)
+
+        for group in groups_list:
+            if name == group["name"]:
+                Reporter.report('group ' + name + ' already exist')
+                return True
+
+        if organization:
+            status, response = self.rest.inventory.CreateCollectorGroup(name, organization)
+        else:
+            status, response = self.rest.inventory.CreateCollectorGroup(name)
+        group_status, group_response = self.rest.inventory.ListCollectorGroups(organization=organization)
+        groups_list = self._get_info(group_status, group_response)
+        if not status:
+            assert False, f'Could not get response from the management. \n{response}'
+
+        result = False
+        for group in groups_list:
+            if name in group["name"]:
+                result = True
+        assert result
+
+        Reporter.report('Created the group ' + name + ' successfully.')
+        return True
