@@ -116,7 +116,7 @@ class TestImHandler:
         json_params_name_curr_dir = os.path.join(self.script_dir, json_params_name)
 
         base_data = {"loginUser": "admin", "loginPassword": "12345678", "loginOrganization": "",
-                   "organization": "Default", "collectorName": "collector2"}
+                   "organization": "Default", "collectorName": "collector1"}
         base_data.update(data)
 
         if os.path.isfile(json_params_name_curr_dir):

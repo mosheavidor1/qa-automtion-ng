@@ -27,7 +27,7 @@ class ExceptionsTests(ExceptionsTestsBase):
     def test_edit_fully_covered_exception(self, management):
         self.test_type = ExceptionTestType.EDIT_FULL_COVERED_EXCEPTION
         self.management = management
-        self.collector = self.management.collectors[1]
+        self.collector = self.management.collectors[0]
         self.malware_name = "DynamicCodeTests.exe"
         self.play_test()
 
