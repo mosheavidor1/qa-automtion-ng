@@ -12,5 +12,5 @@ TEST_IM_LOCAL = True
 
 TEST_IM_PROXY_IP = '10.151.120.162'
 TEST_IM_PROXY_PORT = 5055
-RUN_TEST_IM_ON_PROXY = True if os.getenv("use_test_im_proxy") == 'true' else True
+RUN_TEST_IM_ON_PROXY = True if os.getenv("use_test_im_proxy") == 'true' else False
 
