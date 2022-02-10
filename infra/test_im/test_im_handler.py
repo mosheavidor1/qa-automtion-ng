@@ -30,8 +30,13 @@ class TestImHandler:
                  assert_type: AssertTypeEnum = AssertTypeEnum.HARD,
                  test_timeout=600):
 
-        json_name = self._create_param_file(data=data)
-        params_file = f'--params-file "{json_name}"'
+        base_data = {"loginUser": "admin", "loginPassword": "12345678", "loginOrganization": "",
+                     "organization": "Default", "collectorName": "collector1"}
+        data.update(base_data)
+
+        if not third_party_details.RUN_TEST_IM_ON_PROXY:
+            json_name = self._create_param_file(data=data)
+            params_file = f'--params-file "{json_name}"'
 
         if self.local:
 
@@ -112,15 +117,11 @@ class TestImHandler:
 
         json_params_name_curr_dir = os.path.join(self.script_dir, json_params_name)
 
-        base_data = {"loginUser": "admin", "loginPassword": "12345678", "loginOrganization": "",
-                   "organization": "Default", "collectorName": "collector1"}
-        base_data.update(data)
-
         if os.path.isfile(json_params_name_curr_dir):
             os.remove(json_params_name_curr_dir)
 
         Reporter.report("Creating Params json file")
-        content = json.dumps(base_data, indent=4)
+        content = json.dumps(data, indent=4)
         Reporter.attach_str_as_file(file_name=json_params_name_curr_dir, file_content=content)
 
         with open(json_params_name_curr_dir, "w") as file:
