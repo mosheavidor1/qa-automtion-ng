@@ -30,11 +30,8 @@ class TestImHandler:
                  assert_type: AssertTypeEnum = AssertTypeEnum.HARD,
                  test_timeout=600):
 
-        params_file = ''
-        json_name = None
-        if data is not None and data != {} and not third_party_details.RUN_TEST_IM_ON_PROXY:
-            json_name = self._create_param_file(data=data)
-            params_file = f'--params-file "{json_name}"'
+        json_name = self._create_param_file(data=data)
+        params_file = f'--params-file "{json_name}"'
 
         if self.local:
 
