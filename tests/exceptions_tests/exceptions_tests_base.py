@@ -56,7 +56,10 @@ class ExceptionsTestsBase(BaseTest):
         elif self.test_type == ExceptionTestType.E2E:
             self.exception_e2e_sanity()
 
-        if self.test_type == ExceptionTestType.EDIT_FULL_COVERED_EXCEPTION or\
+        if self.test_type == ExceptionTestType.CREATE_FULL_COVERED_EXCEPTION:
+            self.create_excepted_event_and_check()
+
+        elif self.test_type == ExceptionTestType.EDIT_FULL_COVERED_EXCEPTION or\
                 self.test_type == ExceptionTestType.EDIT_PARTIALLY_COVERED_EXCEPTION:
             self.edit_covered_exception()
 
@@ -85,6 +88,18 @@ class ExceptionsTestsBase(BaseTest):
         self.testim_handler.run_test(test_name=test_name,
                                      data=self.test_im_params)
 
+        self.create_excepted_event_and_check()
+
+    def delete_and_archive(self):
+        test_name = "Exceptions | Delete all exception"
+        self.testim_handler.run_test(test_name=test_name,
+                                     data=self.test_im_params)
+
+        test_name = "Security event | Archive all"
+        self.testim_handler.run_test(test_name=test_name,
+                                     data=self.test_im_params)
+
+    def create_excepted_event_and_check(self):
         test_name = "Security event | Archive all"
         self.testim_handler.run_test(test_name=test_name,
                                      data=self.test_im_params)
@@ -94,15 +109,6 @@ class ExceptionsTestsBase(BaseTest):
         self.collector.create_event(malware_name=self.malware_name)
 
         test_name = "Security event | Event does not appear"
-        self.testim_handler.run_test(test_name=test_name,
-                                     data=self.test_im_params)
-
-    def delete_and_archive(self):
-        test_name = "Exceptions | Delete all exception"
-        self.testim_handler.run_test(test_name=test_name,
-                                     data=self.test_im_params)
-
-        test_name = "Security event | Archive all"
         self.testim_handler.run_test(test_name=test_name,
                                      data=self.test_im_params)
 

@@ -8,6 +8,7 @@ from tests.exceptions_tests.exceptions_tests_base import ExceptionsTestsBase, Ex
 class ExceptionsTests(ExceptionsTestsBase):
 
     @pytest.mark.xray('EN-68879')
+    @pytest.mark.testim_sanity
     def test_create_full_covered_exception(self, management):
         self.test_type = ExceptionTestType.CREATE_FULL_COVERED_EXCEPTION
         self.management = management
@@ -16,6 +17,7 @@ class ExceptionsTests(ExceptionsTestsBase):
         self.play_test()
 
     @pytest.mark.xray('EN-68884')
+    @pytest.mark.testim_sanity
     def test_create_partially_covered_exception(self, management):
         self.test_type = ExceptionTestType.CREATE_PARTIALLY_COVERED_EXCEPTION
         self.management = management
@@ -24,6 +26,7 @@ class ExceptionsTests(ExceptionsTestsBase):
         self.play_test()
 
     @pytest.mark.xray('EN-68885')
+    @pytest.mark.testim_sanity
     def test_edit_fully_covered_exception(self, management):
         self.test_type = ExceptionTestType.EDIT_FULL_COVERED_EXCEPTION
         self.management = management
@@ -32,6 +35,7 @@ class ExceptionsTests(ExceptionsTestsBase):
         self.play_test()
 
     @pytest.mark.xray('EN-68888')
+    @pytest.mark.testim_sanity
     def test_edit_partially_covered_exception(self, management):
         self.test_type = ExceptionTestType.EDIT_PARTIALLY_COVERED_EXCEPTION
         self.management = management
