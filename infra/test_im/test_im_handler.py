@@ -30,7 +30,6 @@ class TestImHandler:
                  assert_type: AssertTypeEnum = AssertTypeEnum.HARD,
                  test_timeout=600):
 
-        Reporter.report("additional TESTIM")
         json_name = self._create_param_file(data=data)
         params_file = f'--params-file "{json_name}"'
 
