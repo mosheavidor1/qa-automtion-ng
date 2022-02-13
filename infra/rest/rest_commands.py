@@ -237,3 +237,23 @@ class RestCommands(object):
 
         Reporter.report('Created the group ' + name + ' successfully.')
         return True
+
+    def move_collector(self, validation_data, group_name):
+        """
+        :param validation_data: dictionary, the data of the collector to be moved.
+        :param group_name: string, the name of the group to move the collector to.
+        :return: True if succeeded, False if failed.
+        """
+        collector_name = list(map(lambda x: list(x.values())[0], self.get_collector_info(validation_data, 'name')))
+        status, response = self.rest.inventory.MoveCollectors(collector_name, group_name)
+        collector_group = self.get_collector_info(validation_data, 'collectorGroupName')
+        if not status:
+            assert False, f'Could not get response from the management. \n{response}'
+
+        if collector_group[0]["collectorGroupName"] != group_name:
+            assert False, 'Could not move the collector ' + str(
+                collector_name) + ' to the group ' + group_name + '.'
+
+        Reporter.report(
+            'Moved the collector ' + str(collector_name) + ' to the group ' + group_name + ' successfully.')
+        return True

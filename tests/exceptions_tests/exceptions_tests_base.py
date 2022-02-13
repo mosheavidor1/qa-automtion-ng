@@ -2,6 +2,7 @@ from enum import Enum
 import allure
 
 from infra.allure_report_handler.reporter import Reporter
+from infra.assertion.assertion import Assertion, AssertTypeEnum
 from infra.system_components.aggregator import Aggregator
 from infra.system_components.collector import Collector
 from tests.basic_test_lifecycle.base_test import BaseTest
@@ -15,12 +16,14 @@ class ExceptionTestType(Enum):
     CREATE_PARTIALLY_COVERED_EXCEPTION = "CREATE_PARTIALLY_COVERED_EXCEPTION"
     EDIT_FULL_COVERED_EXCEPTION = "EDIT_FULL_COVERED_EXCEPTION"
     EDIT_PARTIALLY_COVERED_EXCEPTION = "EDIT_PARTIALLY_COVERED_EXCEPTION"
+    CREATE_PARTIALLY_COVERED_EXCEPTION_EVENT_CREATED = "CREATE_PARTIALLY_COVERED_EXCEPTION_EVENT_CREATED"
 
 
 class ExceptionsTestsBase(BaseTest):
     test_type: ExceptionTestType = ExceptionTestType.E2E
     malware_name = "DynamicCodeTests.exe"
     test_im_params = {"eventName": malware_name}
+    group_name = "empty"
 
     aggregator: Aggregator = None
     collector: Collector = None
@@ -34,10 +37,10 @@ class ExceptionsTestsBase(BaseTest):
 
         if self.test_type == ExceptionTestType.CREATE_PARTIALLY_COVERED_EXCEPTION or\
                 self.test_type == ExceptionTestType.EDIT_FULL_COVERED_EXCEPTION or\
-                self.test_type == ExceptionTestType.EDIT_PARTIALLY_COVERED_EXCEPTION:
-            group_name = "empty"
-            self.management.rest_ui_client.create_group(group_name)
-            self.test_im_params.update({"groups": [group_name]})
+                self.test_type == ExceptionTestType.EDIT_PARTIALLY_COVERED_EXCEPTION or\
+                self.test_type == ExceptionTestType.CREATE_PARTIALLY_COVERED_EXCEPTION_EVENT_CREATED:
+            self.management.rest_ui_client.create_group(self.group_name)
+            self.test_im_params.update({"groups": [self.group_name]})
 
             if self.test_type == ExceptionTestType.EDIT_FULL_COVERED_EXCEPTION or\
                     self.test_type == ExceptionTestType.EDIT_PARTIALLY_COVERED_EXCEPTION:
@@ -50,14 +53,33 @@ class ExceptionsTestsBase(BaseTest):
             self.create_full_covered_exception()
 
         elif self.test_type == ExceptionTestType.CREATE_PARTIALLY_COVERED_EXCEPTION or\
-                self.test_type == ExceptionTestType.EDIT_PARTIALLY_COVERED_EXCEPTION:
+                self.test_type == ExceptionTestType.EDIT_PARTIALLY_COVERED_EXCEPTION or\
+                self.test_type == ExceptionTestType.CREATE_PARTIALLY_COVERED_EXCEPTION_EVENT_CREATED:
             self.create_partially_covered_exception()
 
         elif self.test_type == ExceptionTestType.E2E:
             self.exception_e2e_sanity()
 
-        if self.test_type == ExceptionTestType.CREATE_FULL_COVERED_EXCEPTION:
-            self.create_excepted_event_and_check()
+        if self.test_type == ExceptionTestType.CREATE_PARTIALLY_COVERED_EXCEPTION:
+            self.management.rest_ui_client.move_collector({'ipAddress': self.collector.os_station.host_ip},
+                                                          self.group_name)
+            test_name = "Security policies | assign group"
+            # to do
+            #self.testim_handler.run_test(test_name=test_name, data=self.test_im_params)
+
+        if self.test_type == ExceptionTestType.CREATE_FULL_COVERED_EXCEPTION or\
+                self.test_type == ExceptionTestType.CREATE_PARTIALLY_COVERED_EXCEPTION or \
+                self.test_type == ExceptionTestType.CREATE_PARTIALLY_COVERED_EXCEPTION_EVENT_CREATED:
+            event_created = self.create_excepted_event_and_check()
+            if self.test_type == ExceptionTestType.CREATE_PARTIALLY_COVERED_EXCEPTION_EVENT_CREATED:
+                Assertion.invoke_assertion(expected=True, actual=event_created,
+                                           message=f'expected is not equal to actual: expected=True, actual={event_created}',
+                                           assert_type=AssertTypeEnum.SOFT)
+
+            else:
+                Assertion.invoke_assertion(expected=False, actual=event_created,
+                                           message=f'expected is not equal to actual: expected=False, actual={event_created}',
+                                           assert_type=AssertTypeEnum.SOFT)
 
         elif self.test_type == ExceptionTestType.EDIT_FULL_COVERED_EXCEPTION or\
                 self.test_type == ExceptionTestType.EDIT_PARTIALLY_COVERED_EXCEPTION:
@@ -108,9 +130,11 @@ class ExceptionsTestsBase(BaseTest):
 
         self.collector.create_event(malware_name=self.malware_name)
 
-        test_name = "Security event | Event does not appear"
-        self.testim_handler.run_test(test_name=test_name,
-                                     data=self.test_im_params)
+        events = self.management.rest_ui_client.get_security_events({"process": self.malware_name})
+        if events:
+            return True
+        else:
+         return False
 
     def create_full_covered_exception(self):
         test_name = "Exceptions | Create exception"
