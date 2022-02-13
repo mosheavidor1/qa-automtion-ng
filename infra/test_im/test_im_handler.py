@@ -38,24 +38,24 @@ class TestImHandler:
             json_name = self._create_param_file(data=data)
             params_file = f'--params-file "{json_name}"'
 
-        if self.local:
+            if self.local:
 
-            if not self.headless:
-                headless = ''
+                if not self.headless:
+                    headless = ''
+                else:
+                    headless = "--headless --mode selenium"
+
+                testim_cmd = fr'testim --token "jlSw4kxFGDMLPHORAp9uGnAxSFVuY2NOqnpDQDc98ykPcC9JXP" --project ' \
+                             fr'"IxC1N5cIf88Pa3ktjRmX"  --name "{test_name}" ' \
+                             fr'--use-local-chrome-driver  {headless} ' \
+                             fr'{params_file} --base-url  https://{management_ui_ip} ' \
+                             fr'--branch "{self.branch}" --test-config "FHD 1920x1080" '
+
             else:
-                headless = "--headless --mode selenium"
-
-            testim_cmd = fr'testim --token "jlSw4kxFGDMLPHORAp9uGnAxSFVuY2NOqnpDQDc98ykPcC9JXP" --project ' \
-                         fr'"IxC1N5cIf88Pa3ktjRmX"  --name "{test_name}" ' \
-                         fr'--use-local-chrome-driver  {headless} ' \
-                         fr'{params_file} --base-url  https://{management_ui_ip} ' \
-                         fr'--branch "{self.branch}" --test-config "FHD 1920x1080" '
-
-        else:
-            testim_cmd = fr'testim --token "jlSw4kxFGDMLPHORAp9uGnAxSFVuY2NOqnpDQDc98ykPcC9JXP" --project ' \
-                         fr'"IxC1N5cIf88Pa3ktjRmX" --grid "Testim-Grid" ' \
-                         fr'--report-file test-results\testim-tests-{test_name}-report.xml --name "{test_name}" ' \
-                         fr'{params_file} --base-url  https://{management_ui_ip}'
+                testim_cmd = fr'testim --token "jlSw4kxFGDMLPHORAp9uGnAxSFVuY2NOqnpDQDc98ykPcC9JXP" --project ' \
+                             fr'"IxC1N5cIf88Pa3ktjRmX" --grid "Testim-Grid" ' \
+                             fr'--report-file test-results\testim-tests-{test_name}-report.xml --name "{test_name}" ' \
+                             fr'{params_file} --base-url  https://{management_ui_ip}'
 
         output = None
         status_code = 0
