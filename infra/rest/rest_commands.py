@@ -1,3 +1,5 @@
+import time
+
 from ensilo.platform.rest.nslo_management_rest import NsloManagementConnection, NsloRest
 from json import loads
 import json
@@ -131,7 +133,7 @@ class RestCommands(object):
         status, response = self.rest.inventory.ListCores()
         return self._get_info(status, response, 'core', validation_data, output_parameters)
 
-    def get_security_events(self, validation_data):
+    def get_security_events(self, validation_data, timeout=60):
         """
         :param validation_data: dictionary of the data to get.
                                 options of parameters: Event ID, Device, Collector Group, operatingSystems, deviceIps,
@@ -142,17 +144,31 @@ class RestCommands(object):
                  if the request failed or there were no events found -> False
         """
 
-        status, response = self.rest.events.ListEvents(**validation_data)
-        if not status:
-            assert False, f'Could not get response from the management. \n{response}'
+        start_time = time.time()
+        is_found = False
+        error_message = None
+        while time.time() - start_time < timeout and not is_found:
+            try:
+                status, response = self.rest.events.ListEvents(**validation_data)
+                if not status:
+                    # assert False, f'Could not get response from the management. \n{response}'
+                    error_message = f'Could not get response from the management. \n{response}'
 
-        events = loads(response.text)
-        if not len(events):
-            assert False, 'No event with the given parameters found.'
-        else:
-            Reporter.report(f'Successfully got information of {len(events)} events.')
+                events = loads(response.text)
+                if not len(events):
+                    error_message = 'No event with the given parameters found.'
+                else:
+                    Reporter.report(f'Successfully got information of {len(events)} events.')
 
-            return events
+                    return events
+
+            except Exception as e:
+                Reporter.report(f'{error_message}, trying again')
+                time.sleep(2)
+
+        if not is_found:
+            assert False, f"{error_message} after waiting {timeout} seconds"
+
 
     def delete_event_by_name(self, eventName):
         urlget = "/events/list-events"

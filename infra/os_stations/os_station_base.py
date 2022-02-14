@@ -109,6 +109,10 @@ class OsStation(metaclass=ABCMeta):
         pass
 
     @abstractmethod
+    def get_hostname(self):
+        pass
+
+    @abstractmethod
     def get_os_version(self):
         pass
 

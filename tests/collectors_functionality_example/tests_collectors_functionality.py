@@ -87,7 +87,7 @@ class CollectorFunctionalityExampleTests(CollectorsFunctionalityBaseExample):
         test_name = "Organizations | create organization"
         params = {"OrganizationName": "Org3"}
         self.testim_handler.run_test(test_name=test_name,
-                                 management_ui_ip=management.host_ip,
-                                 data=params,
-                                 assert_type=AssertTypeEnum.HARD)
+                                     ui_ip=management.host_ip,
+                                     data=params,
+                                     assert_type=AssertTypeEnum.HARD)
         Reporter.report("Just a print")

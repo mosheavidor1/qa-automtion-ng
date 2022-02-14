@@ -10,73 +10,103 @@ import requests
 import third_party_details
 from infra.allure_report_handler.reporter import Reporter
 from infra.assertion.assertion import AssertTypeEnum, Assertion
-from infra.system_components.management import Management
 from infra.utils.utils import StringUtils
 
 
 class TestImHandler:
     script_dir = pathlib.Path(__file__).parent.resolve()
 
-    def __init__(self, branch="master"):
+    def __init__(self,
+                 branch="master"):
         self.branch = branch
-        self.local = third_party_details.TEST_IM_LOCAL
-        self.headless = third_party_details.TEST_IM_HEADLESS
 
-    @allure.step("Run TestIM ---{test_name}--- on {management_ui_ip} UI")
+    def _get_testim_cmd(self,
+                        test_name: str,
+                        params_file_name: str,
+                        ui_ip: str,
+                        branch_name: str = 'main'):
+
+        json_file_param = ''
+        branch_name_param = ''
+        headless_param = ''
+
+        if params_file_name is not None and '.json' in params_file_name:
+            json_file_param = f'--params-file "{params_file_name}"'
+
+        if branch_name is not None:
+            branch_name_param = fr'--branch "{branch_name}"'
+
+        if third_party_details.TEST_IM_HEADLESS:
+            headless_param = "--headless --mode selenium"
+
+        testim_cmd = fr'testim --token "jlSw4kxFGDMLPHORAp9uGnAxSFVuY2NOqnpDQDc98ykPcC9JXP" ' \
+                     fr'--project "IxC1N5cIf88Pa3ktjRmX"  --name "{test_name}" ' \
+                     fr'{json_file_param} ' \
+                     fr'--base-url  https://{ui_ip} '
+
+        if third_party_details.TEST_IM_ON_REMOTE_GRID is True:
+            testim_cmd += fr'--grid "Testim-Grid" ' \
+                          fr'--report-file test-results\testim-tests-{test_name}-report.xml '
+
+        else:
+            testim_cmd += fr'--use-local-chrome-driver ' \
+                          fr'{headless_param} ' \
+                          fr'{branch_name_param} ' \
+                          fr'--test-config "FHD 1920x1080" '
+
+        return testim_cmd
+
+    @allure.step("Run TestIM ---{test_name}--- on {ui_ip} UI")
     def run_test(self,
                  test_name: str,
-                 management_ui_ip: str = Management.instance().host_ip,
+                 ui_ip: str,
                  data: dict = None,
                  assert_type: AssertTypeEnum = AssertTypeEnum.HARD,
                  test_timeout=600):
 
+        json_name = None
+
         base_data = {"loginUser": "admin", "loginPassword": "12345678", "loginOrganization": "",
                      "organization": "Default", "collectorName": "collector1"}
-        data.update(base_data)
+
+        if data is None or data == {}:
+            data = base_data
+
+        else:
+            base_data.update(data)
 
         if not third_party_details.RUN_TEST_IM_ON_PROXY:
-            json_name = self._create_param_file(data=data)
-            params_file = f'--params-file "{json_name}"'
+            json_name = self._create_param_file(data=base_data)
 
-            if self.local:
+        testim_cmd = self._get_testim_cmd(test_name=test_name,
+                                          params_file_name=json_name,
+                                          ui_ip=ui_ip,
+                                          branch_name=self.branch)
 
-                if not self.headless:
-                    headless = ''
-                else:
-                    headless = "--headless --mode selenium"
-
-                testim_cmd = fr'testim --token "jlSw4kxFGDMLPHORAp9uGnAxSFVuY2NOqnpDQDc98ykPcC9JXP" --project ' \
-                             fr'"IxC1N5cIf88Pa3ktjRmX"  --name "{test_name}" ' \
-                             fr'--use-local-chrome-driver  {headless} ' \
-                             fr'{params_file} --base-url  https://{management_ui_ip} ' \
-                             fr'--branch "{self.branch}" --test-config "FHD 1920x1080" '
-
-            else:
-                testim_cmd = fr'testim --token "jlSw4kxFGDMLPHORAp9uGnAxSFVuY2NOqnpDQDc98ykPcC9JXP" --project ' \
-                             fr'"IxC1N5cIf88Pa3ktjRmX" --grid "Testim-Grid" ' \
-                             fr'--report-file test-results\testim-tests-{test_name}-report.xml --name "{test_name}" ' \
-                             fr'{params_file} --base-url  https://{management_ui_ip}'
+        Reporter.attach_str_as_file(file_name="TestIM command", file_content=testim_cmd)
 
         output = None
         status_code = 0
 
         if third_party_details.RUN_TEST_IM_ON_PROXY is True:
-            status_code, output = self._send_commands_via_test_im_proxy(test_name=test_name,
-                                                                        management_ui_ip=management_ui_ip,
-                                                                        data=data,
+            status_code, output = self._send_commands_via_test_im_proxy(testim_cmd=testim_cmd,
+                                                                        data=base_data,
                                                                         test_timeout=test_timeout)
         else:
             try:
                 Reporter.report(f"Going to run TestIM command from the dir: {self.script_dir}")
-                Reporter.attach_str_as_file(file_name="TestIM command", file_content=testim_cmd)
                 output = subprocess.check_output(testim_cmd, cwd=self.script_dir, shell=True, timeout=test_timeout)
-                output = output.decode('utf-8')
+
             except subprocess.CalledProcessError as grepexc:
                 status_code = grepexc.returncode
                 output = grepexc.output
+
             finally:
                 if json_name is not None:
                     os.remove(os.path.join(self.script_dir, json_name))
+
+        if isinstance(output, bytes):
+            output = output.decode('utf-8')
 
         Reporter.attach_str_as_file(file_name=f'TestIm output', file_content=output)
 
@@ -133,14 +163,13 @@ class TestImHandler:
 
     @allure.step("Run testIM through proxy windows machine")
     def _send_commands_via_test_im_proxy(self,
-                                         management_ui_ip: str,
-                                         test_name: str,
+                                         testim_cmd: str,
                                          data: dict,
                                          test_timeout: int = 600):
         data = {
-            'management_ui_ip': management_ui_ip,
-            'test_name': test_name,
-            'params': data
+            'testim_cmd': testim_cmd,
+            'params': data,
+            'timeout': test_timeout
         }
 
         Reporter.report("Going to start TEST IM - through proxy windows machine")
