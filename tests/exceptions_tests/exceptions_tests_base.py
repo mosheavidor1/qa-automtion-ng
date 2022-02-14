@@ -1,5 +1,6 @@
-from enum import Enum
 import allure
+from enum import Enum
+
 
 from infra.allure_report_handler.reporter import Reporter
 from infra.assertion.assertion import Assertion, AssertTypeEnum
@@ -96,6 +97,7 @@ class ExceptionsTestsBase(BaseTest):
 
         test_name = "Security event | Search event"
         self.testim_handler.run_test(test_name=test_name,
+                                     ui_ip=self.management.host_ip,
                                      data=self.test_im_params)
 
         self.delete_and_archive()
@@ -104,26 +106,37 @@ class ExceptionsTestsBase(BaseTest):
 
         test_name = "Security event | Search event"
         self.testim_handler.run_test(test_name=test_name,
+                                     ui_ip=self.management.host_ip,
                                      data=self.test_im_params)
 
         test_name = "Exceptions | Create exception"
         self.testim_handler.run_test(test_name=test_name,
+                                     ui_ip=self.management.host_ip,
                                      data=self.test_im_params)
 
+        test_name = "Security event | Archive all"
+        self.testim_handler.run_test(test_name=test_name,
+                                     ui_ip=self.management.host_ip,
+                                     data=self.test_im_params)
+
+        sleep(30)
         self.create_excepted_event_and_check()
 
     def delete_and_archive(self):
         test_name = "Exceptions | Delete all exception"
         self.testim_handler.run_test(test_name=test_name,
+                                     ui_ip=self.management.host_ip,
                                      data=self.test_im_params)
 
         test_name = "Security event | Archive all"
         self.testim_handler.run_test(test_name=test_name,
+                                     ui_ip=self.management.host_ip,
                                      data=self.test_im_params)
 
     def create_excepted_event_and_check(self):
         test_name = "Security event | Archive all"
         self.testim_handler.run_test(test_name=test_name,
+                                     ui_ip=self.management.host_ip,
                                      data=self.test_im_params)
 
         sleep(30)
@@ -139,18 +152,22 @@ class ExceptionsTestsBase(BaseTest):
     def create_full_covered_exception(self):
         test_name = "Exceptions | Create exception"
         self.testim_handler.run_test(test_name=test_name,
+                                     ui_ip=self.management.host_ip,
                                      data=self.test_im_params)
 
     def create_partially_covered_exception(self):
         test_name = "Exceptions | Create exception"
         self.testim_handler.run_test(test_name=test_name,
+                                     ui_ip=self.management.host_ip,
                                      data=self.test_im_params)
 
     def edit_covered_exception(self):
         test_name = "Edit group"
         self.testim_handler.run_test(test_name=test_name,
+                                     ui_ip=self.management.host_ip,
                                      data=self.test_im_params)
         test_name = "Edit destination"
         self.testim_handler.run_test(test_name=test_name,
+                                     ui_ip=self.management.host_ip,
                                      data=self.test_im_params)
 

@@ -101,6 +101,11 @@ class WindowsStation(OsStation):
         arch = StringUtils.get_txt_by_regex(text=result, regex=r'OSArchitecture\s+(.+)', group=1)
         return arch
 
+    @allure.step("Get hostname")
+    def get_hostname(self):
+        result = self.execute_cmd(cmd='hostname', fail_on_err=True, return_output=True)
+        return result
+
     @allure.step("Get OS version")
     def get_os_version(self):
         cmd = 'systeminfo | findstr /B /C:"OS Version"'
@@ -322,6 +327,10 @@ class WindowsStation(OsStation):
 
     def is_files_exist(self, target_path, files_to_copy):
         files = self.get_list_of_files_in_folder(target_path)
+
+        if files is None or files == []:
+            return False
+
         for single_file in files_to_copy:
             if single_file not in files:
                 return False

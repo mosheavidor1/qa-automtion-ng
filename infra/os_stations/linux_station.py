@@ -87,6 +87,9 @@ class LinuxStation(OsStation):
         result = self.execute_cmd(cmd=cmd, return_output=True)
         return result
 
+    def get_hostname(self):
+        raise Exception("Not Implemented yet")
+
     def get_os_version(self):
         cmd = 'hostnamectl | grep -i "Kernel"'
         result = self.execute_cmd(cmd=cmd, return_output=True)

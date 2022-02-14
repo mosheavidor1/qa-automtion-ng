@@ -5,6 +5,7 @@ from tests.exceptions_tests.exceptions_tests_base import ExceptionsTestsBase, Ex
 
 @allure.feature("Exceptions")
 @pytest.mark.sanity
+@pytest.mark.testim_sanity
 class ExceptionsTests(ExceptionsTestsBase):
 
     @pytest.mark.xray('EN-68889')

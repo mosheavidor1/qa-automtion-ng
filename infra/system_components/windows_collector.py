@@ -521,8 +521,11 @@ msiexec.exe /x %val% /qn UPWD="{registration_password}" RMCONFIG=1 /l*vx {uninst
 
     def create_event(self, malware_name: str="DynamicCodeTests.exe"):
         malware_folder = rf'{third_party_details.SHARED_DRIVE_QA_PATH}\automation_ng\malware_sample'
+        target_path = self.get_qa_files_path()
+        target_path = rf"C:\Users\{self._user_name}\Desktop"
+
         target_folder = self.os_station.copy_files_from_shared_folder(
-            target_path_in_local_machine=self.get_qa_files_path(), shared_drive_path=malware_folder,
+            target_path_in_local_machine=target_path, shared_drive_path=malware_folder,
             files_to_copy=[malware_name])
 
         self.os_station.execute_cmd(f'{target_folder}\\{malware_name}', asynchronous=True)
