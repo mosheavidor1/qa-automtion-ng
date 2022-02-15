@@ -1,4 +1,6 @@
+import random
 import re
+from enum import Enum
 from typing import List
 
 import allure
@@ -12,7 +14,17 @@ from infra.allure_report_handler.reporter import Reporter
 from infra.decorators import retry
 
 from infra.os_stations.os_station_base import OsStation
+from infra.os_stations.ps_py_exec_client_wrapper import PsPyExecClientWrapper
 from infra.utils.utils import StringUtils
+
+
+class WindowsServiceStartTypeEnum(Enum):
+    BOOT = 'boot' # Specifies a device driver that is loaded by the boot loader.
+    SYSTEM = 'system' # Specifies a device driver that is started during kernel initialization.
+    AUTO = 'auto' # Specifies a service that automatically starts each time the computer is restarted and runs even if no one logs on to the computer.
+    DEMAND = 'demand' # Specifies a service that must be started manually. This is the default value if
+    DISABLED = 'disabled' # Specifies a service that cannot be started. To start a disabled service, change the start type to some other value.
+    DELAYED_AUTO = 'delayed-auto' # Specifies a service that starts automatically a short time after other auto services are started.
 
 
 class WindowsStation(OsStation):
@@ -23,21 +35,43 @@ class WindowsStation(OsStation):
                  password,
                  encrypted_connection: bool = True):
         self.__encrypted_connection = encrypted_connection
+
         super().__init__(host_ip=host_ip,
                          user_name=user_name,
                          password=password)
 
-    @retry
-    def connect(self):
-        if self._remote_connection_session is None:
-            try:
-                self._remote_connection_session = Client(self._host_ip, username=self._user_name, password=self._password, encrypt=self.__encrypted_connection)
-                self._remote_connection_session.connect()
-                self._remote_connection_session.create_service()
+    @allure.step("Clean all previous SMB connections")
+    def clean_all_previous_connections(self):
+        try:
+            self._remote_connection_session = Client(self._host_ip, username=self._user_name, password=self._password,
+                                                     encrypt=self.__encrypted_connection)
+            self._remote_connection_session.connect()
+            self._remote_connection_session.cleanup()
+            self._remote_connection_session.disconnect()
+            Reporter.report("All Previous SMB connections was cleaned on the remote windows machine")
 
-            except Exception as e:
-                Reporter.report(f"Failed to connect to windows machine, original exception: {e}")
-                raise e
+        except Exception as e:
+            Reporter.report("The connections will be removed in background, can continue")
+
+    @retry
+    @allure.step("Connect To remote machine")
+    def connect(self):
+        try:
+            # here we are using wrapper because this library creates always same service name in the remote machine
+            # and we want to ensure that it will create always unique process id in case that something will get wrong
+            # with the original service.
+            self._remote_connection_session = PsPyExecClientWrapper(self._host_ip,
+                                                                    unique_connection_id=random.randint(1000000, 9999999),
+                                                                    username=self._user_name,
+                                                                    password=self._password,
+                                                                    encrypt=self.__encrypted_connection)
+
+            self._remote_connection_session.connect()
+            self._remote_connection_session.create_service()
+
+        except Exception as e:
+            Reporter.report(f"Failed to connect to windows machine, original exception: {e}")
+            raise e
 
     @retry
     @allure.step("Executing command: {cmd}")
@@ -81,17 +115,41 @@ class WindowsStation(OsStation):
         except SCMRException as e:
             Reporter.report("Failed to Execute command because somthing went wrong with pypsexec library connection, connecting again")
             self.connect()
+            raise e
+
+        except ConnectionAbortedError as e:
+            self.connect()
+            raise e
 
         except PipeBroken as e:
             Reporter.report("Failed to connect to windows machine, if you are connected via VPN, check that windows firewall is disabled")
+            raise e
 
         except Exception as e:
             Reporter.report(f"Failed to execute command: {cmd} on remote windows machine, original exception: {e}")
             raise e
 
+        finally:
+            self.disconnect()
+
     @allure.step("Disconnect from remote machine")
     def disconnect(self):
-        self._remote_connection_session.disconnect()
+        if self._remote_connection_session is not None:
+            self._remote_connection_session.remove_service()
+            self._remote_connection_session.disconnect()
+            self._remote_connection_session = None
+
+    @allure.step("Stop service {service_name}")
+    def stop_service(self, service_name: str) -> str:
+        cmd = f'powershell "Stop-service {service_name}"'
+        result = self.execute_cmd(cmd=cmd, fail_on_err=True, return_output=True, attach_output_to_report=True)
+        return result
+
+    @allure.step("Start service {service_name}")
+    def start_service(self, service_name: str) -> str:
+        cmd = f'powershell "Start-service {service_name}"'
+        result = self.execute_cmd(cmd=cmd, fail_on_err=True, return_output=True, attach_output_to_report=True, )
+        return result
 
     @allure.step("Get OS architecture")
     def get_os_architecture(self):
@@ -336,9 +394,14 @@ class WindowsStation(OsStation):
                 return False
         return True
 
-
     @allure.step("Get file last modify date")
     def get_file_last_modify_date(self, file_path: str, date_format: str = "'u'") -> str:
         cmd = f"""powershell "(Get-Item "{file_path}").LastWriteTime.GetDateTimeFormats({date_format})"""
+        result = self.execute_cmd(cmd=cmd, fail_on_err=True, return_output=True, attach_output_to_report=True)
+        return result
+
+    @allure.step("Change service {service_name} start type to {service_start_type}")
+    def change_service_start_type(self, service_name: str, service_start_type: WindowsServiceStartTypeEnum):
+        cmd = f'sc config {service_name} start={service_start_type.value}'
         result = self.execute_cmd(cmd=cmd, fail_on_err=True, return_output=True, attach_output_to_report=True)
         return result

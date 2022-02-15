@@ -139,13 +139,19 @@ class WindowsCollector(Collector):
         is_pid_changed = False
         if curr_pid != self.process_id:
             is_pid_changed = True
-            self._process_id = curr_pid
             Reporter.report(f"Process ID was changed, last known ID is: {self.process_id}, current ID is: {curr_pid}")
+            self._process_id = curr_pid
 
         has_dump = self.has_crash_dumps(append_to_report=False)
 
         if is_pid_changed or has_dump:
             Reporter.report("Crash was detected :(")
+
+            # create snapshot only if collector machine found on vSphere
+            if self.os_station.vm_operations is not None:
+                snapshot_name = f"snpashot_wit_crash_{time.time()}"
+                self.os_station.vm_operations.snapshot_create(snapshot_name=snapshot_name)
+                Reporter.report(f"Created New snapshot with the name: {snapshot_name}")
             return True
 
         Reporter.report("No crash detected :)")
@@ -158,9 +164,6 @@ class WindowsCollector(Collector):
         found_crash_dumps = True if crash_dump_files is not None and len(crash_dump_files) else False
         if found_crash_dumps:
             Reporter.attach_str_as_file(file_name='crash_dumps', file_content=str('\r\n'.join(crash_dump_files)))
-            Reporter.report(f"Going to move crash dumps to {self.__collected_crash_dump_dedicated_folder}")
-            self.__move_crash_files_to_dedicated_crash_folder_files(dumps_files=crash_dump_files)
-            Reporter.report(f"!!!!!!! All the collected crash dumps moved to: {self.__collected_crash_dump_dedicated_folder} !!!!!!!")
         else:
             Reporter.report(f"No crash dump file found in {self}")
 

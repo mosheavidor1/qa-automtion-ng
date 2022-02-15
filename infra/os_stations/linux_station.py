@@ -102,6 +102,13 @@ class LinuxStation(OsStation):
         os_name = StringUtils.get_txt_by_regex(text=result, regex='Operating\s+System:\s+(.+)', group=1)
         return os_name
 
+    def stop_service(self, service_name: str):
+        raise Exception("Not Implemented yet")
+
+    def start_service(self, service_name: str):
+        raise Exception("Not Implemented yet")
+
+
     @allure.step("Get current linux machine date time")
     def get_current_machine_datetime(self, date_format="'+%d/%m/%Y %H:%M:%S'"):
         cmd = f"date {date_format}"

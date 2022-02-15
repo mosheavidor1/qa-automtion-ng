@@ -2,6 +2,7 @@ from typing import List
 
 import allure
 
+import sut_details
 from infra.allure_report_handler.reporter import Reporter
 from infra.assertion.assertion import Assertion
 from infra.system_components.aggregator import Aggregator
@@ -218,23 +219,38 @@ def create_results_json(session, tests_results: dict):
         f.truncate()
 
 
+@pytest.fixture(scope="session", autouse=True)
+def create_snapshot_for_all_collectors_at_the_beginning_of_the_run():
+    if not sut_details.developer_mode:
+        management = Management.instance()
+        collectors: List[Collector] = management.collectors
+        for single_collector in collectors:
+            single_collector.os_station.vm_operations.remove_all_snapshots()
+            single_collector.os_station.vm_operations.snapshot_create(snapshot_name=f'beginning_pytest_session_snapshot_{time.time()}')
+
+
 @pytest.fixture(scope="function")
 def management():
     management: Management = Management.instance()
 
-    management.validate_all_system_components_are_running()
+    start_time_dict = {}
+    if not sut_details.developer_mode:
+        revert_to_first_snapshot_for_all_collectors(collectors=management.collectors)
+        management.validate_all_system_components_are_running()
 
-    clear_logs_from_management(management=management)
-    clear_logs_from_all_aggregators(aggregators=management.aggregators)
-    start_time_dict = get_core_and_collector_machine_time(cores=management.cores, collectors=management.collectors)
+        clear_logs_from_management(management=management)
+        clear_logs_from_all_aggregators(aggregators=management.aggregators)
+
+        start_time_dict = get_core_and_collector_machine_time(cores=management.cores, collectors=management.collectors)
 
     yield management
 
     try:
-        append_logs_from_management(management)
-        append_logs_from_aggregators(management.aggregators)
-        append_logs_from_cores(cores=management.cores, initial_time_stamp_dict=start_time_dict)
-        append_logs_from_collectors(collectors=management.collectors, initial_time_stamp_dict=start_time_dict)
+        if not sut_details.developer_mode:
+            append_logs_from_management(management)
+            append_logs_from_aggregators(management.aggregators)
+            append_logs_from_cores(cores=management.cores, initial_time_stamp_dict=start_time_dict)
+            append_logs_from_collectors(collectors=management.collectors, initial_time_stamp_dict=start_time_dict)
 
         check_if_collectors_has_crashed(management.collectors)
     finally:
@@ -268,27 +284,47 @@ def get_core_and_collector_machine_time(cores: List[Core], collectors: List[Coll
 
 @allure.step("Append logs from Management")
 def append_logs_from_management(management: Management):
-    management.append_logs_to_report()
+    try:
+        management.append_logs_to_report()
+    except Exception as e:
+        Reporter.report(f"Failed to add logs from management to report, original exception: {str(e)}")
 
 
 @allure.step("Append logs from Aggregators")
 def append_logs_from_aggregators(aggregators: List[Aggregator]):
     for single_aggregator in aggregators:
-        single_aggregator.append_logs_to_report()
+        try:
+            single_aggregator.append_logs_to_report()
+        except Exception as e:
+            Reporter.report(f"Failed to add logs from aggregator to report, original exception: {str(e)}")
 
 
 @allure.step("Append logs from cores")
 def append_logs_from_cores(cores: List[Core], initial_time_stamp_dict: dict):
     for single_core in cores:
-        time_stamp = initial_time_stamp_dict.get(single_core)
-        single_core.append_logs_to_report_by_given_timestamp(first_log_timestamp=time_stamp)
+        try:
+            time_stamp = initial_time_stamp_dict.get(single_core)
+            single_core.append_logs_to_report_by_given_timestamp(first_log_timestamp=time_stamp)
+        except Exception as e:
+            Reporter.report(f"Failed to add logs from core to report, original exception: {str(e)}")
 
 
 @allure.step("Append logs from collectors")
 def append_logs_from_collectors(collectors: List[Collector], initial_time_stamp_dict: dict):
     for single_collector in collectors:
-        time_stamp = initial_time_stamp_dict.get(single_collector)
-        single_collector.append_logs_to_report(first_log_timestamp_to_append=time_stamp)
+        try:
+            time_stamp = initial_time_stamp_dict.get(single_collector)
+            single_collector.append_logs_to_report(first_log_timestamp_to_append=time_stamp)
+        except Exception as e:
+            Reporter.report(f"Failed to add logs from collector to report, original exception: {str(e)}")
+
+
+@allure.step("Revert all collectors to their snapshot that was taken at the beginning of the run")
+def revert_to_first_snapshot_for_all_collectors(collectors: List[Collector]):
+    if not sut_details.developer_mode:
+        for single_collector in collectors:
+            first_snapshot_name = single_collector.os_station.vm_operations.snapshot_list[0][0]
+            single_collector.os_station.vm_operations.snapshot_revert_by_name(snapshot_name=first_snapshot_name)
 
 
 @allure.step("Check if collectors has crashed")
