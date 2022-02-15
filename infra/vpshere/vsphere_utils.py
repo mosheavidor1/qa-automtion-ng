@@ -32,7 +32,8 @@ class VsphereUtils:
                                                                           txt_to_search=txt_to_search,
                                                                           user_name=user_name,
                                                                           password=password)
-            return vm_ops
+            if vm_ops is not None:
+                return vm_ops
 
         return None
 

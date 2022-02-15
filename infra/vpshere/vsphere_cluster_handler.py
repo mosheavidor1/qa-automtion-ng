@@ -79,16 +79,16 @@ class VsphereClusterHandler(object):
         """
         vm_obj = self._service_instance.content.searchIndex.FindByIp(None, ip_address, True)
 
-        try:
-            Reporter.report(vm_obj.guest.ipAddress)
-            if ip_address == vm_obj.guest.ipAddress and vm_obj.guest.ipAddress and vm_obj.configStatus == 'green':
-                Reporter.report(f"IP address '{ip_address}' of a collector {vm_obj.name} found. ")
-                return vm_obj
-        except Exception as e:
-            Reporter.report(f"IP address '{ip_address}' of a collector {vm_obj.name} not found. ")
-            Reporter.report(str(e))
+        if vm_obj is None:
+            Reporter.report(f"VM is not found under {self._cluster_details.cluster_name}")
+            return None
 
-        return None
+        if ip_address == vm_obj.guest.ipAddress and vm_obj.guest.ipAddress and vm_obj.configStatus == 'green':
+            Reporter.report(f"IP address '{ip_address}' of a collector {vm_obj.name} found. ")
+        else:
+            raise Exception("vm object is found but there is no IP address or machine is powered off")
+
+        return vm_obj
 
     @allure.step("Get a VM from the cluster")
     def get_specific_vm_from_cluster(self,
@@ -108,6 +108,9 @@ class VsphereClusterHandler(object):
 
         else:
             raise Exception(f'Unknown vm_search_type: {vm_search_type.name}')
+
+        if vm_obj is None:
+            return None
 
         vsphere_operations = VsphereMachineOperations(service_instance=self._service_instance,
                                                       vm_obj=vm_obj)
