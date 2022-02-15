@@ -210,7 +210,11 @@ class LinuxStation(OsStation):
         return disk_usage
 
     @allure.step("Get {service_name} service process ID")
-    def get_process_id(self, service_name: str) -> int:
+    def get_service_process_ids(self, service_name: str) -> List[int]:
+        raise Exception("Not implemented yet")
+
+    @allure.step("Kill process with the id: {pid}")
+    def kill_process_by_id(self, pid):
         raise Exception("Not implemented yet")
 
     @allure.step("Checking if {path} exist")

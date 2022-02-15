@@ -217,19 +217,27 @@ class WindowsStation(OsStation):
         Reporter.report(f"Disk usage: {usage}")
         return usage
 
-    @allure.step("Get {service_name} service process ID")
-    def get_process_id(self, service_name: str) -> int:
+    @allure.step("Get {service_name} service process IDs")
+    def get_service_process_ids(self, service_name: str) -> List[int]:
         result = self.execute_cmd(cmd=f'TASKLIST | find "{service_name}"')
 
         if result is None:
             return None
 
-        match = re.search(f"{service_name}\s+(\d+)", result)
-        if match is None:
-            return None
+        result_splitted = result.split('\r\n')
 
-        process_id = re.search(f"{service_name}\s+(\d+)", result).group(1)
-        return int(process_id)
+        pids = []
+        for single_row in result_splitted:
+            pid = StringUtils.get_txt_by_regex(text=single_row, regex=f"{service_name}\s+(\d+)", group=1)
+            if pid is not None:
+                pids.append(int(pid))
+
+        return pids
+
+    @allure.step("Kill process with the id: {pid}")
+    def kill_process_by_id(self, pid: int):
+        cmd = f"taskkill /PID {pid} /F"
+        self.execute_cmd(cmd=cmd, return_output=False, fail_on_err=True)
 
     @allure.step("Checking if path {path} exist")
     def is_path_exist(self, path: str) -> bool:

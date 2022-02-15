@@ -33,7 +33,11 @@ class ExceptionsTestsBase(BaseTest):
     @allure.step("Test prerequisites")
     def prerequisites(self):
         Reporter.report("create event")
+
+        self.management.rest_ui_client.delete_all_exceptions()
+        self.management.rest_ui_client.delete_all_events()
         self.collector.create_event(malware_name=self.malware_name)
+
         events = self.management.rest_ui_client.get_security_events({"process": self.malware_name})
         assert len(events), f"event not created for collector {self.collector.os_station.host_ip}"
 
