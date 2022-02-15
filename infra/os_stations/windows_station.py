@@ -352,9 +352,6 @@ class WindowsStation(OsStation):
         """
 
         target_folder = self.create_new_folder(folder_path=target_path_in_local_machine)
-        files_exist = self.is_files_exist(target_path_in_local_machine, files_to_copy)
-        if files_exist:
-            return target_folder
         try:
             self.remove_mounted_drive()
             self.mount_shared_drive_locally(desired_local_drive='X:',
