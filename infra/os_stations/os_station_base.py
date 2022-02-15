@@ -153,7 +153,11 @@ class OsStation(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def get_process_id(self, service_name: str) -> int:
+    def get_service_process_ids(self, service_name: str) -> List[int]:
+        pass
+
+    @abstractmethod
+    def kill_process_by_id(self, pid):
         pass
 
     @abstractmethod

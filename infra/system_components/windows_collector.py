@@ -530,4 +530,8 @@ msiexec.exe /x %val% /qn UPWD="{registration_password}" RMCONFIG=1 /l*vx {uninst
             target_path_in_local_machine=target_path, shared_drive_path=malware_folder,
             files_to_copy=[malware_name])
 
+        pids = self.os_station.get_service_process_ids(service_name=malware_name)
+        for single_pid in pids:
+            self.os_station.kill_process_by_id(pid=single_pid)
+
         self.os_station.execute_cmd(f'{target_folder}\\{malware_name}', asynchronous=True)

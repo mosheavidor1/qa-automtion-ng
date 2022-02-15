@@ -109,7 +109,8 @@ class Collector:
     @allure.step("Get current collector process ID")
     def get_current_process_id(self):
         service_name = self.get_service_name()
-        process_id = self.os_station.get_process_id(service_name=service_name)
+        process_ids = self.os_station.get_service_process_ids(service_name=service_name)
+        process_id = process_ids[0]
         Reporter.report(f"Current process ID is: {process_id}")
         return process_id
 

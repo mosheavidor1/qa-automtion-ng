@@ -1,5 +1,6 @@
 import time
 
+import allure
 from ensilo.platform.rest.nslo_management_rest import NsloManagementConnection, NsloRest
 from json import loads
 import json
@@ -17,6 +18,37 @@ class RestCommands(object):
         self.management_password = management_password
         self.rest = NsloRest(NsloManagementConnection(management_ip, management_user, management_password,
                                                       organization=organization))
+
+    @allure.step("Delete all events")
+    def delete_all_events(self):
+        event_ids = []
+        response = self.rest.events.ListEvents()
+        as_list_of_dicts = json.loads(response[1].text)
+        for single_event in as_list_of_dicts:
+            event_id = single_event.get('eventId')
+            event_ids.append(event_id)
+
+        if len(event_ids) > 0:
+            self.rest.events.DeleteEvents(eventIds=event_ids)
+        else:
+            Reporter.report("No events, nothing to delete")
+
+    @allure.step("Delete all exceptions")
+    def delete_all_exceptions(self):
+        exception_ids = []
+        response = self.rest.exceptions.ListExceptions()
+        as_list_of_dicts = json.loads(response[1].text)
+        for single_exception in as_list_of_dicts:
+            event_id = single_exception.get('exceptionId')
+            exception_ids.append(event_id)
+
+        if len(exception_ids) > 0:
+            for exc_id in exception_ids:
+                self.rest.exceptions.DeleteException(exceptionId=exc_id)
+
+        else:
+            Reporter.report("No execptions, nothing to delete")
+
 
     def _validate_data(self, raw_data, validating_data):
         """
@@ -154,9 +186,12 @@ class RestCommands(object):
                     error_message = f'Could not get response from the management. \n{response}'
 
                 events = loads(response.text)
-                Reporter.report(f'Successfully got information of {len(events)} events.')
+                if not len(events):
+                    error_message = 'No event with the given parameters found.'
+                else:
+                    Reporter.report(f'Successfully got information of {len(events)} events.')
 
-                return events
+                    return events
 
             except Exception as e:
                 Reporter.report(f'{error_message}, trying again')
