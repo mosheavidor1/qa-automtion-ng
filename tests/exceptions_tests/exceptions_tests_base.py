@@ -64,8 +64,8 @@ class ExceptionsTestsBase(BaseTest):
         if self.test_type == ExceptionTestType.CREATE_PARTIALLY_COVERED_EXCEPTION:
             self.management.rest_ui_client.move_collector({'ipAddress': self.collector.os_station.host_ip},
                                                           self.group_name)
+            # todo:test
             test_name = "Security policies | assign group"
-            # to do
             #self.testim_handler.run_test(test_name=test_name, data=self.test_im_params)
 
         if self.test_type == ExceptionTestType.CREATE_FULL_COVERED_EXCEPTION or\
@@ -147,7 +147,7 @@ class ExceptionsTestsBase(BaseTest):
         if events:
             return True
         else:
-         return False
+            return False
 
     def create_full_covered_exception(self):
         test_name = "Exceptions | Create exception"
