@@ -3,7 +3,7 @@ import json
 import allure
 from sshtunnel import SSHTunnelForwarder
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine
 
 from infra.allure_report_handler.reporter import Reporter
 from infra.containers.postgresql_over_ssh_details import PostgresqlOverSshDetails
