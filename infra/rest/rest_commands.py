@@ -178,7 +178,11 @@ class RestCommands(object):
                     eventsIds.append(item["eventId"])
             except:
                 pass
-        return self.delete_events(eventsIds)
+        if len(eventsIds):
+            return self.delete_events(eventsIds)
+        else:
+            Reporter.report('There is no events to delete with the given name.')
+            return False
 
     def delete_events(self, event_ids):
         """
