@@ -34,7 +34,8 @@ class ExceptionsTestsBase(BaseTest):
     def prerequisites(self):
         Reporter.report("create event")
         self.collector.create_event(malware_name=self.malware_name)
-        self.management.rest_ui_client.get_security_events({"process": self.malware_name})
+        events = self.management.rest_ui_client.get_security_events({"process": self.malware_name})
+        assert len(events), f"event not created for collector {self.collector.os_station.host_ip}"
 
         if self.test_type == ExceptionTestType.CREATE_PARTIALLY_COVERED_EXCEPTION or\
                 self.test_type == ExceptionTestType.EDIT_FULL_COVERED_EXCEPTION or\
