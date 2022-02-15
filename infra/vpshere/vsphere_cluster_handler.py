@@ -5,10 +5,9 @@ import allure
 from pyVim.connect import SmartConnectNoSSL, Disconnect
 
 from infra.allure_report_handler.reporter import Reporter
-from infra.vpshere import vsphere_cluster_details
+from infra.vpshere.vsphere_cluster_details import ClusterDetails
 from infra.vpshere.vsphere_vm_operations import VsphereMachineOperations
 from third_party_details import USER_NAME_DOMAIN, PASSWORD
-from vsphere_cluster_details import ClusterDetails
 
 __author__ = "Dmitry Banny"
 
@@ -78,7 +77,7 @@ class VsphereClusterHandler(object):
         object
             Returns a VM object
         """
-        vm_obj = self.service_instance.content.searchIndex.FindByIp(None, ip_address, True)
+        vm_obj = self._service_instance.content.searchIndex.FindByIp(None, ip_address, True)
 
         try:
             Reporter.report(vm_obj.guest.ipAddress)
@@ -117,7 +116,7 @@ class VsphereClusterHandler(object):
 
 
 if __name__ == '__main__':
-    cluster_details = vsphere_cluster_details.ENSILO_VCSA_20
+    cluster_details = ClusterDetails(vhost="10.51.100.120", name="Ensilo_vcsa20", resource_pools=["QA22", "QA23"], datastore_name="loc-vt22-r10-d1")
     vsphere_cluster_handler = VsphereClusterHandler(cluster_details=cluster_details)
     vm_ops = vsphere_cluster_handler.get_specific_vm_from_cluster(vm_search_type=VmSearchTypeEnum.VM_NAME, txt_to_search='dima_colletor10x64')
     vm_ops.snapshot_create(snapshot_name='dima test')

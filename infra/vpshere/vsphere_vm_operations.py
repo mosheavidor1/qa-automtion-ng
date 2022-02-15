@@ -6,6 +6,7 @@ References
     - https://github.com/vmware/pyvmomi-community-samples - Community samples
     - https://github.com/vmware/pyvmomi/ - pyVmomi is the Python SDK for the vSphere
 """
+import time
 
 import allure
 from pyVim.task import WaitForTask
@@ -65,7 +66,7 @@ class VsphereMachineOperations:
             raise Exception("No VM object created")
 
     @allure.step("Create VM snapshot")
-    def snapshot_create(self, snapshot_name, snapshot_description="", memory=False, quiesce=False):
+    def snapshot_create(self, snapshot_name, snapshot_description="", memory=True, quiesce=False):
         if self._vm_obj:
             task = self._vm_obj.CreateSnapshot_Task(name=snapshot_name,
                                                     description=snapshot_description,
@@ -75,47 +76,57 @@ class VsphereMachineOperations:
             Reporter.report(f"Snapshot creation status: {task.info.state}")
 
             self._snapshots_list.append([snapshot_name, self._vm_obj.snapshot.currentSnapshot])
-            Reporter.report(f"Snapshot name added: {snapshot_name} ({self._vm_obj.snapshot.currentSnapshot})")
+            current_snapshot = str(self._vm_obj.snapshot.currentSnapshot)
+            Reporter.report(f"Snapshot name added: {snapshot_name} ({current_snapshot})")
 
-            return self._vm_obj.snapshot.currentSnapshot
+            return current_snapshot
         else:
             raise Exception("No VM object created")
 
     @allure.step("Revert to VM snapshot by name")
-    def snapshot_revert_by_name(self, snapshot_name: str):
+    def snapshot_revert_by_name(self,
+                                snapshot_name: str,
+                                suppress_power_on: bool = False):
         """Revert to snapshot by name of the snapshot.
 
         Parameters
         ----------
         snapshot_name : object
             The name of the snapshot from a list of created / found snapshot names
+        suppress_power_on : bool
+            If suppressPowerOn is set to true,
+            the virtual machine will not be powered on regardless of the power state when the current snapshot was created.
+            defaults False
         """
         for item in self._snapshots_list:
             if item[0] == snapshot_name:
                 Reporter.report(f"Snapshot found and starting revert to snapshot name: {snapshot_name}")
                 try:
-                    task = item[1].RevertToSnapshot_Task()
+                    task = item[1].RevertToSnapshot_Task(suppressPowerOn=suppress_power_on)
                     WaitForTask(task, self._service_instance)
 
-                    Reporter.report(task)
+                    # Reporter.report(task)
                 except Exception as e:
                     Reporter.report(str(e))
 
     @allure.step("Revert to VM snapshot creation order")
-    def snapshot_revert_by_creation_order(self, number: int):
+    def snapshot_revert_by_creation_order(self, number: int, suppress_power_on: bool = False):
         """This function reverts to a snapshot by a number.
         The order made by snapshots creation order.
-
         Parameters
         ----------
         number : int
             The number of the snapshot from a list
+        suppress_power_on : bool
+            If suppressPowerOn is set to true,
+            the virtual machine will not be powered on regardless of the power state when the current snapshot was created.
+            defaults False
         """
         if self._snapshots_list:
             revert_name, revert_object = self._snapshots_list[number]
             Reporter.report(f"Snapshot found and starting revert to snapshot name: {revert_name}")
             try:
-                task = revert_object.RevertToSnapshot_Task()
+                task = revert_object.RevertToSnapshot_Task(suppressPowerOn=suppress_power_on)
                 WaitForTask(task, self._service_instance)
                 Reporter.report(f"Snapshot revert status: {task.info.state}")
             except IndexError as e:
@@ -127,12 +138,12 @@ class VsphereMachineOperations:
         # raise Exception("Not implemented yet.")
 
         task = snapshot_object.RemoveSnapshot_Task()
-        WaitForTask(task, self.service_instance)
+        WaitForTask(task, self._service_instance)
         try:
             self._snapshots_list.pop(snapshot_object)
         except Exception as e:
             Reporter.report(str(e))
-        Reporter.report(f"Snapshot removal status: {task}")
+        # Reporter.report(f"Snapshot removal status: {task}")
 
     @allure.step("Rename VM snapshot")
     def snapshot_rename(self, snapshot_object: object, new_name: str):
@@ -140,9 +151,9 @@ class VsphereMachineOperations:
 
     @allure.step("Remove all snapshots")
     def remove_all_snapshots(self):
-        task = self._vm_objRemoveAllSnapshots()
-        WaitForTask(task, self.service_instance)
-        Reporter.report(f"All Snapshots removal status: {task}")
+        task = self._vm_obj.RemoveAllSnapshots()
+        WaitForTask(task, self._service_instance)
+        # Reporter.report(f"All Snapshots removal status: {task}")
 
     @allure.step("Print all snapshots")
     def get_all_snapshots(self, snapshots=None):
@@ -168,17 +179,17 @@ class VsphereMachineOperations:
     def reboot(self):
         task = self._vm_obj.RebootGuest()
         WaitForTask(task, self._service_instance)
-        Reporter.report(f"Machine restart: {task.info.state}")
+        # Reporter.report(f"Machine restart: {task.info.state}")
 
     @allure.step("VM power on")
     def power_on(self):
         task = self._vm_obj.PowerOnVM_Task()
         WaitForTask(task, self._service_instance)
-        Reporter.report(f"Machine power on: {task.info.state}")
+        # Reporter.report(f"Machine power on: {task.info.state}")
 
     @allure.step("VM power off")
     def power_off(self):
         task = self._vm_obj.PowerOffVM_Task()
         WaitForTask(task, self._service_instance)
-        Reporter.report(f"Machine power off: {task.info.state}")
+        # Reporter.report(f"Machine power off: {task.info.state}")
 

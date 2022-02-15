@@ -7,6 +7,9 @@ import allure
 from infra.allure_report_handler.reporter import Reporter
 from infra.utils.utils import StringUtils
 import third_party_details
+from infra.vpshere.vsphere_cluster_handler import VmSearchTypeEnum
+from infra.vpshere.vsphere_utils import VsphereUtils
+from infra.vpshere.vsphere_vm_operations import VsphereMachineOperations
 
 
 class OsStation(metaclass=ABCMeta):
@@ -24,6 +27,11 @@ class OsStation(metaclass=ABCMeta):
         self._os_name = None
 
         self._init_os_details()
+        self._vm_operations: VsphereMachineOperations = VsphereUtils.get_specific_vm_from_vsphere(
+            vm_search_type=VmSearchTypeEnum.VM_IP_V4,
+            txt_to_search=self._host_ip,
+            user_name=third_party_details.USER_NAME_DOMAIN,
+            password=third_party_details.PASSWORD)
 
     @property
     def host_ip(self) -> str:
@@ -64,6 +72,10 @@ class OsStation(metaclass=ABCMeta):
     @property
     def os_version(self):
         return self._os_version
+
+    @property
+    def vm_operations(self) -> VsphereMachineOperations:
+        return self._vm_operations
 
     def _init_os_details(self):
         self._os_version = self.get_os_version()
@@ -118,6 +130,14 @@ class OsStation(metaclass=ABCMeta):
 
     @abstractmethod
     def get_os_name(self):
+        pass
+
+    @abstractmethod
+    def stop_service(self, service_name: str):
+        pass
+
+    @abstractmethod
+    def start_service(self, service_name: str):
         pass
 
     @abstractmethod
