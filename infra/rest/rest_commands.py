@@ -151,16 +151,12 @@ class RestCommands(object):
             try:
                 status, response = self.rest.events.ListEvents(**validation_data)
                 if not status:
-                    # assert False, f'Could not get response from the management. \n{response}'
                     error_message = f'Could not get response from the management. \n{response}'
 
                 events = loads(response.text)
-                if not len(events):
-                    error_message = 'No event with the given parameters found.'
-                else:
-                    Reporter.report(f'Successfully got information of {len(events)} events.')
+                Reporter.report(f'Successfully got information of {len(events)} events.')
 
-                    return events
+                return events
 
             except Exception as e:
                 Reporter.report(f'{error_message}, trying again')
