@@ -1,6 +1,11 @@
 from typing import List
 
 import allure
+
+from infra.allure_report_handler.reporter import Reporter
+from infra.containers.postgresql_over_ssh_details import PostgresqlOverSshDetails
+from infra.containers.ssh_details import SshDetails
+from infra.posgresql_db.postgresql_db import PostgresqlOverSshDb
 from infra.rest.rest_commands import RestCommands
 
 import sut_details
@@ -19,6 +24,8 @@ from infra.utils.utils import StringUtils
 @Singleton
 class Management(FortiEdrLinuxStation):
 
+    APPLICATION_PROPERTIES_FILE_PATH = '/opt/FortiEDR/webapp/application.properties'
+
     def __init__(self):
 
         super().__init__(
@@ -33,12 +40,15 @@ class Management(FortiEdrLinuxStation):
         self._cores: [Core] = []
         self._collectors: [Collector] = []
 
+        self._postgresql_db: PostgresqlOverSshDb = self._get_postgresql_db_obj()
+        self.enable_rest_api_for_user_via_db(user_name='admin')
+
         self._rest_ui_client = RestCommands(self.host_ip,
                                             self._ui_admin_user_name,
                                             self._ui_admin_password,
                                             organization=None)
-
         self._details: ManagementDetails = self._get_management_details()
+
         self.init_system_objects()
 
     @property
@@ -89,6 +99,10 @@ class Management(FortiEdrLinuxStation):
     def details(self) -> ManagementDetails:
         return self._details
 
+    @property
+    def postgresql_db(self) -> PostgresqlOverSshDb:
+        return self._postgresql_db
+
     def __repr__(self):
         return f"Management {self._host_ip}"
 
@@ -102,6 +116,29 @@ class Management(FortiEdrLinuxStation):
                                  management_hostname=as_dict.get('managementHostname'),
                                  management_external_ip=as_dict.get('managementExternalIP'),
                                  management_internal_ip=as_dict.get('managementInternalIP'))
+
+    def _get_postgresql_db_obj(self) -> PostgresqlOverSshDb:
+        ssh_details = SshDetails(host_ip=self.host_ip, user_name=self.user_name, password=self.password)
+
+        cmd = f'{self.APPLICATION_PROPERTIES_FILE_PATH} | grep spring.datasource'
+        result = self.get_file_content(file_path=cmd)
+
+        postgresql_server_ip = StringUtils.get_txt_by_regex(text=result, regex='spring\.datasource\.url=jdbc:postgresql:\/\/(\w+)', group=1)
+        if postgresql_server_ip.lower() == 'localhost':
+            postgresql_server_ip = '127.0.0.1'
+
+        postgresql_port = StringUtils.get_txt_by_regex(text=result, regex='spring\.datasource\.url=jdbc:postgresql:\/\/\w+:(\d+)', group=1)
+        postgresql_user_name = StringUtils.get_txt_by_regex(text=result, regex='spring\.datasource\.username=(\w+)', group=1)
+        postgresql_password = StringUtils.get_txt_by_regex(text=result, regex='spring\.datasource\.password=(\w+)', group=1)
+
+        postgresql_details = PostgresqlOverSshDetails(db_name='ensilo',
+                                                      user_name=postgresql_user_name,
+                                                      password=postgresql_password,
+                                                      server_ip=postgresql_server_ip,
+                                                      server_port=int(postgresql_port))
+        postgres_db = PostgresqlOverSshDb(ssh_details=ssh_details,
+                                          postgresql_details=postgresql_details)
+        return postgres_db
 
     @allure.step("Init system objects")
     def init_system_objects(self):
@@ -248,3 +285,29 @@ class Management(FortiEdrLinuxStation):
 
         for single_collector in self._collectors:
             single_collector.validate_collector_is_up_and_running(use_health_monitor=True)
+
+    @allure.step("Add Rest-API role for {user_name}")
+    def enable_rest_api_for_user_via_db(self, user_name='admin'):
+
+        users_table_results = self._postgresql_db.execute_sql_command(sql_cmd=f"select id from adm_users where username = '{user_name}'")
+        user_id = users_table_results[0].get('id')
+
+        users_roles_results = self._postgresql_db.execute_sql_command(sql_cmd="select id from adm_roles where authority = 'ROLE_REST_API'")
+        role_rest_api_id = users_roles_results[0].get('id')
+
+        specific_user_roles = self._postgresql_db.execute_sql_command(sql_cmd=f"select role_id from adm_users_roles where user_id={user_id}")
+
+        for single_role in specific_user_roles:
+            if single_role.get('role_id') == role_rest_api_id:
+                Reporter.report(f"Rest API enabled for user: {user_name}, Nothing to do")
+                return
+
+        # if we the api role is not set to the specific user we will add it to DB
+        query = f"insert into adm_users_roles (user_id, role_id) values ({user_id}, {role_rest_api_id})"
+        self._postgresql_db.execute_sql_command(sql_cmd=query)
+
+
+
+
+
+
