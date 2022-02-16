@@ -54,4 +54,4 @@ class ExceptionsTestsBase(BaseTest):
         test_name = "Security policies | Set policies"
         self.testim_handler.run_test(test_name=test_name,
                                      ui_ip=self.management.host_ip,
-                                     data=self.test_im_params.update({"securityPolicyMode": "Simulation"}))
+                                     data=self.test_im_params.update({"securityPolicyMode": "Prevention"}))

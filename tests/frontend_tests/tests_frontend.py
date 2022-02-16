@@ -17,14 +17,14 @@ class FrontendManagementTests(FrontendTestsBase):
         self.test_type = FrontendTestType.TEST_NAVIGATION
         self.play_test()
 
-    #@pytest.mark.xray('EN-') #TODO: (yosef) add tiket in Jira
-    # @pytest.mark.testim_sanity
-    # def test_dashboard(self, management):
-    #     """
-    #     This test run Testim.io
-    #     """
-    #     self.management = management
-    #     self.test_type = FrontendTestType.TEST_DASHBOARD
-    #     self.play_test()
+    @pytest.mark.xray('EN-73620')
+    @pytest.mark.testim_sanity
+    def test_dashboard(self, management):
+        """
+        This test run Testim.io
+        """
+        self.management = management
+        self.test_type = FrontendTestType.TEST_DASHBOARD
+        self.play_test()
 
 
