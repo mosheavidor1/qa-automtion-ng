@@ -69,11 +69,7 @@ class TestImHandler:
         base_data = {"loginUser": "admin", "loginPassword": "12345678", "loginOrganization": "",
                      "organization": "Default", "collectorName": "collector1"}
 
-        if data is None or data == {}:
-            data = base_data
-
-        else:
-            base_data.update(data)
+        base_data.update(data)
 
         if not third_party_details.RUN_TEST_IM_ON_PROXY:
             json_name = self._create_param_file(data=base_data)
