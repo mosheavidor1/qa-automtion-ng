@@ -38,8 +38,7 @@ class ExceptionsTestsBase(BaseTest):
         self.management.rest_ui_client.delete_all_events()
         self.collector.create_event(malware_name=self.malware_name)
 
-        events = self.management.rest_ui_client.get_security_events({"process": self.malware_name})
-        assert len(events), f"event not created for collector {self.collector.os_station.host_ip}"
+        self.management.rest_ui_client.get_security_events({"process": self.malware_name})
 
         if self.test_type == ExceptionTestType.CREATE_PARTIALLY_COVERED_EXCEPTION or\
                 self.test_type == ExceptionTestType.EDIT_FULL_COVERED_EXCEPTION or\
@@ -69,7 +68,7 @@ class ExceptionsTestsBase(BaseTest):
         if self.test_type == ExceptionTestType.CREATE_PARTIALLY_COVERED_EXCEPTION:
             self.management.rest_ui_client.move_collector({'ipAddress': self.collector.os_station.host_ip},
                                                           self.group_name)
-            # todo:test
+            # TODO
             test_name = "Security policies | assign group"
             #self.testim_handler.run_test(test_name=test_name, data=self.test_im_params)
 
@@ -128,10 +127,7 @@ class ExceptionsTestsBase(BaseTest):
         self.create_excepted_event_and_check()
 
     def delete_and_archive(self):
-        test_name = "Exceptions | Delete all exception"
-        self.testim_handler.run_test(test_name=test_name,
-                                     ui_ip=self.management.host_ip,
-                                     data=self.test_im_params)
+        self.management.rest_ui_client.delete_all_exceptions()
 
         test_name = "Security event | Archive all"
         self.testim_handler.run_test(test_name=test_name,
@@ -148,8 +144,9 @@ class ExceptionsTestsBase(BaseTest):
 
         self.collector.create_event(malware_name=self.malware_name)
 
-        events = self.management.rest_ui_client.get_security_events({"process": self.malware_name})
-        if events:
+        events = self.management.rest_ui_client.get_security_events(validation_data={"process": self.malware_name},
+                                                                    timeout=10, fail_on_no_events=False)
+        if len(events) > 0:
             return True
         else:
             return False

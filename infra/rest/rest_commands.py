@@ -49,7 +49,6 @@ class RestCommands(object):
         else:
             Reporter.report("No execptions, nothing to delete")
 
-
     def _validate_data(self, raw_data, validating_data):
         """
         Checks if validating_data in raw data.
@@ -208,7 +207,6 @@ class RestCommands(object):
 
         return events
 
-
     def delete_event_by_name(self, eventName):
         urlget = "/events/list-events"
         response = self.rest.passthrough.ExecuteRequest(urlget, mode='get', inputParams=None)[1].text
@@ -241,7 +239,6 @@ class RestCommands(object):
 
         Reporter.report('Deleted the given events successfully.')
         return True
-
 
     def get_system_summery(self, parameter=None, log=False):
         """
