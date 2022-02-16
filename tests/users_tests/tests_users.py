@@ -3,7 +3,8 @@ import pytest
 from tests.users_tests.users_test_base import UsersTestsBase
 
 
-@allure.story("Users")
+@allure.epic("Management")
+@allure.feature("Users")
 class UsersTests(UsersTestsBase):
 
     @pytest.mark.xray('EN-73630')

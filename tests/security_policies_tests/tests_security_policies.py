@@ -4,7 +4,8 @@ from infra.system_components.collector import Collector
 from tests.security_policies_tests.security_policies_tests_base import ExceptionsTestsBase
 
 
-@allure.story("Security policies")
+@allure.epic("Management")
+@allure.feature("Security policies")
 class SecurityPoliciesTests(ExceptionsTestsBase):
     collector: Collector = None
 

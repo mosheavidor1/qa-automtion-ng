@@ -3,7 +3,8 @@ import pytest
 from tests.audit_tests.audit_tests_base import AuditTestsBase
 
 
-@allure.story("Audit")
+@allure.epic("Management")
+@allure.feature("Audit")
 @pytest.mark.sanity
 class AuditTests(AuditTestsBase):
 

@@ -3,7 +3,8 @@ import pytest
 from tests.system_event_tests.system_event_tests_base import SystemEventTestsBase,SystemEventTestType
 
 
-@allure.story("System event")
+@allure.epic("Management")
+@allure.feature("System event")
 class SystemEventTests(SystemEventTestsBase):
 
     @pytest.mark.xray('EN-73349')

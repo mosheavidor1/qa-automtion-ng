@@ -3,7 +3,8 @@ import pytest
 from tests.dynamic_content_tests.dynami_content_tests_base import DynamicContentTestsBase
 
 
-@allure.story("Dynamic content")
+@allure.epic("Management")
+@allure.feature("Dynamic content")
 @pytest.mark.sanity
 class DynamicContentTests(DynamicContentTestsBase):
 

@@ -3,7 +3,8 @@ import pytest
 from tests.integration_tests.integration_tests_base import IntegrationTestsBase
 
 
-@allure.story("Integration")
+@allure.epic("Management")
+@allure.feature("Integration")
 class IntegrationTests(IntegrationTestsBase):
 
     @pytest.mark.xray('EN-73334')

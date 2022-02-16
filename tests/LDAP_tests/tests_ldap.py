@@ -2,7 +2,9 @@ import allure
 import pytest
 from tests.LDAP_tests.ldap_test_base import LDAPTestsBase
 
-@allure.story("LDAP")
+
+@allure.epic("Management")
+@allure.feature("LDAP")
 class LDAPTests(LDAPTestsBase):
 
     @pytest.mark.xray('EN-73331')

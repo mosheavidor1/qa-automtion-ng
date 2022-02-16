@@ -4,7 +4,8 @@ import pytest
 from tests.inventory_tests.inventory_tests_base import InventoryTestsBase, InventoryTestType
 
 
-@allure.story("Inventory")
+@allure.epic("Management")
+@allure.feature("Inventory")
 class InventoryCollectorsTests(InventoryTestsBase):
 
     @pytest.mark.xray('EN-73621')

@@ -3,7 +3,8 @@ import pytest
 from tests.fcs_tests.fcs_tests_base import FcsTestsBase, FcsTestType
 
 
-@allure.story("FCS")
+@allure.epic("Management")
+@allure.feature("FCS")
 @pytest.mark.sanity
 class FcsTests(FcsTestsBase):
 

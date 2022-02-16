@@ -3,7 +3,8 @@ import pytest
 from tests.security_events_tests.security_event_tests_base import SecurityEvantTestsBase, SecurityEvantTestType
 
 
-@allure.story("Security event")
+@allure.epic("Management")
+@allure.feature("Security Events")
 class SecurityEventTests(SecurityEvantTestsBase):
 
     @pytest.mark.xray('EN-73626')

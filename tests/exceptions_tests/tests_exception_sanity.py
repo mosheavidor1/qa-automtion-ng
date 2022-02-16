@@ -3,7 +3,8 @@ import pytest
 from tests.exceptions_tests.exceptions_tests_base import ExceptionsTestsBase, ExceptionTestType
 
 
-@allure.feature("Exceptions")
+@allure.epic("Management")
+@allure.feature("Exception")
 @pytest.mark.sanity
 @pytest.mark.testim_sanity
 class ExceptionsTests(ExceptionsTestsBase):
