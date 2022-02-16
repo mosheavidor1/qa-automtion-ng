@@ -1,22 +1,21 @@
 import allure
 import pytest
 
-from tests.inventory_tests.inventory_tests_base import InventoryTestsBase,InventoryTestType
-
+from tests.inventory_tests.inventory_tests_base import InventoryTestsBase, InventoryTestType
 
 
 @allure.story("Inventory")
 class InventoryCollectorsTests(InventoryTestsBase):
 
-    #@pytest.mark.xray('EN-') #TODO (yosef) add Jira ticket (EN-73302?)
-    # @pytest.mark.testim_sanity
-    # def test_check_collector_is_running(self, management):
-    #     """
-    #     This test use Testim.io to check if the collector is running
-    #     """
-    #     self.management = management
-    #     self.test_type = InventoryTestType.TEST_CHECK_COLLECTOR_IS_RUNNING
-    #     self.play_test()
+    @pytest.mark.xray('EN-73621')
+    @pytest.mark.testim_sanity
+    def test_check_collector_is_running(self, management):
+        """
+        This test use Testim.io to check if the collector is running
+        """
+        self.management = management
+        self.test_type = InventoryTestType.TEST_CHECK_COLLECTOR_IS_RUNNING
+        self.play_test()
 
     @pytest.mark.xray('EN-73324')
     @pytest.mark.testim_sanity
@@ -58,8 +57,7 @@ class InventoryCollectorsTests(InventoryTestsBase):
         self.test_type = InventoryTestType.TEST_EXPORT_LOGS
         self.play_test()
 
-    # @pytest.mark.xray('EN-73307')
-    @pytest.mark.xray('EN-73316')
+    @pytest.mark.xray('EN-73307')
     @pytest.mark.testim_sanity
     def test_delete_grop(self, management):
         """
@@ -69,15 +67,15 @@ class InventoryCollectorsTests(InventoryTestsBase):
         self.test_type = InventoryTestType.TEST_DELETE_GROP
         self.play_test()
 
-#    @pytest.mark.xray('EN-733') #TODO: (yosef) add tiket in Jira
-#     @pytest.mark.testim_sanity
-#     def test_disabled_enabled_collector(self, management):
-#         """
-#         This test use Testim.io for change mode of collector to disabled and enabled
-#         """
-#         self.management = management
-#         self.test_type = InventoryTestType.TEST_DISABLED_ENABLED_COLLECTOR
-#         self.play_test()
+    @pytest.mark.xray('EN-73623')
+    @pytest.mark.testim_sanity
+    def test_disabled_enabled_collector(self, management):
+        """
+        This test use Testim.io for change mode of collector to disabled and enabled
+        """
+        self.management = management
+        self.test_type = InventoryTestType.TEST_DISABLED_ENABLED_COLLECTOR
+        self.play_test()
 
     @pytest.mark.xray('EN-73323')
     @pytest.mark.testim_sanity
