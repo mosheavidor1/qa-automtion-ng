@@ -68,9 +68,9 @@ class ExceptionsTestsBase(BaseTest):
         if self.test_type == ExceptionTestType.CREATE_PARTIALLY_COVERED_EXCEPTION:
             self.management.rest_ui_client.move_collector({'ipAddress': self.collector.os_station.host_ip},
                                                           self.group_name)
-            # TODO
-            test_name = "Security policies | assign group"
-            #self.testim_handler.run_test(test_name=test_name, data=self.test_im_params)
+            self.management.rest_ui_client.assign_policy('Exfiltration Prevention', self.group_name)
+            self.management.rest_ui_client.assign_policy('Execution Prevention', self.group_name)
+            self.management.rest_ui_client.assign_policy('Ransomware Prevention', self.group_name)
 
         if self.test_type == ExceptionTestType.CREATE_FULL_COVERED_EXCEPTION or\
                 self.test_type == ExceptionTestType.CREATE_PARTIALLY_COVERED_EXCEPTION or \

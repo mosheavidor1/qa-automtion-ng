@@ -313,3 +313,19 @@ class RestCommands(object):
         Reporter.report(
             'Moved the collector ' + str(collector_name) + ' to the group ' + group_name + ' successfully.')
         return True
+
+    def assign_policy(self, policy_name, group_name, organization=None):
+        """
+        :param timeout: time to wait for collector configuration to be uploaded
+        :param policy_name: string, the name of the policy to assign,
+        :param group_name: string or list, the name of the group that the policy will be assigned to.
+        :return: True if succeeded, False if failed.
+        """
+        if organization:
+            status, response = self.rest.policies.AssignCollector(policy_name, group_name, organization)
+        else:
+            status, response = self.rest.policies.AssignCollector(policy_name, group_name)
+        if not status:
+            assert False, f'Could not get response from the management. \n{response}'
+        Reporter.report(f"Assigned the policy {policy_name} to the group {group_name} successfully")
+        return True
