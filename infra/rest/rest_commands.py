@@ -30,6 +30,8 @@ class RestCommands(object):
 
         if len(event_ids) > 0:
             self.rest.events.DeleteEvents(eventIds=event_ids)
+            time.sleep(60)
+
         else:
             Reporter.report("No events, nothing to delete")
 
@@ -45,7 +47,7 @@ class RestCommands(object):
         if len(exception_ids) > 0:
             for exc_id in exception_ids:
                 self.rest.exceptions.DeleteException(exceptionId=exc_id)
-
+            time.sleep(60)
         else:
             Reporter.report("No execptions, nothing to delete")
 
@@ -314,7 +316,7 @@ class RestCommands(object):
             'Moved the collector ' + str(collector_name) + ' to the group ' + group_name + ' successfully.')
         return True
 
-    def assign_policy(self, policy_name, group_name, organization=None):
+    def assign_policy(self, policy_name, group_name, timeout=60, organization=None):
         """
         :param timeout: time to wait for collector configuration to be uploaded
         :param policy_name: string, the name of the policy to assign,
@@ -328,4 +330,5 @@ class RestCommands(object):
         if not status:
             assert False, f'Could not get response from the management. \n{response}'
         Reporter.report(f"Assigned the policy {policy_name} to the group {group_name} successfully")
+        time.sleep(timeout)
         return True
