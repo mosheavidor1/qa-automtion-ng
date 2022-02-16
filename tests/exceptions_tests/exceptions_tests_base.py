@@ -68,8 +68,8 @@ class ExceptionsTestsBase(BaseTest):
         if self.test_type == ExceptionTestType.CREATE_PARTIALLY_COVERED_EXCEPTION:
             self.management.rest_ui_client.move_collector({'ipAddress': self.collector.os_station.host_ip},
                                                           self.group_name)
-            self.management.rest_ui_client.assign_policy('Exfiltration Prevention', self.group_name)
-            self.management.rest_ui_client.assign_policy('Execution Prevention', self.group_name)
+            self.management.rest_ui_client.assign_policy('Exfiltration Prevention', self.group_name, timeout=1)
+            self.management.rest_ui_client.assign_policy('Execution Prevention', self.group_name, timeout=1)
             self.management.rest_ui_client.assign_policy('Ransomware Prevention', self.group_name)
 
         if self.test_type == ExceptionTestType.CREATE_FULL_COVERED_EXCEPTION or\
@@ -92,7 +92,8 @@ class ExceptionsTestsBase(BaseTest):
 
     @allure.step("Reorder environment")
     def cleanup(self):
-        self.management.rest_ui_client.delete_event_by_name(self.malware_name)
+        self.management.rest_ui_client.delete_all_exceptions()
+        self.management.rest_ui_client.delete_all_events()
 
     def exception_e2e_sanity(self):
         self.delete_and_archive()
