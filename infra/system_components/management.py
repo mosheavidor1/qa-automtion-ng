@@ -36,6 +36,7 @@ class Management(FortiEdrLinuxStation):
 
         self._ui_admin_user_name = sut_details.management_ui_admin_user_name
         self._ui_admin_password = sut_details.management_ui_admin_password
+        self._registration_password = sut_details.management_registration_password
         self._aggregators: [Aggregator] = []
         self._cores: [Core] = []
         self._collectors: [Collector] = []
@@ -62,6 +63,11 @@ class Management(FortiEdrLinuxStation):
     @property
     def ui_admin_password(self) -> str:
         return self._ui_admin_password
+
+    @property
+    def registration_password(self) -> str:
+        """ Password for registering collectors to this MGMT """
+        return self._registration_password
 
     @ui_admin_password.setter
     def ui_admin_password(self, ui_admin_password: str):

@@ -2,11 +2,12 @@ import os
 
 
 # MANAGEMENT DETAILS
-management_host = os.getenv("management_host_ip") if os.getenv("management_host_ip") is not None else None
+management_host = '10.151.120.187'
 management_ssh_user_name = 'root'
 management_ssh_password = 'enSilo$$'
 management_ui_admin_user_name = 'admin'
 management_ui_admin_password = '12345678'
+management_registration_password = '12345678'
 
 # WINDOWS COLLECTOR CREDENTIALS
 win_user_name = 'user1'

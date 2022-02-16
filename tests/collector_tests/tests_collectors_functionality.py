@@ -3,7 +3,7 @@ import pytest
 
 from infra.allure_report_handler.reporter import Reporter
 from infra.assertion.assertion import AssertTypeEnum
-from tests.collectors_functionality_example.collectors_functionality_base import CollectorsFunctionalityBaseExample, \
+from tests.collector_tests.collectors_functionality_base import CollectorsTestsBase, \
     CollectorFunctionalityTestType
 
 
@@ -12,20 +12,7 @@ from tests.collectors_functionality_example.collectors_functionality_base import
 @pytest.mark.full_regression_example
 @pytest.mark.collectors_functionality_example
 @pytest.mark.fake_sanity
-class CollectorFunctionalityExampleTests(CollectorsFunctionalityBaseExample):
-
-    @pytest.mark.xray('EN-23329')
-    @pytest.mark.devops
-    def test_stop_start_collector(self, management):
-        """
-        The role of this test is to check stop and start of fortiEDR collector service
-        Test steps:
-        1. stop collector
-        2. start collector
-        """
-        self.management = management
-        self.test_type = CollectorFunctionalityTestType.STOP_START_COLLECTOR
-        self.play_test()
+class CollectorFunctionalityExampleTests(CollectorsTestsBase):
 
     @pytest.mark.xray('EN-45431')
     def test_stop_collector_check_is_up_and_running_fail_on_purpose(self, management):
