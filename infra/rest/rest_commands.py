@@ -20,7 +20,7 @@ class RestCommands(object):
                                                       organization=organization))
 
     @allure.step("Delete all events")
-    def delete_all_events(self):
+    def delete_all_events(self, timeout=60):
         event_ids = []
         response = self.rest.events.ListEvents()
         as_list_of_dicts = json.loads(response[1].text)
@@ -30,13 +30,13 @@ class RestCommands(object):
 
         if len(event_ids) > 0:
             self.rest.events.DeleteEvents(eventIds=event_ids)
-            time.sleep(60)
+            time.sleep(timeout)
 
         else:
             Reporter.report("No events, nothing to delete")
 
     @allure.step("Delete all exceptions")
-    def delete_all_exceptions(self):
+    def delete_all_exceptions(self, timeout=60):
         exception_ids = []
         response = self.rest.exceptions.ListExceptions()
         as_list_of_dicts = json.loads(response[1].text)
@@ -47,7 +47,7 @@ class RestCommands(object):
         if len(exception_ids) > 0:
             for exc_id in exception_ids:
                 self.rest.exceptions.DeleteException(exceptionId=exc_id)
-            time.sleep(60)
+            time.sleep(timeout)
         else:
             Reporter.report("No execptions, nothing to delete")
 
@@ -332,3 +332,4 @@ class RestCommands(object):
         Reporter.report(f"Assigned the policy {policy_name} to the group {group_name} successfully")
         time.sleep(timeout)
         return True
+

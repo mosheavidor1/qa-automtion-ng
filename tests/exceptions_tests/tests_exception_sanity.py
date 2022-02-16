@@ -19,16 +19,6 @@ class ExceptionsTests(ExceptionsTestsBase):
         self.malware_name = "DynamicCodeTests.exe"
         self.play_test()
 
-    @pytest.mark.xray('EN-68890')
-    @pytest.mark.testim_sanity
-    # Partially covered exception - event excepted
-    def test_create_partially_covered_exception(self, management):
-        self.test_type = ExceptionTestType.CREATE_PARTIALLY_COVERED_EXCEPTION
-        self.management = management
-        self.collector = self.management.collectors[0]
-        self.malware_name = "DynamicCodeTests.exe"
-        self.play_test()
-
     @pytest.mark.xray('EN-68891')
     @pytest.mark.testim_sanity
     # Partially covered exception - event created
@@ -52,6 +42,16 @@ class ExceptionsTests(ExceptionsTestsBase):
     @pytest.mark.testim_sanity
     def test_edit_partially_covered_exception(self, management):
         self.test_type = ExceptionTestType.EDIT_PARTIALLY_COVERED_EXCEPTION
+        self.management = management
+        self.collector = self.management.collectors[0]
+        self.malware_name = "DynamicCodeTests.exe"
+        self.play_test()
+
+    @pytest.mark.xray('EN-68890')
+    @pytest.mark.testim_sanity
+    # Partially covered exception - event excepted
+    def test_create_partially_covered_exception(self, management):
+        self.test_type = ExceptionTestType.CREATE_PARTIALLY_COVERED_EXCEPTION
         self.management = management
         self.collector = self.management.collectors[0]
         self.malware_name = "DynamicCodeTests.exe"

@@ -34,7 +34,7 @@ class ExceptionsTestsBase(BaseTest):
     def prerequisites(self):
         Reporter.report("create event")
 
-        self.management.rest_ui_client.delete_all_exceptions()
+        self.management.rest_ui_client.delete_all_exceptions(timeout=1)
         self.management.rest_ui_client.delete_all_events()
         self.collector.create_event(malware_name=self.malware_name)
 
@@ -45,7 +45,7 @@ class ExceptionsTestsBase(BaseTest):
                 self.test_type == ExceptionTestType.EDIT_PARTIALLY_COVERED_EXCEPTION or\
                 self.test_type == ExceptionTestType.CREATE_PARTIALLY_COVERED_EXCEPTION_EVENT_CREATED:
             self.management.rest_ui_client.create_group(self.group_name)
-            self.test_im_params.update({"groups": [self.group_name]})
+            self.test_im_params.update({"groupName": [self.group_name]})
 
             if self.test_type == ExceptionTestType.EDIT_FULL_COVERED_EXCEPTION or\
                     self.test_type == ExceptionTestType.EDIT_PARTIALLY_COVERED_EXCEPTION:
@@ -78,12 +78,12 @@ class ExceptionsTestsBase(BaseTest):
             event_created = self.create_excepted_event_and_check()
             if self.test_type == ExceptionTestType.CREATE_PARTIALLY_COVERED_EXCEPTION_EVENT_CREATED:
                 Assertion.invoke_assertion(expected=True, actual=event_created,
-                                           message=f'expected is not equal to actual: expected=True, actual={event_created}',
+                                           message=f'expected=event created, actual=event not created',
                                            assert_type=AssertTypeEnum.SOFT)
 
             else:
                 Assertion.invoke_assertion(expected=False, actual=event_created,
-                                           message=f'expected is not equal to actual: expected=False, actual={event_created}',
+                                           message=f'expected=event not created, actual=event created',
                                            assert_type=AssertTypeEnum.SOFT)
 
         elif self.test_type == ExceptionTestType.EDIT_FULL_COVERED_EXCEPTION or\
@@ -92,8 +92,19 @@ class ExceptionsTestsBase(BaseTest):
 
     @allure.step("Reorder environment")
     def cleanup(self):
-        self.management.rest_ui_client.delete_all_exceptions()
-        self.management.rest_ui_client.delete_all_events()
+        self.management.rest_ui_client.delete_all_exceptions(timeout=1)
+        self.management.rest_ui_client.delete_all_events(timeout=1)
+        if self.test_type == ExceptionTestType.CREATE_PARTIALLY_COVERED_EXCEPTION or \
+                self.test_type == ExceptionTestType.EDIT_FULL_COVERED_EXCEPTION or \
+                self.test_type == ExceptionTestType.EDIT_PARTIALLY_COVERED_EXCEPTION or \
+                self.test_type == ExceptionTestType.CREATE_PARTIALLY_COVERED_EXCEPTION_EVENT_CREATED:
+            self.management.rest_ui_client.move_collector({'ipAddress': self.collector.os_station.host_ip},
+                                                          "Default Collector Group")
+        if self.test_type == ExceptionTestType.CREATE_PARTIALLY_COVERED_EXCEPTION:
+            test_name = "Collectors | Delete group"
+            self.testim_handler.run_test(test_name=test_name,
+                                         ui_ip=self.management.host_ip,
+                                         data=self.test_im_params)
 
     def exception_e2e_sanity(self):
         self.delete_and_archive()
