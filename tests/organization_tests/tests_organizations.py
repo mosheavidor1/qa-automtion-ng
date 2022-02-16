@@ -3,7 +3,8 @@ import pytest
 from tests.organization_tests.organization_tests_base import OrganizationTestsBase
 
 
-@allure.story("Organization")
+@allure.epic("Management")
+@allure.feature("Organization")
 class OrganizationTests(OrganizationTestsBase):
 
     @pytest.mark.xray('EN-73624')

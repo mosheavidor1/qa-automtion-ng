@@ -3,7 +3,8 @@ import pytest
 from tests.ip_set_test .ip_set_tests_base import IpSetTestsBase
 
 
-@allure.story("IP Set")
+@allure.epic("Management")
+@allure.feature("IP Set")
 class IpSetTests(IpSetTestsBase):
 
     @pytest.mark.xray('EN-73346')

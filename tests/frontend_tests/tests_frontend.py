@@ -3,7 +3,8 @@ import pytest
 from tests.frontend_tests.frontend_tests_base import FrontendTestsBase,FrontendTestType
 
 
-@allure.story("Frontend")
+@allure.epic("Management")
+@allure.feature("General")
 @pytest.mark.sanity
 class FrontendManagementTests(FrontendTestsBase):
 
