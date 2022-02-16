@@ -41,6 +41,17 @@ class WindowsCollector(Collector):
         self.__collected_crash_dump_dedicated_folder: str = r'C:\CrashDumpsCollected'
         self.__collector_logs_folder: str = f"{self.__program_data}\Logs"
         self.__qa_files_path: str = "C:\\qa"
+        self._kill_all_undesired_processes()
+
+    @allure.step("Kill all undesired process that running on windows collector")
+    def _kill_all_undesired_processes(self):
+        # TODO - Remove this method when we will have new templates
+        processes = ['nssm.exe', 'blg2log.exe', 'filebeat.exe']
+        for single_process in processes:
+            pids = self.os_station.get_service_process_ids(service_name=single_process)
+            if pids is not None and len(pids) > 0:
+                for pid in pids:
+                    self.os_station.kill_process_by_id(pid=pid)
 
     @property
     def collector_installation_path(self) -> str:
