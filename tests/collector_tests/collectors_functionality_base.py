@@ -19,7 +19,7 @@ class CollectorFunctionalityTestType(Enum):
     TEST_WITH_SOFT_ASSERT = 'TEST_WITH_SOFT_ASSERT'
 
 
-class CollectorsFunctionalityBaseExample(BaseTest):
+class CollectorsTestsBase(BaseTest):
 
     test_type: CollectorFunctionalityTestType = CollectorFunctionalityTestType.STOP_START_COLLECTOR
     crash_folder_path = r"C:\ProgramData\FortiEdr\CrashDumps\Collector"
@@ -35,7 +35,7 @@ class CollectorsFunctionalityBaseExample(BaseTest):
                 self.test_type == CollectorFunctionalityTestType.STOP_COLLECTOR_CHECK_IS_UP_FAIL_ON_PURPOSE:
 
             Reporter.report("Check if collector service is running before test")
-            self.validate_collector_service_is_running(collector=self.management.collectors[0])
+            self.management.collectors[0].validate_collector_is_up_and_running(timeout=0)
 
         elif self.test_type == CollectorFunctionalityTestType.CREATE_FAKE_DUMP_FILE:
             self.management.collectors[0].os_station.copy_files(source='C:\CrashDumpsCollected\*', target='C:\Windows\crashdumps')
@@ -48,10 +48,12 @@ class CollectorsFunctionalityBaseExample(BaseTest):
 
     @allure.step("Run and validate")
     def run_and_validate(self):
+        collector = self.management.collectors[0]
         if self.test_type == CollectorFunctionalityTestType.STOP_START_COLLECTOR:
-            self.management.collectors[0].stop_collector(password='12345678')
-            self.management.collectors[0].start_collector()
-            self.management.collectors[0].validate_collector_is_up_and_running()
+            collector.stop_collector(password=self.management.registration_password)
+            collector.validate_collector_stopped()
+            collector.start_collector()
+            collector.validate_collector_is_up_and_running()
 
         elif self.test_type == CollectorFunctionalityTestType.STOP_COLLECTOR_CHECK_IS_UP_FAIL_ON_PURPOSE:
             self.management.collectors[0].stop_collector(password='12345678')
@@ -74,14 +76,6 @@ class CollectorsFunctionalityBaseExample(BaseTest):
             Reporter.report("Test continue although soft assert was added")
             self.collector.get_collector_status()
 
-    @allure.step("Reorder environment")
+    @allure.step("Validate that test didn't damage the environment")
     def cleanup(self):
-        pass
-
-    @allure.step("Validate collector service is running")
-    def validate_collector_service_is_running(self, collector):
-        if collector.get_collector_status() != SystemState.RUNNING:
-            assert False, "Collector service is not running"
-
-
-
+        self.management.collectors[0].validate_collector_is_up_and_running(timeout=0)

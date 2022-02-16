@@ -110,7 +110,7 @@ class Collector:
     def get_current_process_id(self):
         service_name = self.get_service_name()
         process_ids = self.os_station.get_service_process_ids(service_name=service_name)
-        process_id = process_ids[0]
+        process_id = process_ids[0] if process_ids is not None else None
         Reporter.report(f"Current process ID is: {process_id}")
         return process_id
 
