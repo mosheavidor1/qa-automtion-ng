@@ -118,10 +118,7 @@ class ExceptionsTestsBase(BaseTest):
                                      ui_ip=self.management.host_ip,
                                      data=self.test_im_params)
 
-        test_name = "Security event | Archive all"
-        self.testim_handler.run_test(test_name=test_name,
-                                     ui_ip=self.management.host_ip,
-                                     data=self.test_im_params)
+        self.management.rest_ui_client.delete_all_events()
 
         sleep(30)
         self.create_excepted_event_and_check()
@@ -129,16 +126,10 @@ class ExceptionsTestsBase(BaseTest):
     def delete_and_archive(self):
         self.management.rest_ui_client.delete_all_exceptions()
 
-        test_name = "Security event | Archive all"
-        self.testim_handler.run_test(test_name=test_name,
-                                     ui_ip=self.management.host_ip,
-                                     data=self.test_im_params)
+        self.management.rest_ui_client.delete_all_events()
 
     def create_excepted_event_and_check(self):
-        test_name = "Security event | Archive all"
-        self.testim_handler.run_test(test_name=test_name,
-                                     ui_ip=self.management.host_ip,
-                                     data=self.test_im_params)
+        self.management.rest_ui_client.delete_all_events()
 
         sleep(30)
 
