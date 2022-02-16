@@ -165,7 +165,12 @@ class RestCommands(object):
         status, response = self.rest.inventory.ListCores()
         return self._get_info(status, response, 'core', validation_data, output_parameters)
 
-    def get_security_events(self, validation_data, timeout=60):
+    @allure.step("Get security events")
+    def get_security_events(self,
+                            validation_data,
+                            timeout=60,
+                            sleep_delay=2,
+                            fail_on_no_events=True):
         """
         :param validation_data: dictionary of the data to get.
                                 options of parameters: Event ID, Device, Collector Group, operatingSystems, deviceIps,
@@ -179,6 +184,7 @@ class RestCommands(object):
         start_time = time.time()
         is_found = False
         error_message = None
+        events = []
         while time.time() - start_time < timeout and not is_found:
             try:
                 status, response = self.rest.events.ListEvents(**validation_data)
@@ -188,17 +194,19 @@ class RestCommands(object):
                 events = loads(response.text)
                 if not len(events):
                     error_message = 'No event with the given parameters found.'
+                    time.sleep(sleep_delay)
                 else:
+                    is_found = True
                     Reporter.report(f'Successfully got information of {len(events)} events.')
-
-                    return events
 
             except Exception as e:
                 Reporter.report(f'{error_message}, trying again')
-                time.sleep(2)
+                time.sleep(sleep_delay)
 
-        if not is_found:
+        if not is_found and fail_on_no_events:
             assert False, f"{error_message} after waiting {timeout} seconds"
+
+        return events
 
 
     def delete_event_by_name(self, eventName):
