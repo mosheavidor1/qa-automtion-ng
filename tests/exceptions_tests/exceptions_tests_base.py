@@ -45,7 +45,7 @@ class ExceptionsTestsBase(BaseTest):
                 self.test_type == ExceptionTestType.EDIT_PARTIALLY_COVERED_EXCEPTION or\
                 self.test_type == ExceptionTestType.CREATE_PARTIALLY_COVERED_EXCEPTION_EVENT_CREATED:
             self.management.rest_ui_client.create_group(self.group_name)
-            self.test_im_params.update({"groupName": [self.group_name]})
+            self.test_im_params.update({"groups": [self.group_name]})
 
             if self.test_type == ExceptionTestType.EDIT_FULL_COVERED_EXCEPTION or\
                     self.test_type == ExceptionTestType.EDIT_PARTIALLY_COVERED_EXCEPTION:
@@ -100,11 +100,12 @@ class ExceptionsTestsBase(BaseTest):
                 self.test_type == ExceptionTestType.CREATE_PARTIALLY_COVERED_EXCEPTION_EVENT_CREATED:
             self.management.rest_ui_client.move_collector({'ipAddress': self.collector.os_station.host_ip},
                                                           "Default Collector Group")
-        if self.test_type == ExceptionTestType.CREATE_PARTIALLY_COVERED_EXCEPTION:
-            test_name = "Collectors | Delete group"
-            self.testim_handler.run_test(test_name=test_name,
-                                         ui_ip=self.management.host_ip,
-                                         data=self.test_im_params)
+        # if self.test_type == ExceptionTestType.CREATE_PARTIALLY_COVERED_EXCEPTION:
+        #     test_name = "Collectors | Delete group"
+        #     self.test_im_params.update({"groupName": self.group_name})
+        #     self.testim_handler.run_test(test_name=test_name,
+        #                                  ui_ip=self.management.host_ip,
+        #                                  data=self.test_im_params)
 
     def exception_e2e_sanity(self):
         self.delete_and_archive()
