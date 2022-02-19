@@ -219,42 +219,78 @@ def create_results_json(session, tests_results: dict):
         f.truncate()
 
 
+@pytest.fixture(scope="session")
+def management():
+    management: Management = Management.instance()
+    yield management
+
+
 @pytest.fixture(scope="session", autouse=True)
-def create_snapshot_for_all_collectors_at_the_beginning_of_the_run():
+def create_snapshot_for_all_collectors_at_the_beginning_of_the_run(management):
     if not sut_details.developer_mode:
-        management = Management.instance()
         collectors: List[Collector] = management.collectors
         for single_collector in collectors:
             single_collector.os_station.vm_operations.remove_all_snapshots()
             single_collector.os_station.vm_operations.snapshot_create(snapshot_name=f'beginning_pytest_session_snapshot_{time.time()}')
 
 
-@pytest.fixture(scope="function")
-def management():
-    management: Management = Management.instance()
+@pytest.fixture(scope="function", autouse=True)
+def validate_all_system_components_are_running(management):
+    management.validate_all_system_components_are_running()
 
-    start_time_dict = {}
+
+@pytest.fixture(scope="function", autouse=True)
+def check_if_soft_asserts_were_collected():
+    Reporter.report("Nothing to show ath the beginning of the run")
+    yield
+    Assertion.assert_all()
+
+
+@pytest.fixture(scope="function", autouse=True)
+def revert_to_snapshot(management):
     if not sut_details.developer_mode:
         revert_to_first_snapshot_for_all_collectors(collectors=management.collectors)
-        management.validate_all_system_components_are_running()
+    yield
 
+
+@pytest.fixture(scope="function", autouse=True)
+def management_logs(management):
+    if not sut_details.developer_mode:
         clear_logs_from_management(management=management)
+        yield
+        append_logs_from_management(management)
+
+
+@pytest.fixture(scope="function", autouse=True)
+def aggregator_logs(management):
+    if not sut_details.developer_mode:
         clear_logs_from_all_aggregators(aggregators=management.aggregators)
+        yield
+        append_logs_from_aggregators(management.aggregators)
 
-        start_time_dict = get_core_and_collector_machine_time(cores=management.cores, collectors=management.collectors)
 
-    yield management
+@pytest.fixture(scope="function", autouse=True)
+def cores_logs(management):
+    if not sut_details.developer_mode:
+        start_time_dict = get_cores_machine_time(cores=management.cores)
+        yield
+        append_logs_from_cores(cores=management.cores, initial_time_stamp_dict=start_time_dict)
 
-    try:
-        if not sut_details.developer_mode:
-            append_logs_from_management(management)
-            append_logs_from_aggregators(management.aggregators)
-            append_logs_from_cores(cores=management.cores, initial_time_stamp_dict=start_time_dict)
-            append_logs_from_collectors(collectors=management.collectors, initial_time_stamp_dict=start_time_dict)
 
+@pytest.fixture(scope="function", autouse=True)
+def collector_logs(management):
+    if not sut_details.developer_mode:
+        start_time_dict = get_collectors_machine_time(collectors=management.collectors)
+        yield
+        append_logs_from_collectors(collectors=management.collectors, initial_time_stamp_dict=start_time_dict)
+
+
+@pytest.fixture(scope="function", autouse=True)
+def check_if_collector_has_crashed(management):
+    if not sut_details.developer_mode:
+        Reporter.report("Nothing to show at the beginning of the run")
+        yield
         check_if_collectors_has_crashed(management.collectors)
-    finally:
-        Assertion.assert_all()
 
 
 @allure.step("Clear logs from management")
@@ -268,16 +304,22 @@ def clear_logs_from_all_aggregators(aggregators: List[Aggregator]):
         single_aggr.clear_logs()
 
 
-@allure.step("Get cores and collectors machine time at the beginning of the test")
-def get_core_and_collector_machine_time(cores: List[Core], collectors: List[Collector]) -> dict:
+@allure.step("Get cores machine time at the beginning of the test")
+def get_cores_machine_time(cores: List[Core]):
+    new_dict = {}
+    for single_core in cores:
+        date_time = single_core.get_current_machine_datetime(date_format="'+%d/%m/%Y %H:%M:%S'")
+        new_dict[single_core] = date_time
+
+    return new_dict
+
+
+@allure.step("Get collectors machine time at the beginning of the test")
+def get_collectors_machine_time(collectors: List[Collector]):
     new_dict = {}
     for single_collector in collectors:
         date_time = single_collector.os_station.get_current_machine_datetime(date_format="-UFormat '%d/%m/%Y %T'")
         new_dict[single_collector] = date_time
-
-    for single_core in cores:
-        date_time = single_core.get_current_machine_datetime(date_format="'+%d/%m/%Y %H:%M:%S'")
-        new_dict[single_core] = date_time
 
     return new_dict
 
