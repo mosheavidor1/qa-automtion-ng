@@ -246,51 +246,45 @@ def check_if_soft_asserts_were_collected():
     Assertion.assert_all()
 
 
-@pytest.fixture(scope="function", autouse=True)
+@pytest.fixture(scope="function", autouse=not sut_details.developer_mode)
 def revert_to_snapshot(management):
-    if not sut_details.developer_mode:
-        revert_to_first_snapshot_for_all_collectors(collectors=management.collectors)
+    revert_to_first_snapshot_for_all_collectors(collectors=management.collectors)
     yield
 
 
-@pytest.fixture(scope="function", autouse=True)
+@pytest.fixture(scope="function", autouse=not sut_details.developer_mode)
 def management_logs(management):
-    if not sut_details.developer_mode:
-        clear_logs_from_management(management=management)
-        yield
-        append_logs_from_management(management)
+    clear_logs_from_management(management=management)
+    yield
+    append_logs_from_management(management)
 
 
-@pytest.fixture(scope="function", autouse=True)
+@pytest.fixture(scope="function", autouse=not sut_details.developer_mode)
 def aggregator_logs(management):
-    if not sut_details.developer_mode:
-        clear_logs_from_all_aggregators(aggregators=management.aggregators)
-        yield
-        append_logs_from_aggregators(management.aggregators)
+    clear_logs_from_all_aggregators(aggregators=management.aggregators)
+    yield
+    append_logs_from_aggregators(management.aggregators)
 
 
-@pytest.fixture(scope="function", autouse=True)
+@pytest.fixture(scope="function", autouse=not sut_details.developer_mode)
 def cores_logs(management):
-    if not sut_details.developer_mode:
-        start_time_dict = get_cores_machine_time(cores=management.cores)
-        yield
-        append_logs_from_cores(cores=management.cores, initial_time_stamp_dict=start_time_dict)
+    start_time_dict = get_cores_machine_time(cores=management.cores)
+    yield
+    append_logs_from_cores(cores=management.cores, initial_time_stamp_dict=start_time_dict)
 
 
-@pytest.fixture(scope="function", autouse=True)
+@pytest.fixture(scope="function", autouse=not sut_details.developer_mode)
 def collector_logs(management):
-    if not sut_details.developer_mode:
-        start_time_dict = get_collectors_machine_time(collectors=management.collectors)
-        yield
-        append_logs_from_collectors(collectors=management.collectors, initial_time_stamp_dict=start_time_dict)
+    start_time_dict = get_collectors_machine_time(collectors=management.collectors)
+    yield
+    append_logs_from_collectors(collectors=management.collectors, initial_time_stamp_dict=start_time_dict)
 
 
 @pytest.fixture(scope="function", autouse=True)
 def check_if_collector_has_crashed(management):
-    if not sut_details.developer_mode:
-        Reporter.report("Nothing to show at the beginning of the run")
-        yield
-        check_if_collectors_has_crashed(management.collectors)
+    Reporter.report("Nothing to show at the beginning of the run")
+    yield
+    check_if_collectors_has_crashed(management.collectors)
 
 
 @allure.step("Clear logs from management")
