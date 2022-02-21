@@ -18,6 +18,7 @@ from infra.system_components.collector import Collector
 from infra.system_components.core import Core
 from infra.system_components.forti_edr_linux_station import FortiEdrLinuxStation
 from infra.system_components.windows_collector import WindowsCollector
+from infra.test_im.management_ui_client import ManagementUiClient
 from infra.utils.utils import StringUtils
 
 
@@ -44,10 +45,13 @@ class Management(FortiEdrLinuxStation):
         self._postgresql_db: PostgresqlOverSshDb = self._get_postgresql_db_obj()
         self.enable_rest_api_for_user_via_db(user_name='admin')
 
-        self._rest_ui_client = RestCommands(self.host_ip,
-                                            self._ui_admin_user_name,
-                                            self._ui_admin_password,
-                                            organization=None)
+        self._rest_api_client = RestCommands(self.host_ip,
+                                             self._ui_admin_user_name,
+                                             self._ui_admin_password,
+                                             organization=None)
+
+        self._ui_client = ManagementUiClient(management_ui_ip=self.host_ip)
+
         self._details: ManagementDetails = self._get_management_details()
 
         self.init_system_objects()
@@ -98,8 +102,12 @@ class Management(FortiEdrLinuxStation):
         self._collectors = collectors
 
     @property
-    def rest_ui_client(self) -> RestCommands:
-        return self._rest_ui_client
+    def rest_api_client(self) -> RestCommands:
+        return self._rest_api_client
+
+    @property
+    def ui_client(self) -> ManagementUiClient:
+        return self._ui_client
 
     @property
     def details(self) -> ManagementDetails:
@@ -116,7 +124,7 @@ class Management(FortiEdrLinuxStation):
         return '/opt/FortiEDR/webapp/logs'
 
     def _get_management_details(self):
-        as_dict = self._rest_ui_client.get_system_summery()
+        as_dict = self._rest_api_client.get_system_summery()
         return ManagementDetails(license_expiration_date=as_dict.get('licenseExpirationDate'),
                                  management_version=as_dict.get('managementVersion'),
                                  management_hostname=as_dict.get('managementHostname'),
@@ -157,7 +165,7 @@ class Management(FortiEdrLinuxStation):
 
     @allure.step("Init aggregator objects")
     def init_aggregator_objects(self):
-        aggregators = self._rest_ui_client.get_aggregator_info()
+        aggregators = self._rest_api_client.get_aggregator_info()
         for single_aggr in aggregators:
 
             ip_addr, port = StringUtils.get_ip_port_as_tuple(single_aggr.get('ipAddress'))
@@ -180,7 +188,7 @@ class Management(FortiEdrLinuxStation):
 
     @allure.step("Init core objects")
     def init_core_objects(self):
-        cores = self._rest_ui_client.get_core_info()
+        cores = self._rest_api_client.get_core_info()
         for single_core in cores:
             ip_addr, port = StringUtils.get_ip_port_as_tuple(single_core.get('ip'))
 
@@ -198,7 +206,7 @@ class Management(FortiEdrLinuxStation):
 
     @allure.step("Init collector objects")
     def init_collector_objects(self):
-        collectors = self._rest_ui_client.get_collector_info()
+        collectors = self._rest_api_client.get_collector_info()
 
         for single_collector in collectors:
             collector_details = CollectorDetails(system_id=single_collector.get('id'),
@@ -311,9 +319,4 @@ class Management(FortiEdrLinuxStation):
         # if we the api role is not set to the specific user we will add it to DB
         query = f"insert into adm_users_roles (user_id, role_id) values ({user_id}, {role_rest_api_id})"
         self._postgresql_db.execute_sql_command(sql_cmd=query)
-
-
-
-
-
 

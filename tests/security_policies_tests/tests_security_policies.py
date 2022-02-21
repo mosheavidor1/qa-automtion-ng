@@ -10,7 +10,7 @@ class SecurityPoliciesTests(ExceptionsTestsBase):
     collector: Collector = None
 
     @pytest.mark.xray('EN-73632')
-    @pytest.mark.testim_sanity
+    # @pytest.mark.testim_sanity
     def test_security_policies_simulation_mode(self, management):
         """
         This test run Testim.io for check system in simulation mode

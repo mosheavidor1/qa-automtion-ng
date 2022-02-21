@@ -2,7 +2,6 @@ import allure
 from infra.system_components.aggregator import Aggregator
 from infra.system_components.collector import Collector
 from tests.basic_test_lifecycle.base_test import BaseTest
-from infra.test_im.test_im_handler import TestImHandler
 
 
 class IpSetTestsBase(BaseTest):
@@ -11,7 +10,6 @@ class IpSetTestsBase(BaseTest):
 
     aggregator: Aggregator = None
     collector: Collector = None
-    testim_handler: TestImHandler = TestImHandler()
 
     @allure.step("Test prerequisites")
     def prerequisites(self):
@@ -19,10 +17,7 @@ class IpSetTestsBase(BaseTest):
 
     @allure.step("Run and validate")
     def run_and_validate(self):
-        test_name = "IP Set | Set new IP set"
-        self.testim_handler.run_test(test_name=test_name,
-                                     ui_ip=self.management.host_ip,
-                                     data=self.test_im_params)
+        self.management.ui_client.ip_set.set_new_ip_set(data=self.test_im_params)
 
     @allure.step("Reorder environment")
     def cleanup(self):

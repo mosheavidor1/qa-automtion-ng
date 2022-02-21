@@ -9,7 +9,7 @@ from tests.inventory_tests.inventory_tests_base import InventoryTestsBase, Inven
 class InventoryCollectorsTests(InventoryTestsBase):
 
     @pytest.mark.xray('EN-73621')
-    @pytest.mark.testim_sanity
+    # @pytest.mark.testim_sanity
     def test_check_collector_is_running(self, management):
         """
         This test use Testim.io to check if the collector is running
@@ -19,7 +19,7 @@ class InventoryCollectorsTests(InventoryTestsBase):
         self.play_test()
 
     @pytest.mark.xray('EN-73324')
-    @pytest.mark.testim_sanity
+    # @pytest.mark.testim_sanity
     def test_export_PDF_report(self, management):
         """
         This test use Testim.io to check export of PDF report
@@ -29,7 +29,7 @@ class InventoryCollectorsTests(InventoryTestsBase):
         self.play_test()
 
     @pytest.mark.xray('EN-73325')
-    @pytest.mark.testim_sanity
+    # @pytest.mark.testim_sanity
     def test_export_EXCEL_report(self, management):
         """
         This test use Testim.io to check export of EXCEL report
@@ -39,7 +39,7 @@ class InventoryCollectorsTests(InventoryTestsBase):
         self.play_test()
 
     @pytest.mark.xray('EN-73313')
-    @pytest.mark.testim_sanity
+    # @pytest.mark.testim_sanity
     def test_add_group(self, management):
         """
         This test use Testim.io to check adding group
@@ -49,7 +49,7 @@ class InventoryCollectorsTests(InventoryTestsBase):
         self.play_test()
 
     @pytest.mark.xray('EN-73321')
-    @pytest.mark.testim_sanity
+    # @pytest.mark.testim_sanity
     def test_export_logs(self, management):
         """
         This test use Testim.io for export collector logs
@@ -59,7 +59,7 @@ class InventoryCollectorsTests(InventoryTestsBase):
         self.play_test()
 
     @pytest.mark.xray('EN-73307')
-    @pytest.mark.testim_sanity
+    # @pytest.mark.testim_sanity
     def test_delete_grop(self, management):
         """
         This test use Testim.io for delete grup with and without the collector in the group
@@ -69,7 +69,7 @@ class InventoryCollectorsTests(InventoryTestsBase):
         self.play_test()
 
     @pytest.mark.xray('EN-73623')
-    @pytest.mark.testim_sanity
+    # @pytest.mark.testim_sanity
     def test_disabled_enabled_collector(self, management):
         """
         This test use Testim.io for change mode of collector to disabled and enabled
@@ -79,7 +79,7 @@ class InventoryCollectorsTests(InventoryTestsBase):
         self.play_test()
 
     @pytest.mark.xray('EN-73323')
-    @pytest.mark.testim_sanity
+    # @pytest.mark.testim_sanity
     def test_move_between_organization(self, management):
         """
         This test use Testim.io for change mode of collector to disabled and enabled

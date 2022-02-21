@@ -18,10 +18,7 @@ class UsersTestsBase(BaseTest):
 
     @allure.step("Run and validate")
     def run_and_validate(self):
-        test_name = "Users | Create 4 local user - all combinations"
-        self.testim_handler.run_test(test_name=test_name,
-                                     ui_ip=self.management.host_ip,
-                                     data=self.test_im_params)
+        self.management.ui_client.users.create_4_local_users_all_combinations(data=self.test_im_params)
 
     @allure.step("Reorder environment")
     def cleanup(self):

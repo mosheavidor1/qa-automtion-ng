@@ -1,10 +1,8 @@
 from enum import Enum
 import allure
-from infra.allure_report_handler.reporter import Reporter
 from infra.system_components.aggregator import Aggregator
 from infra.system_components.collector import Collector
 from tests.basic_test_lifecycle.base_test import BaseTest
-from infra.test_im.test_im_handler import TestImHandler
 
 
 class InventoryTestType(Enum):
@@ -26,7 +24,6 @@ class InventoryTestsBase(BaseTest):
     test_type: InventoryTestType
     aggregator: Aggregator = None
     collector: Collector = None
-    testim_handler: TestImHandler = TestImHandler()
 
     @allure.step("Test prerequisites")
     def prerequisites(self):
@@ -35,65 +32,35 @@ class InventoryTestsBase(BaseTest):
     @allure.step("Run and validate")
     def run_and_validate(self):
         if self.test_type == InventoryTestType.TEST_CHECK_ALL_COMPONENT_APPEAR_AND_RUNNING:
-            test_name = "Inventory | check components running"
-            self.testim_handler.run_test(test_name=test_name,
-                                         ui_ip=self.management.host_ip,
-                                         data=self.test_im_params)
+            self.management.ui_client.inventory.check_components_are_up(data=self.test_im_params)
 
         elif self.test_type == InventoryTestType.TEST_CHECK_COLLECTOR_IS_RUNNING:
-            test_name = "Inventory | Verify Collector is Running"
-            self.testim_handler.run_test(test_name=test_name,
-                                         ui_ip=self.management.host_ip,
-                                         data=self.test_im_params)
+            self.management.ui_client.inventory.verify_collector_is_running(data=self.test_im_params)
 
         elif self.test_type == InventoryTestType.TEST_EXPORT_PDF_REPORT:
-            test_name = "collectors | export PDF report"
-            self.testim_handler.run_test(test_name=test_name,
-                                         ui_ip=self.management.host_ip,
-                                         data=self.test_im_params)
+            self.management.ui_client.collectors.export_pdf_report(data=self.test_im_params)
             # TODO (yosef) validate that collectors from REST appear in the report
 
         elif self.test_type == InventoryTestType.TEST_EXPORT_EXCEL_REPORT:
-            test_name = "collectors | export EXCEL report"
-            self.testim_handler.run_test(test_name=test_name,
-                                         ui_ip=self.management.host_ip,
-                                         data=self.test_im_params)
+            self.management.ui_client.collectors.export_excel_report(data=self.test_im_params)
             # TODO (yosef) validate that collectors from REST appear in the report
 
         elif self.test_type == InventoryTestType.TEST_ADD_GROUP:
-            test_name = "Collectors | Add group"
-            self.testim_handler.run_test(test_name=test_name,
-                                         ui_ip=self.management.host_ip,
-                                         data=self.test_im_params)
+            self.management.ui_client.collectors.add_group(data=self.test_im_params)
 
         elif self.test_type == InventoryTestType.TEST_EXPORT_LOGS:
-            test_name = "Collectors | Add group"
-            self.testim_handler.run_test(test_name=test_name,
-                                         ui_ip=self.management.host_ip,
-                                         data=self.test_im_params)
+            self.management.ui_client.collectors.add_group(data=self.test_im_params)
             # TODO: (yosef) validation that folder is not 0 KB
 
         elif self.test_type == InventoryTestType.TEST_DELETE_GROP:
-            test_name = "Inventory | Collector Group deletion tests"
-            self.testim_handler.run_test(test_name=test_name,
-                                         ui_ip=self.management.host_ip,
-                                         data=self.test_im_params)
+            self.management.ui_client.inventory.collector_group_deletion_test(data=self.test_im_params)
 
         elif self.test_type == InventoryTestType.TEST_DISABLED_ENABLED_COLLECTOR:
-            test_name = "Collectors | disabled and enabled collector"
-            self.testim_handler.run_test(test_name=test_name,
-                                         ui_ip=self.management.host_ip,
-                                         data=self.test_im_params)
+            self.management.ui_client.collectors.disabled_and_enabled_collector(data=self.test_im_params)
 
         elif self.test_type == InventoryTestType.TEST_MOVE_BETWEEN_ORGANIZATION:
-            test_name = "Collectors | Move between organization"
-            self.testim_handler.run_test(test_name=test_name,
-                                         ui_ip=self.management.host_ip,
-                                         data=self.test_im_params)
+            self.management.ui_client.collectors.move_between_organizations(data=self.test_im_params)
 
     @allure.step("Reorder environment")
     def cleanup(self):
-        test_name = "Collectors | Move between organization"
-        self.testim_handler.run_test(test_name=test_name,
-                                     ui_ip=self.management.host_ip,
-                                     data=self.test_im_params.update({"organizationName": "Default"}))
+        self.management.ui_client.collectors.move_between_organizations(data=self.test_im_params.update({"organizationName": "Default"}))

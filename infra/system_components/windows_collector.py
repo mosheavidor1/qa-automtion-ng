@@ -548,6 +548,7 @@ msiexec.exe /x %val% /qn UPWD="{registration_password}" RMCONFIG=1 /l*vx {uninst
             if append_to_allure_log:
                 Reporter.attach_str_as_file(file_name=single_parsed_file, file_content=content)
 
+    @allure.step("{0} - Create event {malware_name}")
     def create_event(self, malware_name: str="DynamicCodeTests.exe"):
         malware_folder = rf'{third_party_details.SHARED_DRIVE_QA_PATH}\automation_ng\malware_sample'
         target_path = self.get_qa_files_path()
