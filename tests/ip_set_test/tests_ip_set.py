@@ -8,7 +8,7 @@ from tests.ip_set_test .ip_set_tests_base import IpSetTestsBase
 class IpSetTests(IpSetTestsBase):
 
     @pytest.mark.xray('EN-73346')
-    @pytest.mark.testim_sanity
+    # @pytest.mark.testim_sanity
     def test_ip_set(self, management):
         """
         This test run Testim.io

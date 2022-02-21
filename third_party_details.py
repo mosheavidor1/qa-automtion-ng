@@ -14,4 +14,5 @@ TEST_IM_ON_REMOTE_GRID = False
 RUN_TEST_IM_ON_PROXY = True if os.getenv("use_test_im_proxy") == 'true' else False
 TEST_IM_PROXY_IP = '10.151.120.162' # workaround for now, in the future we will create proxy machine per run in jenkins
 TEST_IM_PROXY_PORT = 5060
+TEST_IM_BRANCH = os.getenv("testim_branch") if os.getenv("testim_branch") is not None else "master"
 

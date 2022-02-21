@@ -9,9 +9,9 @@ from tests.collector_tests.collectors_functionality_base import CollectorsTestsB
 
 @allure.story("Collectors")
 @allure.feature("Collectors Functionality")
-@pytest.mark.full_regression_example
-@pytest.mark.collectors_functionality_example
-@pytest.mark.fake_sanity
+# @pytest.mark.full_regression_example
+# @pytest.mark.collectors_functionality_example
+# @pytest.mark.fake_sanity
 class CollectorFunctionalityExampleTests(CollectorsTestsBase):
 
     @pytest.mark.xray('EN-45431')
@@ -68,7 +68,7 @@ class CollectorFunctionalityExampleTests(CollectorsTestsBase):
         self.test_type = CollectorFunctionalityTestType.TEST_WITH_SOFT_ASSERT
         self.play_test()
 
-    @pytest.mark.test_im_example
+    # @pytest.mark.test_im_example
     @pytest.mark.xray('EN-68892')
     def test_im_example(self, management):
         test_name = "Organizations | create organization"

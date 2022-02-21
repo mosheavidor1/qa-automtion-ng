@@ -5,11 +5,11 @@ from tests.frontend_tests.frontend_tests_base import FrontendTestsBase,FrontendT
 
 @allure.epic("Management")
 @allure.feature("General")
-@pytest.mark.sanity
+# @pytest.mark.sanity
 class FrontendManagementTests(FrontendTestsBase):
 
     @pytest.mark.xray('EN-73322')
-    @pytest.mark.testim_sanity
+    # @pytest.mark.testim_sanity
     def test_navigation(self, management):
         """
         This test run Testim.io for check the navigation in management
@@ -19,7 +19,7 @@ class FrontendManagementTests(FrontendTestsBase):
         self.play_test()
 
     @pytest.mark.xray('EN-73620')
-    @pytest.mark.testim_sanity
+    # @pytest.mark.testim_sanity
     def test_dashboard(self, management):
         """
         This test run Testim.io

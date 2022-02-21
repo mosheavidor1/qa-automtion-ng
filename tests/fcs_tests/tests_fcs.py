@@ -5,11 +5,11 @@ from tests.fcs_tests.fcs_tests_base import FcsTestsBase, FcsTestType
 
 @allure.epic("Management")
 @allure.feature("FCS")
-@pytest.mark.sanity
+# @pytest.mark.sanity
 class FcsTests(FcsTestsBase):
 
     @pytest.mark.xray('EN-73353')
-    @pytest.mark.testim_sanity
+    # @pytest.mark.testim_sanity
     def test_vulnerability_on_application(self, management):
         """
         This test run Testim.io for check CVE (Vulnerability)
@@ -21,7 +21,7 @@ class FcsTests(FcsTestsBase):
         self.play_test()
 
     @pytest.mark.xray('EN-73352')
-    @pytest.mark.testim_sanity
+    # @pytest.mark.testim_sanity
     def test_reclassification_on_security_event(self, management):
         """
         This test run Testim.io for check Reclassification

@@ -7,7 +7,6 @@ from infra.assertion.assertion import Assertion, AssertTypeEnum
 from infra.system_components.aggregator import Aggregator
 from infra.system_components.collector import Collector
 from tests.basic_test_lifecycle.base_test import BaseTest
-from infra.test_im.test_im_handler import TestImHandler
 from time import sleep
 
 
@@ -28,23 +27,22 @@ class ExceptionsTestsBase(BaseTest):
 
     aggregator: Aggregator = None
     collector: Collector = None
-    testim_handler: TestImHandler = TestImHandler()
 
     @allure.step("Test prerequisites")
     def prerequisites(self):
         Reporter.report("create event")
 
-        self.management.rest_ui_client.delete_all_exceptions(timeout=1)
-        self.management.rest_ui_client.delete_all_events()
+        self.management.rest_api_client.delete_all_exceptions(timeout=1)
+        self.management.rest_api_client.delete_all_events()
         self.collector.create_event(malware_name=self.malware_name)
 
-        self.management.rest_ui_client.get_security_events({"process": self.malware_name})
+        self.management.rest_api_client.get_security_events({"process": self.malware_name})
 
         if self.test_type == ExceptionTestType.CREATE_PARTIALLY_COVERED_EXCEPTION or\
                 self.test_type == ExceptionTestType.EDIT_FULL_COVERED_EXCEPTION or\
                 self.test_type == ExceptionTestType.EDIT_PARTIALLY_COVERED_EXCEPTION or\
                 self.test_type == ExceptionTestType.CREATE_PARTIALLY_COVERED_EXCEPTION_EVENT_CREATED:
-            self.management.rest_ui_client.create_group(self.group_name)
+            self.management.rest_api_client.create_group(self.group_name)
             self.test_im_params.update({"groups": [self.group_name]})
 
             if self.test_type == ExceptionTestType.EDIT_FULL_COVERED_EXCEPTION or\
@@ -66,11 +64,11 @@ class ExceptionsTestsBase(BaseTest):
             self.exception_e2e_sanity()
 
         if self.test_type == ExceptionTestType.CREATE_PARTIALLY_COVERED_EXCEPTION:
-            self.management.rest_ui_client.move_collector({'ipAddress': self.collector.os_station.host_ip},
-                                                          self.group_name)
-            self.management.rest_ui_client.assign_policy('Exfiltration Prevention', self.group_name, timeout=1)
-            self.management.rest_ui_client.assign_policy('Execution Prevention', self.group_name, timeout=1)
-            self.management.rest_ui_client.assign_policy('Ransomware Prevention', self.group_name)
+            self.management.rest_api_client.move_collector({'ipAddress': self.collector.os_station.host_ip},
+                                                           self.group_name)
+            self.management.rest_api_client.assign_policy('Exfiltration Prevention', self.group_name, timeout=1)
+            self.management.rest_api_client.assign_policy('Execution Prevention', self.group_name, timeout=1)
+            self.management.rest_api_client.assign_policy('Ransomware Prevention', self.group_name)
 
         if self.test_type == ExceptionTestType.CREATE_FULL_COVERED_EXCEPTION or\
                 self.test_type == ExceptionTestType.CREATE_PARTIALLY_COVERED_EXCEPTION or \
@@ -92,13 +90,13 @@ class ExceptionsTestsBase(BaseTest):
 
     @allure.step("Reorder environment")
     def cleanup(self):
-        self.management.rest_ui_client.delete_all_exceptions(timeout=1)
-        self.management.rest_ui_client.delete_all_events(timeout=1)
+        self.management.rest_api_client.delete_all_exceptions(timeout=1)
+        self.management.rest_api_client.delete_all_events(timeout=1)
         if self.test_type == ExceptionTestType.CREATE_PARTIALLY_COVERED_EXCEPTION or \
                 self.test_type == ExceptionTestType.EDIT_FULL_COVERED_EXCEPTION or \
                 self.test_type == ExceptionTestType.EDIT_PARTIALLY_COVERED_EXCEPTION or \
                 self.test_type == ExceptionTestType.CREATE_PARTIALLY_COVERED_EXCEPTION_EVENT_CREATED:
-            self.management.rest_ui_client.move_collector({'ipAddress': self.collector.os_station.host_ip},
+            self.management.rest_api_client.move_collector({'ipAddress': self.collector.os_station.host_ip},
                                                           "Default Collector Group")
         # if self.test_type == ExceptionTestType.CREATE_PARTIALLY_COVERED_EXCEPTION:
         #     test_name = "Collectors | Delete group"
@@ -112,68 +110,46 @@ class ExceptionsTestsBase(BaseTest):
 
         self.collector.create_event(malware_name=self.malware_name)
 
-        test_name = "Security event | Search event"
-        self.testim_handler.run_test(test_name=test_name,
-                                     ui_ip=self.management.host_ip,
-                                     data=self.test_im_params)
+        self.management.ui_client.security_events.search_event(data=self.test_im_params)
 
         self.delete_and_archive()
 
         self.collector.create_event(malware_name=self.malware_name)
 
-        test_name = "Security event | Search event"
-        self.testim_handler.run_test(test_name=test_name,
-                                     ui_ip=self.management.host_ip,
-                                     data=self.test_im_params)
+        self.management.ui_client.security_events.search_event(data=self.test_im_params)
 
-        test_name = "Exceptions | Create exception"
-        self.testim_handler.run_test(test_name=test_name,
-                                     ui_ip=self.management.host_ip,
-                                     data=self.test_im_params)
+        self.management.ui_client.exceptions.create_exception(data=self.test_im_params)
 
-        self.management.rest_ui_client.delete_all_events()
+        self.management.rest_api_client.delete_all_events()
 
         sleep(30)
         self.create_excepted_event_and_check()
 
     def delete_and_archive(self):
-        self.management.rest_ui_client.delete_all_exceptions()
+        self.management.rest_api_client.delete_all_exceptions()
 
-        self.management.rest_ui_client.delete_all_events()
+        self.management.rest_api_client.delete_all_events()
 
     def create_excepted_event_and_check(self):
-        self.management.rest_ui_client.delete_all_events()
+        self.management.rest_api_client.delete_all_events()
 
         sleep(30)
 
         self.collector.create_event(malware_name=self.malware_name)
 
-        events = self.management.rest_ui_client.get_security_events(validation_data={"process": self.malware_name},
-                                                                    timeout=10, fail_on_no_events=False)
+        events = self.management.rest_api_client.get_security_events(validation_data={"process": self.malware_name},
+                                                                     timeout=10, fail_on_no_events=False)
         if len(events) > 0:
             return True
         else:
             return False
 
     def create_full_covered_exception(self):
-        test_name = "Exceptions | Create exception"
-        self.testim_handler.run_test(test_name=test_name,
-                                     ui_ip=self.management.host_ip,
-                                     data=self.test_im_params)
+        self.management.ui_client.exceptions.create_exception(data=self.test_im_params)
 
     def create_partially_covered_exception(self):
-        test_name = "Exceptions | Create exception"
-        self.testim_handler.run_test(test_name=test_name,
-                                     ui_ip=self.management.host_ip,
-                                     data=self.test_im_params)
+        self.management.ui_client.exceptions.create_exception(data=self.test_im_params)
 
     def edit_covered_exception(self):
-        test_name = "Edit group"
-        self.testim_handler.run_test(test_name=test_name,
-                                     ui_ip=self.management.host_ip,
-                                     data=self.test_im_params)
-        test_name = "Edit destination"
-        self.testim_handler.run_test(test_name=test_name,
-                                     ui_ip=self.management.host_ip,
-                                     data=self.test_im_params)
-
+        self.management.ui_client.generic_functionality.edit_group(data=self.test_im_params)
+        self.management.ui_client.generic_functionality.edit_destination(data=self.test_im_params)

@@ -6,7 +6,7 @@ from tests.collector_tests.collectors_functionality_base import CollectorsTestsB
 
 
 @allure.feature("Collectors")
-@pytest.mark.sanity
+# @pytest.mark.sanity
 class CollectorTests(CollectorsTestsBase):
 
     @pytest.mark.xray('EN-73287')

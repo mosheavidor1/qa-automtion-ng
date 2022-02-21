@@ -8,7 +8,7 @@ from tests.system_event_tests.system_event_tests_base import SystemEventTestsBas
 class SystemEventTests(SystemEventTestsBase):
 
     @pytest.mark.xray('EN-73349')
-    @pytest.mark.testim_sanity
+    # @pytest.mark.testim_sanity
     def test_export_PDF_report(self, management):
         """
         This test run Testim.io for check export PDF report from System event page
@@ -18,7 +18,7 @@ class SystemEventTests(SystemEventTestsBase):
         self.play_test()
 
     @pytest.mark.xray('EN-73327')
-    @pytest.mark.testim_sanity
+    # @pytest.mark.testim_sanity
     def test_events_of_prevention_and_simulation(self, management):
         """
         This test run Testim.io for check that changed mode to simulation or prevention is recorded in system event

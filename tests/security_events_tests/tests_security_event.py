@@ -8,7 +8,7 @@ from tests.security_events_tests.security_event_tests_base import SecurityEvantT
 class SecurityEventTests(SecurityEvantTestsBase):
 
     @pytest.mark.xray('EN-73626')
-    @pytest.mark.testim_sanity
+    # @pytest.mark.testim_sanity
     def test_security_event_export_excel_report(self, management):
         """
         This test run Testim.io for export Excel report from event viewer page
@@ -20,7 +20,7 @@ class SecurityEventTests(SecurityEvantTestsBase):
         self.play_test()
 
     @pytest.mark.xray('EN-73627')
-    @pytest.mark.testim_sanity
+    # @pytest.mark.testim_sanity
     def test_security_event_export_PDF_report(self, management):
         """
         This test run Testim.io for export PDF report from event viewer page

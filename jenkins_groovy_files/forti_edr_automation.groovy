@@ -33,6 +33,10 @@ pipeline {
                 defaultValue: 'master',
                 description: 'Platfom Rest Branch')
 
+        string( name: 'testim_branch',
+                defaultValue: 'master',
+                description: 'branch to run from testim')
+
         booleanParam(name: 'use_test_im_proxy',
                     defaultValue: true,
                     description: 'run testIM tests on proxy windows machine since they are not support running on linux')
