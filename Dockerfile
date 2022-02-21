@@ -1,4 +1,4 @@
-FROM python:3.9.10
+FROM python:3.10.2
 
 RUN curl -fsSL https://deb.nodesource.com/setup_16.x | bash -
 RUN apt-get install -y nodejs
