@@ -9,6 +9,7 @@ from infra.system_components.aggregator import Aggregator
 from infra.system_components.collector import Collector
 from infra.system_components.core import Core
 from infra.system_components.management import Management
+from tests.utils.collectors import CollectorUtils
 
 import json
 import os
@@ -223,6 +224,15 @@ def create_results_json(session, tests_results: dict):
 def management():
     management: Management = Management.instance()
     yield management
+
+
+@pytest.fixture(scope="function")
+def collector(management):
+    collector = management.collectors[0]
+    CollectorUtils.validate_collector_is_currently_running(collector)
+
+    yield collector
+    CollectorUtils.validate_collector_is_currently_running(collector)
 
 
 @pytest.fixture(scope="session", autouse=True)

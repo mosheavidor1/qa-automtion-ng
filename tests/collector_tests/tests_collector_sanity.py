@@ -1,21 +1,21 @@
 import allure
 import pytest
-
-from tests.collector_tests.collectors_functionality_base import CollectorsTestsBase, \
-    CollectorFunctionalityTestType
+from tests.utils.collectors import CollectorUtils
 
 
-@allure.feature("Collectors")
-# @pytest.mark.sanity
-class CollectorTests(CollectorsTestsBase):
+@allure.epic("Collectors")
+@allure.feature("Basic Functionality")
+@pytest.mark.sanity
+@pytest.mark.xray('EN-73287')
+def test_stop_start_collector(collector):
+    """
+    1. Stop a running collector and validate it stopped.
+    2. Start collector and validate it started successfully.
+    """
+    with allure.step(f"Stop {collector} and validate"):
+        collector.stop_collector()
+        CollectorUtils.validate_collector_stopped(collector)
 
-    @pytest.mark.xray('EN-73287')
-    def test_stop_start_collector(self, management):
-        """
-        1. Validate collector is running.
-        2. Stop the collector and validate it stopped.
-        3. Start collector and validate it started successfully.
-        """
-        self.management = management
-        self.test_type = CollectorFunctionalityTestType.STOP_START_COLLECTOR
-        self.play_test()
+    with allure.step(f"Start {collector} and validate"):
+        collector.start_collector()
+        CollectorUtils.validate_collector_is_currently_running(collector)
