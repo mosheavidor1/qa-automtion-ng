@@ -5,8 +5,8 @@ from tests.exceptions_tests.exceptions_tests_base import ExceptionsTestsBase, Ex
 
 @allure.epic("Management")
 @allure.feature("Exception")
-@pytest.mark.sanity
-@pytest.mark.testim_sanity
+# @pytest.mark.sanity
+# @pytest.mark.testim_sanity
 class ExceptionsTests(ExceptionsTestsBase):
 
     @pytest.mark.xray('EN-68889')
@@ -26,7 +26,7 @@ class ExceptionsTests(ExceptionsTestsBase):
         self.play_test()
 
     @pytest.mark.xray('EN-68890')
-    @pytest.mark.testim_sanity
+    # @pytest.mark.testim_sanity
     # Partially covered exception - event excepted
     def test_create_partially_covered_exception(self, management):
         """
