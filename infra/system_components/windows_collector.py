@@ -10,9 +10,11 @@ from infra.containers.system_component_containers import CollectorDetails
 from infra.enums import SystemState, OsTypeEnum
 from infra.system_components.collector import Collector
 from infra.utils.utils import StringUtils
+from sut_details import management_registration_password
 
 INTERVAL_WAIT_FOR_SERVICE = 5
 MAX_WAIT_FOR_SERVICE = 60
+REGISTRATION_PASS = management_registration_password
 
 
 class WindowsCollector(Collector):
@@ -104,7 +106,8 @@ class WindowsCollector(Collector):
         return version
 
     @allure.step("{0} - Stop collector")
-    def stop_collector(self, password: str):
+    def stop_collector(self, password=None):
+        password = password or REGISTRATION_PASS
         cmd = f'"{self.__collector_service_exe}" --stop -rp:{password}'
         Reporter.report("Going to stop the collector")
         self.os_station.execute_cmd(cmd=cmd, fail_on_err=True)
@@ -251,14 +254,6 @@ class WindowsCollector(Collector):
                 assert False, f"Collector state is {curr_status.name} after waiting {timeout} seconds"
         assert self.get_current_process_id() is not None, \
             f"Collector on host {self} returning wrong status because pid does not exist"
-
-    @allure.step("{0} - Validate collector stopped")
-    def validate_collector_stopped(self):
-        pid = self.get_current_process_id()
-        assert self.get_collector_status() == SystemState.NOT_RUNNING, \
-            f"Collector on host {self} was not stopped, pid is {pid}"
-        assert pid is None, \
-            f"Collector on host {self} returning wrong status because pid {pid} still exists"
 
     @allure.step('{0} - Start health mechanism')
     def start_health_mechanism(self):

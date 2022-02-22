@@ -48,14 +48,7 @@ class CollectorsTestsBase(BaseTest):
 
     @allure.step("Run and validate")
     def run_and_validate(self):
-        collector = self.management.collectors[0]
-        if self.test_type == CollectorFunctionalityTestType.STOP_START_COLLECTOR:
-            collector.stop_collector(password=self.management.registration_password)
-            collector.validate_collector_stopped()
-            collector.start_collector()
-            collector.validate_collector_is_up_and_running()
-
-        elif self.test_type == CollectorFunctionalityTestType.STOP_COLLECTOR_CHECK_IS_UP_FAIL_ON_PURPOSE:
+        if self.test_type == CollectorFunctionalityTestType.STOP_COLLECTOR_CHECK_IS_UP_FAIL_ON_PURPOSE:
             self.management.collectors[0].stop_collector(password='12345678')
             self.management.collectors[0].validate_collector_is_up_and_running()
 
