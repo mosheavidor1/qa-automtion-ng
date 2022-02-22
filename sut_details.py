@@ -13,4 +13,4 @@ management_registration_password = '12345678'
 win_user_name = 'user1'
 win_password = 'P@ssword1!'
 
-developer_mode = True if os.getenv("developer_mode") == 'true' else False
+debug_mode = True if os.getenv("debug_mode") == 'true' else False
