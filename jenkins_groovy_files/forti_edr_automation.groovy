@@ -41,9 +41,9 @@ pipeline {
                     defaultValue: true,
                     description: 'run testIM tests on proxy windows machine since they are not support running on linux')
 
-        booleanParam(name: 'developer_mode',
-                    defaultValue: false,
-                    description: 'Set true for running the test in light mode, without taking snapshots and logs which extend the test time')
+        booleanParam(name: 'debug_mode',
+                    defaultValue: true,
+                    description: 'Set true for running the test with logs collection and snpashots functionality')
                            
     }
     agent { 

@@ -227,7 +227,7 @@ def management():
 
 @pytest.fixture(scope="session", autouse=True)
 def create_snapshot_for_all_collectors_at_the_beginning_of_the_run(management):
-    if not sut_details.developer_mode:
+    if not sut_details.debug_mode:
         collectors: List[Collector] = management.collectors
         for single_collector in collectors:
             single_collector.os_station.vm_operations.remove_all_snapshots()
@@ -246,34 +246,34 @@ def check_if_soft_asserts_were_collected():
     Assertion.assert_all()
 
 
-@pytest.fixture(scope="function", autouse=not sut_details.developer_mode)
+@pytest.fixture(scope="function", autouse=sut_details.debug_mode)
 def revert_to_snapshot(management):
     revert_to_first_snapshot_for_all_collectors(collectors=management.collectors)
     yield
 
 
-@pytest.fixture(scope="function", autouse=not sut_details.developer_mode)
+@pytest.fixture(scope="function", autouse=sut_details.debug_mode)
 def management_logs(management):
     clear_logs_from_management(management=management)
     yield
     append_logs_from_management(management)
 
 
-@pytest.fixture(scope="function", autouse=not sut_details.developer_mode)
+@pytest.fixture(scope="function", autouse=sut_details.debug_mode)
 def aggregator_logs(management):
     clear_logs_from_all_aggregators(aggregators=management.aggregators)
     yield
     append_logs_from_aggregators(management.aggregators)
 
 
-@pytest.fixture(scope="function", autouse=not sut_details.developer_mode)
+@pytest.fixture(scope="function", autouse=sut_details.debug_mode)
 def cores_logs(management):
     start_time_dict = get_cores_machine_time(cores=management.cores)
     yield
     append_logs_from_cores(cores=management.cores, initial_time_stamp_dict=start_time_dict)
 
 
-@pytest.fixture(scope="function", autouse=not sut_details.developer_mode)
+@pytest.fixture(scope="function", autouse=sut_details.debug_mode)
 def collector_logs(management):
     start_time_dict = get_collectors_machine_time(collectors=management.collectors)
     yield
@@ -357,10 +357,9 @@ def append_logs_from_collectors(collectors: List[Collector], initial_time_stamp_
 
 @allure.step("Revert all collectors to their snapshot that was taken at the beginning of the run")
 def revert_to_first_snapshot_for_all_collectors(collectors: List[Collector]):
-    if not sut_details.developer_mode:
-        for single_collector in collectors:
-            first_snapshot_name = single_collector.os_station.vm_operations.snapshot_list[0][0]
-            single_collector.os_station.vm_operations.snapshot_revert_by_name(snapshot_name=first_snapshot_name)
+    for single_collector in collectors:
+        first_snapshot_name = single_collector.os_station.vm_operations.snapshot_list[0][0]
+        single_collector.os_station.vm_operations.snapshot_revert_by_name(snapshot_name=first_snapshot_name)
 
 
 @allure.step("Check if collectors has crashed")
