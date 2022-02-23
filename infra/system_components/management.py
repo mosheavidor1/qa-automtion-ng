@@ -20,6 +20,7 @@ from infra.system_components.forti_edr_linux_station import FortiEdrLinuxStation
 from infra.system_components.windows_collector import WindowsCollector
 from infra.test_im.management_ui_client import ManagementUiClient
 from infra.utils.utils import StringUtils
+from tests.utils.collectors import CollectorUtils
 
 
 @Singleton
@@ -293,12 +294,29 @@ class Management(FortiEdrLinuxStation):
         # non collector system components inherited from fortiEDRLinuxStation
         non_collector_sys_components = [self] + self._aggregators + self._cores
 
+        with allure.step("Workaround for core - change DeploymentMethod to Cloud although it's onPrem"):
+            for core in self.cores:
+                content = core.get_file_content(file_path='/opt/FortiEDR/core/Config/Core/CoreBootstrap.jsn')
+                deployment_mode = StringUtils.get_txt_by_regex(text=content, regex='"DeploymentMode":"(\w+)"', group=1)
+                if deployment_mode == 'OnPremise':
+                    core.execute_cmd("""sed -i 's/"DeploymentMode":"OnPremise"/"DeploymentMode":"Cloud"/g' /opt/FortiEDR/core/Config/Core/CoreBootstrap.jsn""")
+                    core.stop_service()
+                    core.start_service()
+
         # classic example of polymorphism
         for sys_comp in non_collector_sys_components:
             sys_comp.validate_system_component_is_in_desired_state(desired_state=SystemState.RUNNING)
 
         for single_collector in self._collectors:
-            single_collector.validate_collector_is_up_and_running(use_health_monitor=True)
+            CollectorUtils.validate_collector_is_currently_running_according_to_management(management=self,
+                                                                                           collector=single_collector)
+
+            # first validating it's up on CLI
+            # single_collector.validate_collector_is_up_and_running(use_health_monitor=True)
+
+            # then validate it's up both on mangement and the service on machine itself
+            # CollectorUtils.validate_collector_state_is_equal_both_on_machine_and_management(management=self,
+            #                                                                                 collector=single_collector)
 
     @allure.step("Add Rest-API role for {user_name}")
     def enable_rest_api_for_user_via_db(self, user_name='admin'):
@@ -319,4 +337,30 @@ class Management(FortiEdrLinuxStation):
         # if we the api role is not set to the specific user we will add it to DB
         query = f"insert into adm_users_roles (user_id, role_id) values ({user_id}, {role_rest_api_id})"
         self._postgresql_db.execute_sql_command(sql_cmd=query)
+
+    @allure.step("Get collector {collector_ip} state")
+    def get_collector_status(self, collector_ip: str) -> SystemState:
+        """
+        This method return collector state via REST API
+        :param collector_ip: collector ip
+        :return: SystemState
+        """
+        all_collectors_info = self.rest_api_client.get_collector_info()
+        relevant_collector_info = None
+        for collector_info in all_collectors_info:
+            if collector_info.get('ipAddress') == collector_ip:
+                relevant_collector_info = collector_info
+                break
+
+        if relevant_collector_info is None:
+            assert False, f"Did not found info about collector with the IP: {collector_ip} in Management"
+
+        Reporter.report(f"Collector state is: {relevant_collector_info.get('state')}")
+
+        if relevant_collector_info.get('state') == 'Running':
+            return SystemState.RUNNING
+
+        return SystemState.NOT_RUNNING
+
+
 
