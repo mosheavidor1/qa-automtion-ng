@@ -12,8 +12,7 @@ from tests.exceptions_tests.conftest import ExceptionTestType
 @allure.feature("Exception")
 class ExceptionsTests:
 
-    @pytest.mark.xray('EN-68879')
-    # @pytest.mark.xray('EN-68889')
+    @pytest.mark.xray('EN-68889')
     @pytest.mark.parametrize('exception_function_fixture',
                              [ExceptionTestType.CREATE_FULL_COVERED_EXCEPTION],
                              indirect=True)
