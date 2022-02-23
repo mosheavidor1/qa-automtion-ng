@@ -41,25 +41,42 @@ class ExceptionsTests:
                                    message=f'expected=event not created, actual=event created',
                                    assert_type=AssertTypeEnum.SOFT)
 
+    @pytest.mark.xray('EN-68890')
+    @pytest.mark.parametrize('exception_function_fixture',
+                             [ExceptionTestType.CREATE_PARTIALLY_COVERED_EXCEPTION],
+                             indirect=True)
+    @pytest.mark.testim_sanity
+    def test_create_partially_covered_exception(self, exception_function_fixture):
+        """
+        test name: Partially covered exception - event excepted
+        steps:
+        1. create event DynamicCodeTests
+        2. crete exception for DynamicCodeTests with empty group
+        3. move collector to the empty group
+        4. assign group to policies
+        5. create same event - event should not be created
+        """
+        management: Management = exception_function_fixture.get('management')
+        collector = exception_function_fixture.get('collector')
+        malware_name = exception_function_fixture.get('malware_name')
+        event_id = exception_function_fixture.get("event_id")
+        group_name = exception_function_fixture.get("group_name")
 
-    # @pytest.mark.xray('EN-68890')
-    # # @pytest.mark.testim_sanity
-    # # Partially covered exception - event excepted
-    # def test_create_partially_covered_exception(self, management):
-    #     """
-    #     steps:
-    #     1. create event DynamicCodeTests
-    #     2. crete exception for DynamicCodeTests with empty group
-    #     3. move collector to the empty group
-    #     4. assign group to policies
-    #     5. create same event - event should not be created
-    #     """
-    #     self.test_type = ExceptionTestType.CREATE_PARTIALLY_COVERED_EXCEPTION
-    #     self.management = management
-    #     self.collector = self.management.collectors[0]
-    #     self.malware_name = "DynamicCodeTests.exe"
-    #     self.play_test()
-    #
+        management.rest_api_client.create_exception(event_id, groups=[group_name])
+        management.rest_api_client.move_collector({'ipAddress': collector.os_station.host_ip}, group_name)
+        management.rest_api_client.assign_policy('Exfiltration Prevention', group_name, timeout=1)
+        management.rest_api_client.assign_policy('Execution Prevention', group_name, timeout=1)
+        management.rest_api_client.assign_policy('Ransomware Prevention', group_name)
+
+        management.rest_api_client.delete_all_events()
+        collector.create_event(malware_name=malware_name)
+        events = management.rest_api_client.get_security_events(validation_data={"process": malware_name},
+                                                                timeout=10, fail_on_no_events=False)
+        is_event_created = True if len(events) > 0 else False
+        Assertion.invoke_assertion(expected=False, actual=is_event_created,
+                                   message=f'expected=event not created, actual=event created',
+                                   assert_type=AssertTypeEnum.SOFT)
+
     # @pytest.mark.xray('EN-68891')
     # # @pytest.mark.testim_sanity
     # # Partially covered exception - event created
