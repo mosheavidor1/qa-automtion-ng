@@ -115,7 +115,7 @@ class Collector:
         return process_id
 
     @allure.step("Update process ID in current collector object")
-    def _update_process_id(self):
+    def update_process_id(self):
         Reporter.report(f"Current process ID is: {self._process_id}")
         self._process_id = self.get_current_process_id()
         Reporter.report(f"Collector process ID updated to: {self._process_id}")

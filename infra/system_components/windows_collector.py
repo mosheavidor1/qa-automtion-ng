@@ -119,7 +119,7 @@ class WindowsCollector(Collector):
         cmd = f'"{self.__collector_service_exe}" --start'
         Reporter.report("Going to start the collector")
         self.os_station.execute_cmd(cmd=cmd, fail_on_err=True)
-        self._update_process_id()
+        self.update_process_id()
         Reporter.report("Collector started successfully")
 
     def is_up(self):

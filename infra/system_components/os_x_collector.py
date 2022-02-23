@@ -16,7 +16,7 @@ class OsXCollector(Collector):
                          collector_details=collector_details,
                          os_type=OsTypeEnum.OS_X)
 
-    def _update_process_id(self):
+    def update_process_id(self):
         pass
 
     def get_service_name(self):
