@@ -235,13 +235,12 @@ def collector(management):
     CollectorUtils.validate_collector_is_currently_running(collector)
 
 
-@pytest.fixture(scope="session", autouse=True)
+@pytest.fixture(scope="session", autouse=sut_details.debug_mode)
 def create_snapshot_for_all_collectors_at_the_beginning_of_the_run(management):
-    if not sut_details.debug_mode:
-        collectors: List[Collector] = management.collectors
-        for single_collector in collectors:
-            single_collector.os_station.vm_operations.remove_all_snapshots()
-            single_collector.os_station.vm_operations.snapshot_create(snapshot_name=f'beginning_pytest_session_snapshot_{time.time()}')
+    collectors: List[Collector] = management.collectors
+    for single_collector in collectors:
+        single_collector.os_station.vm_operations.remove_all_snapshots()
+        single_collector.os_station.vm_operations.snapshot_create(snapshot_name=f'beginning_pytest_session_snapshot_{time.time()}')
 
 
 @pytest.fixture(scope="function", autouse=True)
