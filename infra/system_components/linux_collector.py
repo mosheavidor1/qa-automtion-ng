@@ -20,7 +20,7 @@ class LinuxCollector(Collector):
                          os_type=OsTypeEnum.LINUX)
 
     @allure.step("Update process ID")
-    def _update_process_id(self):
+    def update_process_id(self):
         pass
 
     def get_service_name(self):

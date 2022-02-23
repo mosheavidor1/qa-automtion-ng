@@ -9,6 +9,7 @@ from infra.system_components.aggregator import Aggregator
 from infra.system_components.collector import Collector
 from infra.system_components.core import Core
 from infra.system_components.management import Management
+from infra.utils.utils import StringUtils
 from tests.utils.collectors import CollectorUtils
 
 import json
@@ -119,10 +120,9 @@ def pytest_runtest_makereport(item, call):
         return
 
     if item.nodeid.__contains__('['):
-        i = item.nodeid.index('[')
-        test_key = re.findall(r'prefix_\d+', item.nodeid[i:])
-        test_key = test_key[0]
-        test_key = test_key.replace('_', '-')
+        test_key = StringUtils.get_txt_by_regex(text=item.nodeid, regex='(EN-\d+)', group=1)
+        if test_key is None:
+            return
         test_key = test_key.upper()
     else:
         marker = item.get_closest_marker(name='xray')
@@ -373,6 +373,7 @@ def revert_to_first_snapshot_for_all_collectors(collectors: List[Collector]):
     for single_collector in collectors:
         first_snapshot_name = single_collector.os_station.vm_operations.snapshot_list[0][0]
         single_collector.os_station.vm_operations.snapshot_revert_by_name(snapshot_name=first_snapshot_name)
+        single_collector.update_process_id()
 
 
 @allure.step("Check if collectors has crashed")
@@ -389,3 +390,8 @@ def check_if_collectors_has_crashed(collectors_list):
 
     else:
         Reporter.report("Collectors list is None, can not check anything")
+
+
+@pytest.fixture()
+def xray():
+    pass

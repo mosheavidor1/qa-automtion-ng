@@ -12,12 +12,13 @@ from tests.exceptions_tests.conftest import ExceptionTestType
 @allure.feature("Exception")
 class ExceptionsTests:
 
-    @pytest.mark.xray('EN-68889')
-    @pytest.mark.parametrize('exception_function_fixture',
-                             [ExceptionTestType.CREATE_FULL_COVERED_EXCEPTION],
+    @pytest.mark.parametrize('xray, exception_function_fixture',
+                             [
+                                 ('EN-68889', ExceptionTestType.CREATE_FULL_COVERED_EXCEPTION)
+                             ],
                              indirect=True)
     @pytest.mark.sanity
-    def test_create_full_covered_exception(self, exception_function_fixture):
+    def test_create_full_covered_exception(self, xray, exception_function_fixture):
         """
         test name: Full covered exception - event excepted
         steps:
@@ -41,12 +42,11 @@ class ExceptionsTests:
                                    message=f'expected=event not created, actual=event created',
                                    assert_type=AssertTypeEnum.SOFT)
 
-    @pytest.mark.xray('EN-68890')
-    @pytest.mark.parametrize('exception_function_fixture',
-                             [ExceptionTestType.CREATE_PARTIALLY_COVERED_EXCEPTION],
+    @pytest.mark.parametrize('xray, exception_function_fixture',
+                             [('EN-68890', ExceptionTestType.CREATE_PARTIALLY_COVERED_EXCEPTION)],
                              indirect=True)
-    @pytest.mark.testim_sanity
-    def test_create_partially_covered_exception(self, exception_function_fixture):
+    @pytest.mark.sanity
+    def test_create_partially_covered_exception(self, xray, exception_function_fixture):
         """
         test name: Partially covered exception - event excepted
         steps:
