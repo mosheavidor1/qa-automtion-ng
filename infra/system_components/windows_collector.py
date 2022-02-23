@@ -259,7 +259,7 @@ class WindowsCollector(Collector):
     def start_health_mechanism(self):
         self.start_collector()
         state = self.get_collector_status()
-        if state.RUNNING:
+        if state == SystemState.RUNNING:
             Reporter.report("Health monitor successfully helped to bring collector service up")
         else:
             assert False, "Failed to start collector service, check what happens in logs"

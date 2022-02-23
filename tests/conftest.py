@@ -229,10 +229,14 @@ def management():
 @pytest.fixture(scope="function")
 def collector(management):
     collector = management.collectors[0]
-    CollectorUtils.validate_collector_is_currently_running(collector)
+    CollectorUtils.validate_collector_is_currently_running_according_to_management(management=management,
+                                                                                   collector=collector)
+    # CollectorUtils.validate_collector_is_currently_running(collector)
 
     yield collector
-    CollectorUtils.validate_collector_is_currently_running(collector)
+    CollectorUtils.validate_collector_is_currently_running_according_to_management(management=management,
+                                                                                   collector=collector)
+    # CollectorUtils.validate_collector_is_currently_running(collector)
 
 
 @pytest.fixture(scope="session", autouse=sut_details.debug_mode)
