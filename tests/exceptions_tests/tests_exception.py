@@ -12,13 +12,15 @@ from tests.exceptions_tests.conftest import ExceptionTestType
 @allure.feature("Exception")
 class ExceptionsTests:
 
-    @pytest.mark.xray('EN-68889')
+    @pytest.mark.xray('EN-68879')
+    # @pytest.mark.xray('EN-68889')
     @pytest.mark.parametrize('exception_function_fixture',
                              [ExceptionTestType.CREATE_FULL_COVERED_EXCEPTION],
                              indirect=True)
-    @pytest.mark.exception_sanity
+    @pytest.mark.sanity
     def test_create_full_covered_exception(self, exception_function_fixture):
         """
+        test name: Full covered exception - event excepted
         steps:
         1. create event DynamicCodeTests
         2. crete exception for DynamicCodeTests
@@ -27,12 +29,11 @@ class ExceptionsTests:
 
         management: Management = exception_function_fixture.get('management')
         collector = exception_function_fixture.get('collector')
-        create_exception_testim_params = exception_function_fixture.get('create_exception_testim_params')
         malware_name = exception_function_fixture.get('malware_name')
+        event_id = exception_function_fixture.get("event_id")
 
-        management.ui_client.exceptions.create_exception(data=create_exception_testim_params)
+        management.rest_api_client.create_exception(event_id)
         management.rest_api_client.delete_all_events()
-        time.sleep(30)
         collector.create_event(malware_name=malware_name)
         events = management.rest_api_client.get_security_events(validation_data={"process": malware_name},
                                                                 timeout=10, fail_on_no_events=False)

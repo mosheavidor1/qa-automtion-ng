@@ -25,10 +25,11 @@ def exception_function_fixture(management, request):
     collector = management.collectors[0]
 
     collector.create_event(malware_name=malware_name)
-    management.rest_api_client.get_security_events({"process": malware_name})
+    events = management.rest_api_client.get_security_events({"process": malware_name})
+    event_id = events[0]['eventId']
 
     match test_flow:
-        case ExceptionTestType.CREATE_FULL_COVERED_EXCEPTION | \
+        case ExceptionTestType.CREATE_PARTIALLY_COVERED_EXCEPTION | \
              ExceptionTestType.EDIT_FULL_COVERED_EXCEPTION | \
              ExceptionTestType.EDIT_PARTIALLY_COVERED_EXCEPTION | \
              ExceptionTestType.CREATE_PARTIALLY_COVERED_EXCEPTION_EVENT_CREATED:
@@ -45,7 +46,8 @@ def exception_function_fixture(management, request):
         'management': management,
         'collector': collector,
         'create_exception_testim_params': test_im_params,
-        'malware_name': malware_name
+        'malware_name': malware_name,
+        'event_id': event_id
 
     }
     yield test_resources

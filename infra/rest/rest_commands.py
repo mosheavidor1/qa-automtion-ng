@@ -333,3 +333,52 @@ class RestCommands(object):
         time.sleep(timeout)
         return True
 
+    def create_exception(self, eventId, groups=None, destinations=None, organization="Default", useAnyPath=None,
+                         useInException=None, wildcardFiles=None, wildcardPaths=None, **kwargs):
+        """
+          create exception
+          :param eventId: event id for create exception
+          :param groups: list of string or None for all groups
+          :param destinations: list of destinations or None for all destinations
+          :param organization: string or none for all organizations
+          :param useAnyPath: useAnyPath
+          :param useInException: useInException
+          :param wildcardFiles: wildcardFiles
+          :param wildcardPaths: wildcardPaths
+          :return: True or False.
+          """
+
+        url = "/events/create-exception"
+        kwargs["eventId"] = eventId
+        if groups:
+            kwargs["collectorGroups"] = groups
+            kwargs["allCollectorGroups"] = False
+        else:
+            kwargs["allCollectorGroups"] = True
+        if destinations:
+            kwargs["destinations"] = destinations
+            kwargs["allDestinations"] = False
+        else:
+            kwargs["allDestinations"] = True
+        if organization:
+            kwargs["organization"] = organization
+            kwargs["allOrganizations"] = False
+        else:
+            kwargs["allOrganizations"] = True
+
+        body = {}
+        if useAnyPath:
+            body["useAnyPath"] = useAnyPath
+        if useInException:
+            body["useInException"] = useInException
+        if wildcardFiles:
+            body["wildcardFiles"] = wildcardFiles
+        if wildcardPaths:
+            body["wildcardPaths"] = wildcardPaths
+
+        response, status = self.rest.passthrough.ExecuteRequest(url=url, mode="post", inputParams=kwargs, body=body)
+        if status:
+            return True
+        else:
+            assert False, f"failed to create exception, error: {response}"
+
