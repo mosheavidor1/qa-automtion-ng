@@ -1,18 +1,16 @@
 import allure
 import pytest
-from tests.inventory_tests.inventory_tests_base import InventoryTestsBase,InventoryTestType
 
 
 @allure.epic("Management")
 @allure.feature("Inventory")
-class InventorySystemComponentTests(InventoryTestsBase):
+class InventorySystemComponentTests:
 
     @pytest.mark.xray('EN-73319')
-    # @pytest.mark.testim_sanity
-    def test_check_all_component_appear_and_running(self, management):
+    def test_check_all_component_appear_and_running(self, inventory_function_fixture):
         """
         This test run Testim.io for check if collector is running
         """
-        self.management = management
-        self.test_type = InventoryTestType.TEST_CHECK_ALL_COMPONENT_APPEAR_AND_RUNNING
-        self.play_test()
+        management = inventory_function_fixture.get('management')
+        test_im_params = inventory_function_fixture.get('test_im_params')
+        management.ui_client.inventory.check_components_are_up(data=test_im_params)

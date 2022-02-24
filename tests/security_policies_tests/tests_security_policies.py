@@ -1,22 +1,25 @@
 import allure
 import pytest
 from infra.system_components.collector import Collector
-from tests.security_policies_tests.security_policies_tests_base import ExceptionsTestsBase
 
 
 @allure.epic("Management")
 @allure.feature("Security policies")
-class SecurityPoliciesTests(ExceptionsTestsBase):
+class SecurityPoliciesTests:
     collector: Collector = None
 
     @pytest.mark.xray('EN-73632')
-    # @pytest.mark.testim_sanity
-    def test_security_policies_simulation_mode(self, management):
+    def test_security_policies_simulation_mode(self, security_events_function_fixture):
         """
         This test run Testim.io for check system in simulation mode
         """
-        self.management = management
-        self.collector = self.management.collectors[0]
-        self.malware_name = "DynamicCodeTests.exe"
-        self.play_test()
+        management = security_events_function_fixture.get('management')
+        test_im_params = security_events_function_fixture.get('test_im_params')
+        malware_name = security_events_function_fixture.get('malware_name')
+        collector = security_events_function_fixture.get('collector')
+
+        management.ui_client.security_policies.set_policies(data=test_im_params.update({"securityPolicyMode": "Simulation"}))
+        management.ui_client.security_events.archive_all()
+        collector.create_event(malware_name=malware_name)
+        management.ui_client.security_events.check_if_event_in_simulation_block_mode(data=test_im_params)
 

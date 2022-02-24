@@ -1,6 +1,5 @@
 from enum import Enum
 import allure
-from infra.allure_report_handler.reporter import Reporter
 from infra.system_components.aggregator import Aggregator
 from infra.system_components.collector import Collector
 from tests.basic_test_lifecycle.base_test import BaseTest

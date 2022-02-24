@@ -1,31 +1,27 @@
 import allure
 import pytest
-from tests.frontend_tests.frontend_tests_base import FrontendTestsBase,FrontendTestType
 
 
 @allure.epic("Management")
 @allure.feature("General")
-# @pytest.mark.sanity
-class FrontendManagementTests(FrontendTestsBase):
+class FrontendManagementTests:
 
     @pytest.mark.xray('EN-73322')
-    # @pytest.mark.testim_sanity
     def test_navigation(self, management):
         """
         This test run Testim.io for check the navigation in management
         """
-        self.management = management
-        self.test_type = FrontendTestType.TEST_NAVIGATION
-        self.play_test()
+        malware_name = "DynamicCodeTests.exe"
+        test_im_params = {"eventName": malware_name}
+        management.ui_client.generic_functionality.ui_navigation(data=test_im_params)
 
     @pytest.mark.xray('EN-73620')
-    # @pytest.mark.testim_sanity
     def test_dashboard(self, management):
         """
         This test run Testim.io
         """
-        self.management = management
-        self.test_type = FrontendTestType.TEST_DASHBOARD
-        self.play_test()
+        malware_name = "DynamicCodeTests.exe"
+        test_im_params = {"eventName": malware_name}
+        management.ui_client.generic_functionality.ui_dashboard(data=test_im_params)
 
 

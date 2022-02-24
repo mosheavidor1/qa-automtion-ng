@@ -1,28 +1,26 @@
 import allure
 import pytest
-from tests.system_event_tests.system_event_tests_base import SystemEventTestsBase,SystemEventTestType
 
 
 @allure.epic("Management")
 @allure.feature("System event")
-class SystemEventTests(SystemEventTestsBase):
+class SystemEventTests:
 
     @pytest.mark.xray('EN-73349')
-    # @pytest.mark.testim_sanity
-    def test_export_PDF_report(self, management):
+    def test_export_PDF_report(self, system_events_function_fixture):
         """
         This test run Testim.io for check export PDF report from System event page
         """
-        self.management = management
-        self.test_type = SystemEventTestType.TEST_EXPORT_PDF_REPORT
-        self.play_test()
+        management = system_events_function_fixture.get('management')
+        test_im_params = system_events_function_fixture.get('test_im_params')
+
+        management.ui_client.system_events.export_pdf_report(test_im_params)
 
     @pytest.mark.xray('EN-73327')
-    # @pytest.mark.testim_sanity
-    def test_events_of_prevention_and_simulation(self, management):
+    def test_events_of_prevention_and_simulation(self, system_events_function_fixture):
         """
         This test run Testim.io for check that changed mode to simulation or prevention is recorded in system event
         """
-        self.management = management
-        self.test_type = SystemEventTestType.TEST_EVENTS_OF_PREVENTION_AND_SIMULATION
-        self.play_test()
+        management = system_events_function_fixture.get('management')
+        test_im_params = system_events_function_fixture.get('test_im_params')
+        management.ui_client.system_events.prevention_simulation(test_im_params)
