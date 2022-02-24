@@ -1,6 +1,6 @@
 import allure
 import pytest
-from tests.utils.collectors import CollectorUtils
+from tests.utils.collector_utils import CollectorUtils
 
 
 @allure.epic("Collectors")
