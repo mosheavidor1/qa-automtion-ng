@@ -1,89 +1,82 @@
 import allure
 import pytest
 
-from tests.inventory_tests.inventory_tests_base import InventoryTestsBase, InventoryTestType
-
 
 @allure.epic("Management")
 @allure.feature("Inventory")
-class InventoryCollectorsTests(InventoryTestsBase):
+class InventoryCollectorsTests:
 
     @pytest.mark.xray('EN-73621')
-    # @pytest.mark.testim_sanity
-    def test_check_collector_is_running(self, management):
+    def test_check_collector_is_running(self, inventory_function_fixture):
         """
         This test use Testim.io to check if the collector is running
         """
-        self.management = management
-        self.test_type = InventoryTestType.TEST_CHECK_COLLECTOR_IS_RUNNING
-        self.play_test()
+        management = inventory_function_fixture.get('management')
+        test_im_params = inventory_function_fixture.get('test_im_params')
+        management.ui_client.inventory.verify_collector_is_running(data=test_im_params)
 
     @pytest.mark.xray('EN-73324')
-    # @pytest.mark.testim_sanity
-    def test_export_PDF_report(self, management):
+    def test_export_PDF_report(self, inventory_function_fixture):
         """
         This test use Testim.io to check export of PDF report
         """
-        self.management = management
-        self.test_type = InventoryTestType.TEST_EXPORT_PDF_REPORT
-        self.play_test()
+        management = inventory_function_fixture.get('management')
+        test_im_params = inventory_function_fixture.get('test_im_params')
+        management.ui_client.collectors.export_pdf_report(data=test_im_params)
+        # TODO (yosef) validate that collectors from REST appear in the report
 
     @pytest.mark.xray('EN-73325')
-    # @pytest.mark.testim_sanity
-    def test_export_EXCEL_report(self, management):
+    def test_export_EXCEL_report(self, inventory_function_fixture):
         """
         This test use Testim.io to check export of EXCEL report
         """
-        self.management = management
-        self.test_type = InventoryTestType.TEST_EXPORT_EXCEL_REPORT
-        self.play_test()
+        management = inventory_function_fixture.get('management')
+        test_im_params = inventory_function_fixture.get('test_im_params')
+        management.ui_client.collectors.export_excel_report(data=test_im_params)
+        # TODO (yosef) validate that collectors from REST appear in the report
 
     @pytest.mark.xray('EN-73313')
-    # @pytest.mark.testim_sanity
-    def test_add_group(self, management):
+    def test_add_group(self, inventory_function_fixture):
         """
         This test use Testim.io to check adding group
         """
-        self.management = management
-        self.test_type = InventoryTestType.TEST_ADD_GROUP
-        self.play_test()
+        management = inventory_function_fixture.get('management')
+        test_im_params = inventory_function_fixture.get('test_im_params')
+        management.ui_client.collectors.add_group(data=test_im_params)
 
     @pytest.mark.xray('EN-73321')
-    # @pytest.mark.testim_sanity
-    def test_export_logs(self, management):
+    def test_export_logs(self, inventory_function_fixture):
         """
         This test use Testim.io for export collector logs
         """
-        self.management = management
-        self.test_type = InventoryTestType.TEST_EXPORT_LOGS
-        self.play_test()
+        management = inventory_function_fixture.get('management')
+        test_im_params = inventory_function_fixture.get('test_im_params')
+        management.ui_client.collectors.add_group(data=test_im_params)
+        # TODO: (yosef) validation that folder is not 0 KB
 
     @pytest.mark.xray('EN-73307')
-    # @pytest.mark.testim_sanity
-    def test_delete_grop(self, management):
+    def test_delete_grop(self, inventory_function_fixture):
         """
         This test use Testim.io for delete grup with and without the collector in the group
         """
-        self.management = management
-        self.test_type = InventoryTestType.TEST_DELETE_GROP
-        self.play_test()
+        management = inventory_function_fixture.get('management')
+        test_im_params = inventory_function_fixture.get('test_im_params')
+        management.ui_client.inventory.collector_group_deletion_test(data=test_im_params)
 
     @pytest.mark.xray('EN-73623')
-    # @pytest.mark.testim_sanity
-    def test_disabled_enabled_collector(self, management):
+    def test_disabled_enabled_collector(self, inventory_function_fixture):
         """
         This test use Testim.io for change mode of collector to disabled and enabled
         """
-        self.management = management
-        self.test_type = InventoryTestType.TEST_DISABLED_ENABLED_COLLECTOR
-        self.play_test()
+        management = inventory_function_fixture.get('management')
+        test_im_params = inventory_function_fixture.get('test_im_params')
+        management.ui_client.collectors.disabled_and_enabled_collector(data=test_im_params)
 
     @pytest.mark.xray('EN-73323')
-    # @pytest.mark.testim_sanity
-    def test_move_between_organization(self, management):
+    def test_move_between_organization(self, inventory_function_fixture):
         """
         This test use Testim.io for change mode of collector to disabled and enabled
         """
-        self.management = management
-        self.test_type = InventoryTestType.TEST_MOVE_BETWEEN_ORGANIZATION
-        self.play_test()
+        management = inventory_function_fixture.get('management')
+        test_im_params = inventory_function_fixture.get('test_im_params')
+        management.ui_client.collectors.move_between_organizations(data=test_im_params)

@@ -1,32 +1,25 @@
 import allure
 import pytest
-from tests.security_events_tests.security_event_tests_base import SecurityEvantTestsBase, SecurityEvantTestType
 
 
 @allure.epic("Management")
 @allure.feature("Security Events")
-class SecurityEventTests(SecurityEvantTestsBase):
+class SecurityEventTests:
 
     @pytest.mark.xray('EN-73626')
-    # @pytest.mark.testim_sanity
-    def test_security_event_export_excel_report(self, management):
+    def test_security_event_export_excel_report(self, security_events_function_fixture):
         """
         This test run Testim.io for export Excel report from event viewer page
         """
-        self.test_type = SecurityEvantTestType.TEST_SECURITY_EVENT_EXPORT_EXCEL_REPORT
-        self.management = management
-        self.collector = self.management.collectors[0]
-        self.malware_name = "DynamicCodeTests.exe"
-        self.play_test()
+        management = security_events_function_fixture.get('management')
+        test_im_params = security_events_function_fixture.get('test_im_params')
+        management.ui_client.security_events.export_excel_report(data=test_im_params)
 
     @pytest.mark.xray('EN-73627')
-    # @pytest.mark.testim_sanity
-    def test_security_event_export_PDF_report(self, management):
+    def test_security_event_export_PDF_report(self, security_events_function_fixture):
         """
         This test run Testim.io for export PDF report from event viewer page
         """
-        self.test_type = SecurityEvantTestType.TEST_SECURITY_EVENT_EXPORT_PDF_REPORT
-        self.management = management
-        self.collector = self.management.collectors[0]
-        self.malware_name = "DynamicCodeTests.exe"
-        self.play_test()
+        management = security_events_function_fixture.get('management')
+        test_im_params = security_events_function_fixture.get('test_im_params')
+        management.ui_client.security_events.export_pdf_report(data=test_im_params)
