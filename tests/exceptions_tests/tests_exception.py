@@ -1,11 +1,11 @@
-import time
-
 import allure
 import pytest
 
 from infra.assertion.assertion import Assertion, AssertTypeEnum
 from infra.system_components.management import Management
 from tests.exceptions_tests.conftest import ExceptionTestType
+from tests.utils.management_utils import ManagementUtils
+from tests.utils.collector_utils import CollectorUtils
 
 
 @allure.epic("Management")
@@ -33,11 +33,7 @@ class ExceptionsTests:
         event_id = exception_function_fixture.get("event_id")
 
         management.rest_api_client.create_exception(event_id)
-        management.rest_api_client.delete_all_events()
-        collector.create_event(malware_name=malware_name)
-        events = management.rest_api_client.get_security_events(validation_data={"process": malware_name},
-                                                                timeout=10, fail_on_no_events=False)
-        is_event_created = True if len(events) > 0 else False
+        is_event_created = ManagementUtils.create_excepted_event_and_check(management, collector, malware_name)
         Assertion.invoke_assertion(expected=False, actual=is_event_created,
                                    message=f'expected=event not created, actual=event created',
                                    assert_type=AssertTypeEnum.SOFT)
@@ -63,36 +59,36 @@ class ExceptionsTests:
         group_name = exception_function_fixture.get("group_name")
 
         management.rest_api_client.create_exception(event_id, groups=[group_name])
-        management.rest_api_client.move_collector({'ipAddress': collector.os_station.host_ip}, group_name)
-        management.rest_api_client.assign_policy('Exfiltration Prevention', group_name, timeout=1)
-        management.rest_api_client.assign_policy('Execution Prevention', group_name, timeout=1)
-        management.rest_api_client.assign_policy('Ransomware Prevention', group_name)
+        CollectorUtils.move_collector_and_assign_group_policies(management, collector, group_name)
 
-        management.rest_api_client.delete_all_events()
-        collector.create_event(malware_name=malware_name)
-        events = management.rest_api_client.get_security_events(validation_data={"process": malware_name},
-                                                                timeout=10, fail_on_no_events=False)
-        is_event_created = True if len(events) > 0 else False
+        is_event_created = ManagementUtils.create_excepted_event_and_check(management, collector, malware_name)
         Assertion.invoke_assertion(expected=False, actual=is_event_created,
                                    message=f'expected=event not created, actual=event created',
                                    assert_type=AssertTypeEnum.SOFT)
 
-    # @pytest.mark.xray('EN-68891')
-    # # @pytest.mark.testim_sanity
-    # # Partially covered exception - event created
-    # def test_create_partially_covered_exception_event_created(self, management):
-    #     """
-    #     steps:
-    #     1. create event DynamicCodeTests
-    #     2. crete exception for DynamicCodeTests with empty group
-    #     3. create same event - event should be created
-    #     """
-    #     self.test_type = ExceptionTestType.CREATE_PARTIALLY_COVERED_EXCEPTION_EVENT_CREATED
-    #     self.management = management
-    #     self.collector = self.management.collectors[0]
-    #     self.malware_name = "DynamicCodeTests.exe"
-    #     self.play_test()
-    #
+    @pytest.mark.parametrize('xray, exception_function_fixture',
+                             [('EN-68891', ExceptionTestType.CREATE_PARTIALLY_COVERED_EXCEPTION_EVENT_CREATED)],
+                             indirect=True)
+    @pytest.mark.sanity
+    def test_create_partially_covered_exception_event_created(self, xray, exception_function_fixture):
+        """
+        steps:
+        1. create event DynamicCodeTests
+        2. crete exception for DynamicCodeTests with empty group
+        3. create same event - event should be created because collector not in the group
+        """
+        management: Management = exception_function_fixture.get('management')
+        collector = exception_function_fixture.get('collector')
+        malware_name = exception_function_fixture.get('malware_name')
+        event_id = exception_function_fixture.get("event_id")
+        group_name = exception_function_fixture.get("group_name")
+
+        management.rest_api_client.create_exception(event_id, groups=[group_name])
+        is_event_created = ManagementUtils.create_excepted_event_and_check(management, collector, malware_name)
+        Assertion.invoke_assertion(expected=True, actual=is_event_created,
+                                   message=f'expected=event created, actual=event not created',
+                                   assert_type=AssertTypeEnum.SOFT)
+
     # @pytest.mark.xray('EN-68885')
     # # @pytest.mark.testim_sanity
     # def test_edit_fully_covered_exception(self, management):

@@ -10,7 +10,7 @@ from infra.system_components.collector import Collector
 from infra.system_components.core import Core
 from infra.system_components.management import Management
 from infra.utils.utils import StringUtils
-from tests.utils.collectors import CollectorUtils
+from tests.utils.collector_utils import CollectorUtils
 
 import json
 import os

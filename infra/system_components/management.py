@@ -20,7 +20,7 @@ from infra.system_components.forti_edr_linux_station import FortiEdrLinuxStation
 from infra.system_components.windows_collector import WindowsCollector
 from infra.test_im.management_ui_client import ManagementUiClient
 from infra.utils.utils import StringUtils
-from tests.utils.collectors import CollectorUtils
+from tests.utils.collector_utils import CollectorUtils
 
 
 @Singleton
