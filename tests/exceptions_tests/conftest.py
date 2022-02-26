@@ -17,8 +17,8 @@ def exception_function_fixture(management, request):
     test_flow = request.param
 
     malware_name = "DynamicCodeTests.exe"
-    test_im_params = {}
     group_name = "empty"
+    destination = "IP set"
 
     management.rest_api_client.delete_all_exceptions(timeout=1)
     management.rest_api_client.delete_all_events()
@@ -38,18 +38,13 @@ def exception_function_fixture(management, request):
 
             management.rest_api_client.create_group(group_name)
 
-            match test_flow:
-                case ExceptionTestType.EDIT_FULL_COVERED_EXCEPTION | \
-                     ExceptionTestType.EDIT_PARTIALLY_COVERED_EXCEPTION:
-                    test_im_params.update({"destination": ["IP set"]})
-
     test_resources = {
         'management': management,
         'collector': collector,
-        'create_exception_testim_params': test_im_params,
         'malware_name': malware_name,
         'event_id': event_id,
-        'group_name': group_name
+        'group_name': group_name,
+        'destination': destination
 
     }
     yield test_resources
@@ -59,13 +54,11 @@ def exception_function_fixture(management, request):
 
     match test_flow:
         case ExceptionTestType.CREATE_PARTIALLY_COVERED_EXCEPTION | \
-             ExceptionTestType.EDIT_FULL_COVERED_EXCEPTION | \
-             ExceptionTestType.EDIT_PARTIALLY_COVERED_EXCEPTION | \
              ExceptionTestType.CREATE_PARTIALLY_COVERED_EXCEPTION_EVENT_CREATED:
 
             management.rest_api_client.move_collector({'ipAddress': collector.os_station.host_ip}, start_group)
 
             match test_flow:
                 case ExceptionTestType.CREATE_PARTIALLY_COVERED_EXCEPTION:
-                    test_im_params.update({"groupName": [group_name]})
+                    test_im_params = {"groupName": [group_name]}
                     management.ui_client.inventory.delete_group(data=test_im_params)

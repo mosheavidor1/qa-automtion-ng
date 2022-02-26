@@ -133,6 +133,29 @@ class ManagementUiClient:
                                           assert_type=assert_type,
                                           test_timeout=test_timeout)
 
+        def edit_exceptions(self,
+                            data: dict = None,
+                            assert_type: AssertTypeEnum = AssertTypeEnum.HARD,
+                            test_timeout: int = 600):
+            if "groups" in data.keys():
+                self.parent.start_testim_flow(test_name="Edit group",
+                                              management_ui_ip=self.parent.management_ui_ip,
+                                              data=data,
+                                              assert_type=assert_type,
+                                              test_timeout=test_timeout)
+            if "destinations" in data.keys():
+                self.parent.start_testim_flow(test_name="Edit destination",
+                                              management_ui_ip=self.parent.management_ui_ip,
+                                              data=data,
+                                              assert_type=assert_type,
+                                              test_timeout=test_timeout)
+            if "users" in data.keys():
+                self.parent.start_testim_flow(test_name="Edit user",
+                                              management_ui_ip=self.parent.management_ui_ip,
+                                              data=data,
+                                              assert_type=assert_type,
+                                              test_timeout=test_timeout)
+
     class FortiEdrSecurityEvents:
 
         def __init__(self, parent):
