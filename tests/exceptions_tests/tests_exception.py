@@ -1,7 +1,6 @@
 import allure
 import pytest
 
-from infra.assertion.assertion import Assertion, AssertTypeEnum
 from infra.system_components.management import Management
 from tests.exceptions_tests.conftest import ExceptionTestType
 from tests.utils.management_utils import ManagementUtils
