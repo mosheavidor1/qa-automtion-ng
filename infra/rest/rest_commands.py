@@ -381,4 +381,3 @@ class RestCommands(object):
             return True
         else:
             assert False, f"failed to create exception, error: {response}"
-
