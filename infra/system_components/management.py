@@ -17,7 +17,7 @@ from infra.system_components.aggregator import Aggregator
 from infra.system_components.collector import Collector
 from infra.system_components.core import Core
 from infra.system_components.forti_edr_linux_station import FortiEdrLinuxStation
-from infra.system_components.windows_collector import WindowsCollector
+from infra.system_components.collectors.windows_os.windows_collector import WindowsCollector
 from infra.test_im.management_ui_client import ManagementUiClient
 from infra.utils.utils import StringUtils
 from tests.utils.collector_utils import CollectorUtils
