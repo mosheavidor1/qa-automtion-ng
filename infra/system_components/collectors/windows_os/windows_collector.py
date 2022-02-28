@@ -11,10 +11,16 @@ from infra.enums import SystemState, OsTypeEnum
 from infra.system_components.collector import Collector
 from infra.utils.utils import StringUtils
 from sut_details import management_registration_password
+from infra.system_components.collectors.windows_os.windows_collector_installation_utils import (
+    create_uninstallation_script,
+    get_installer_path,
+    generate_installation_cmd
+)
 
 INTERVAL_WAIT_FOR_SERVICE = 5
 MAX_WAIT_FOR_SERVICE = 60
 REGISTRATION_PASS = management_registration_password
+DEFAULT_AGGREGATOR_PORT = 8081
 
 
 class WindowsCollector(Collector):
@@ -38,10 +44,7 @@ class WindowsCollector(Collector):
         self.__counters_file: str = fr"{self.__program_data}\Logs\Driver\counters.txt"
         self.__crash_dumps_dir: str = fr"{self.program_data}\CrashDumps\Collector"
         self.__crash_dumps_info: str = fr"{self.__crash_dumps_dir}\crash_dumps_info.txt"
-        self.__target_versions_path: str = "C:\\Versions"
-        self.__target_helper_bat_files_path: str = "C:\\HelperBatFiles"
         self.__target_logs_folder: str = "C:\\ParsedLogsFolder"
-        self.__install_uninstall_logs_file_path: str = "C:\\InstallUninstallLogs"
         self.__memory_dmp_file_path: str = r'C:\WINDOWS\memory.dmp'
         self.__collected_crash_dump_dedicated_folder: str = r'C:\CrashDumpsCollected'
         self.__collector_logs_folder: str = f"{self.__program_data}\Logs"
@@ -265,132 +268,39 @@ class WindowsCollector(Collector):
             assert False, "Failed to start collector service, check what happens in logs"
 
     @allure.step("{0} - Install FortiEDR Collector")
-    def install_collector(self,
-                          version: str,
-                          aggregator_ip: str,
-                          organization: str = None,
-                          aggregator_port: int = 8081,
-                          registration_password: str = '12345678',
-                          append_log_to_report=True):
+    def install_collector(self, version: str, aggregator_ip: str, logs_path: str,
+                          aggregator_port: int = None, registration_pass: str = None):
 
-        if version is None:
-            version = self.get_version()
+        aggregator_port = aggregator_port or DEFAULT_AGGREGATOR_PORT
+        registration_pass = registration_pass or REGISTRATION_PASS
+        version = version or self.get_version()
+        installer_path = get_installer_path(self, version)
 
-        # create install-uninstall logs folder
-        logs_folder = self.os_station.create_new_folder(folder_path=fr'{self.__install_uninstall_logs_file_path}')
-        target_path_in_local_machine = rf'{self.__target_versions_path}\{version}'
-
-        install_logs_file_name = f"install_logs_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.txt"
-        install_log_file_name = fr"{logs_folder}\{install_logs_file_name}"
-
-        shared_drive_path = rf'{third_party_details.SHARED_DRIVE_VERSIONS_PATH}\{version}'
-
-        installer_file_name = fr"FortiEDRCollectorInstaller#archi#_{version}.msi"
-        if '64-bit' in self.os_station.os_architecture:
-            installer_file_name = installer_file_name.replace('#archi#', '64')
-        elif '32-bit' in self.os_station.os_architecture:
-            installer_file_name = installer_file_name.replace('#archi#', '32')
-        else:
-            raise Exception(
-                f"Can not conduct installer file name since os station architecture is unknowns: {self.os_station.os_architecture}")
-
-        installation_files_folder = self.os_station.copy_files_from_shared_folder(
-            target_path_in_local_machine=target_path_in_local_machine,
-            shared_drive_path=shared_drive_path,
-            shared_drive_user_name=third_party_details.USER_NAME,
-            shared_drive_password=third_party_details.PASSWORD,
-            files_to_copy=[installer_file_name])
-
-        full_installation_file_path = fr'{installation_files_folder}\{installer_file_name}'
-        is_copied_successfully = self.os_station.is_path_exist(path=full_installation_file_path)
-        if not is_copied_successfully:
-            assert False, f"Desired installer file: {installer_file_name} is not found in {installation_files_folder}"
-
-        cmd = rf'msiexec /i "{full_installation_file_path}" /qn AGG={aggregator_ip}:{aggregator_port} PWD={registration_password} /LIME {install_log_file_name}'
+        cmd = generate_installation_cmd(installer_path, aggregator_ip, aggregator_port, registration_pass, logs_path)
         self.os_station.execute_cmd(cmd=cmd, fail_on_err=True)
-
         self._process_id = self.get_current_process_id()
-        if self._process_id is None:
-            assert False, "Collector process id can not be None - Failing"
-
-        if append_log_to_report:
-            try:
-                log_content = self.os_station.get_file_content(file_path=install_log_file_name)
-                Reporter.attach_str_as_file(file_name=install_log_file_name, file_content=log_content)
-            except Exception as e:
-                Reporter.report("Faied to append log content into allure report")
 
     @allure.step("{0} - Uninstall FortiEDR Collector")
-    def uninstall_collector(self, registration_password: str = '12345678', append_log_to_report=True):
-        uninstall_script_file_name = 'uninstall_collector.bat'
-        uninstall_logs_file_name = f"uninstall_logs_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.txt"
-
-        # create .bat file with the content above
-        helper_bath_folder = self.os_station.create_new_folder(folder_path=fr'{self.__target_helper_bat_files_path}')
-
-        # create install-uninstall logs folder
-        logs_folder = self.os_station.create_new_folder(folder_path=fr'{self.__install_uninstall_logs_file_path}')
-
-        uninstall_log_file_name = fr"{logs_folder}\{uninstall_logs_file_name}"
-
-        script_content = f"""for /f %%a in (
-'wmic product where "Name='Fortinet Endpoint Detection and Response Platform'" get IdentifyingNumber^^^|findstr "{{"'
-) do set "val=%%a"
-msiexec.exe /x %val% /qn UPWD="{registration_password}" RMCONFIG=1 /l*vx {uninstall_log_file_name}
-"""
-
-        uninstall_script_full_path = fr'{helper_bath_folder}\{uninstall_script_file_name}'
-        is_uninstall_script_exist = self.os_station.is_path_exist(path=uninstall_script_full_path)
-        if is_uninstall_script_exist:
-            self.os_station.remove_file(file_path=uninstall_script_full_path)
-
-        self.os_station.overwrite_file_content(content=script_content, file_path=uninstall_script_full_path)
-
-        # execute the script
-        self.os_station.execute_cmd(cmd=uninstall_script_full_path, asynchronous=True)
-
-        self.wait_until_no_forti_service_exist(timeout=5*60)
-
-        # update process id to None
-        self._process_id = None
-
-        self.wait_until_installation_folder_will_be_empty(timeout=2*60)
-
-        if append_log_to_report:
-            log_content = self.os_station.get_file_content(file_path=uninstall_log_file_name)
-            Reporter.attach_str_as_file(file_name=uninstall_log_file_name, file_content=log_content)
-
-    @allure.step("{0} - Wait until fortiEDR service won't be exist in tasklist")
-    def wait_until_no_forti_service_exist(self, timeout=300):
-        no_forti_service = False
-        start_time = time.time()
-        while not no_forti_service and time.time() - start_time < timeout:
-            pid = self.get_current_process_id()
-            if pid is None:
-                no_forti_service = True
-            else:
-                time.sleep(10)
-
-        if not no_forti_service:
-            assert False, f"Uninstalled didn't complete within {timeout} seconds"
+    def uninstall_collector(self, logs_path, registration_password=None):
+        registration_password = registration_password or REGISTRATION_PASS
+        uninstall_script_path = create_uninstallation_script(self, registration_password, logs_path)
+        self.os_station.execute_cmd(cmd=uninstall_script_path, asynchronous=False)
+        self._process_id = self.get_current_process_id()
 
     @allure.step("{0} - Wait until installation folder will be empty")
-    def wait_until_installation_folder_will_be_empty(self, timeout: int = 180):
-        is_installation_folder_empty = False
+    def wait_until_installation_folder_will_be_empty(self, timeout: int = 30, interval_sec=5):
+        is_installation_folder_empty = self.is_installation_folder_empty()
         start_time = time.time()
+
         while not is_installation_folder_empty and time.time() - start_time < timeout:
-            list_of_files_installation_folder = self.os_station.get_list_of_files_in_folder(
-                folder_path=self.__collector_installation_path)
+            time.sleep(interval_sec)
+            is_installation_folder_empty = self.is_installation_folder_empty()
 
-            if list_of_files_installation_folder is None or len(list_of_files_installation_folder) == 0:
-                is_installation_folder_empty = True
+        assert is_installation_folder_empty, f"Installation folder contains files, should be empty"
 
-            else:
-                time.sleep(10)
-
-        if not is_installation_folder_empty:
-            # assert False, "Installation folder still contains files, should be empty"
-            print("Installation folder still contains files, should be empty")
+    def is_installation_folder_empty(self):
+        files = self.os_station.get_list_of_files_in_folder(folder_path=self.__collector_installation_path)
+        return files is None or len(files) == 0
 
     @allure.step("{0} - Copy log parser to machine")
     def copy_log_parser_to_machine(self):

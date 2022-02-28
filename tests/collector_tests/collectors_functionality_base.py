@@ -15,7 +15,6 @@ class CollectorFunctionalityTestType(Enum):
     STOP_START_COLLECTOR = 'STOP_START_COLLECTOR'
     STOP_COLLECTOR_CHECK_IS_UP_FAIL_ON_PURPOSE = 'STOP_COLLECTOR_CHECK_IS_UP_FAIL_ON_PURPOSE'
     CREATE_FAKE_DUMP_FILE = 'CREATE_FAKE_DUMP_FILE'
-    INSTALL_UNINSTALL = 'INSTALL_UNINSTALL'
     TEST_WITH_SOFT_ASSERT = 'TEST_WITH_SOFT_ASSERT'
 
 
@@ -43,9 +42,6 @@ class CollectorsTestsBase(BaseTest):
             self.management.collectors[0].os_station.execute_cmd(
                 cmd=rf'echo "This is a dummy crash file with dummy content" > {self.crash_folder_path}\{self.crash_file_name} ')
 
-        elif self.test_type == CollectorFunctionalityTestType.INSTALL_UNINSTALL:
-            self.collector.validate_collector_is_up_and_running()
-
     @allure.step("Run and validate")
     def run_and_validate(self):
         if self.test_type == CollectorFunctionalityTestType.STOP_COLLECTOR_CHECK_IS_UP_FAIL_ON_PURPOSE:
@@ -56,12 +52,6 @@ class CollectorsTestsBase(BaseTest):
             is_file_exist = self.management.collectors[0].os_station.is_path_exist(path=rf'{self.crash_folder_path}\{self.crash_file_name}')
             if is_file_exist:
                 Reporter.report("The crash file exist :) - just a print")
-
-        elif self.test_type == CollectorFunctionalityTestType.INSTALL_UNINSTALL:
-            self.collector.uninstall_collector()
-            self.collector.install_collector(version=self.collector.details.version,
-                                             aggregator_ip=self.aggregator.host_ip)
-            self.collector.validate_collector_is_up_and_running(use_health_monitor=False)
 
         elif self.test_type == CollectorFunctionalityTestType.TEST_WITH_SOFT_ASSERT:
             Reporter.report('Going to add soft assert')

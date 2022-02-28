@@ -306,7 +306,7 @@ class WindowsStation(OsStation):
         if " " in folder_path:
             folder_path = f'"{folder_path}"'
         result = self.execute_cmd(cmd=f'dir /b {folder_path}', return_output=True, fail_on_err=False)
-        if result is None or 'file not found'.lower() in result:
+        if result is None or 'file not found' in result.lower():
             return None
 
         files = result.split('\n')

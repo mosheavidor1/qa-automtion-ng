@@ -1,6 +1,9 @@
 import allure
+from datetime import datetime
 from infra.enums import SystemState
 from infra.system_components.collector import Collector
+
+INSTALL_UNINSTALL_LOGS_FOLDER_PATH = "C:\\InstallUninstallLogs"
 
 
 class CollectorUtils:
@@ -47,3 +50,15 @@ class CollectorUtils:
         management.rest_api_client.assign_policy('Exfiltration Prevention', group_name, timeout=1)
         management.rest_api_client.assign_policy('Execution Prevention', group_name, timeout=1)
         management.rest_api_client.assign_policy('Ransomware Prevention', group_name)
+
+    @staticmethod
+    def create_logs_path(collector: Collector, prefix):
+        logs_file_name = f"{prefix}_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.txt"
+        logs_folder = collector.os_station.create_new_folder(fr'{INSTALL_UNINSTALL_LOGS_FOLDER_PATH}')
+        logs_path = fr"{logs_folder}\{logs_file_name}"
+        return logs_path
+
+    @staticmethod
+    def validate_installation_folder_is_empty(collector: Collector):
+        is_empty = collector.is_installation_folder_empty()
+        assert is_empty, f"Installation folder contains files, should be empty"
