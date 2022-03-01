@@ -1,5 +1,6 @@
 import random
 import re
+import time
 from enum import Enum
 from typing import List
 
@@ -138,6 +139,26 @@ class WindowsStation(OsStation):
             self._remote_connection_session.remove_service()
             self._remote_connection_session.disconnect()
             self._remote_connection_session = None
+
+    @allure.step("Reboot")
+    def reboot(self):
+        time_to_sleep_before_shutdown = 0
+        time_to_sleep_after_shutdown = time_to_sleep_before_shutdown + 5
+        cmd = f'shutdown -r -t {time_to_sleep_before_shutdown}'
+        self.execute_cmd(cmd=cmd, fail_on_err=True, return_output=True, attach_output_to_report=True)
+        time.sleep(time_to_sleep_after_shutdown)
+
+        timeout = 5 * 60
+        is_system_up = False
+        start_time = time.time()
+        while time.time() - start_time < timeout and not is_system_up:
+            try:
+                self.connect()
+                is_system_up = True
+            except:
+                time.sleep(5)
+
+        assert is_system_up, f"Failed to connect to machine after reboot within {timeout}"
 
     @allure.step("Stop service {service_name}")
     def stop_service(self, service_name: str) -> str:

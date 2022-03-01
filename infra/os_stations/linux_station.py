@@ -108,6 +108,9 @@ class LinuxStation(OsStation):
     def start_service(self, service_name: str):
         raise Exception("Not Implemented yet")
 
+    @allure.step("Reboot")
+    def reboot(self):
+        raise Exception("Not Implemented yet")
 
     @allure.step("Get current linux machine date time")
     def get_current_machine_datetime(self, date_format="'+%d/%m/%Y %H:%M:%S'"):
