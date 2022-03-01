@@ -293,6 +293,14 @@ def collector_logs(management):
     append_logs_from_collectors(collectors=management.collectors, initial_time_stamp_dict=start_time_dict)
 
 
+@pytest.fixture(scope="session", autouse=sut_details.debug_mode)
+def reset_driver_verifier_for_all_collectors(management):
+    collectors = management.collectors
+    for collector in collectors:
+        collector.os_station.execute_cmd(cmd='Verifier.exe /reset', fail_on_err=False)
+        collector.os_station.reboot()
+
+
 @pytest.fixture(scope="function", autouse=True)
 def check_if_collector_has_crashed(management):
     Reporter.report("Nothing to show at the beginning of the run")

@@ -133,6 +133,10 @@ class OsStation(metaclass=ABCMeta):
         pass
 
     @abstractmethod
+    def reboot(self):
+        pass
+
+    @abstractmethod
     def stop_service(self, service_name: str):
         pass
 
