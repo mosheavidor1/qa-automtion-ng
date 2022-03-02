@@ -362,5 +362,7 @@ class Management(FortiEdrLinuxStation):
 
         return SystemState.NOT_RUNNING
 
-
+    def is_collector_status_running_in_mgmt(self, collector):
+        collector_ip = collector.os_station.host_ip
+        return self.get_collector_status(collector_ip) == SystemState.RUNNING
 

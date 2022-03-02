@@ -58,7 +58,7 @@ class OsXCollector(Collector):
     def get_collector_status(self):
         pass
 
-    def validate_collector_is_up_and_running(self, use_health_monitor: bool = False, timeout=60, validation_delay=5):
+    def is_status_running_in_cli(self):
         pass
 
     def start_health_mechanism(self):

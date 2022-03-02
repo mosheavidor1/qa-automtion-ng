@@ -137,6 +137,9 @@ class WindowsCollector(Collector):
     def is_enabled(self):
         pass
 
+    def is_status_running_in_cli(self):
+        return self.get_collector_status() == SystemState.RUNNING
+
     @allure.step("{0} - Copy collected crash dumps to C:\CrashDumpsCollected")
     def __move_crash_files_to_dedicated_crash_folder_files(self, dumps_files: List[str]):
         """
@@ -215,7 +218,7 @@ class WindowsCollector(Collector):
 
         return crash_dumps_list
 
-    @allure.step("{0} - Get collector status")
+    @allure.step("{0} - Get collector status via cli")
     def get_collector_status(self) -> SystemState:
         cmd = f'"{self.__collector_service_exe}" --status'
         response = self.os_station.execute_cmd(cmd=cmd, return_output=True, fail_on_err=False)
@@ -229,34 +232,6 @@ class WindowsCollector(Collector):
             system_state = SystemState.RUNNING
 
         return system_state
-
-    @allure.step("{0} - Validate collector is up and running")
-    def validate_collector_is_up_and_running(self,
-                                             use_health_monitor: bool = False,
-                                             timeout: int = MAX_WAIT_FOR_SERVICE,
-                                             validation_delay: int = INTERVAL_WAIT_FOR_SERVICE):
-        start_time = time.time()
-        curr_status = self.get_collector_status()
-
-        while time.time() - start_time < timeout and curr_status != SystemState.RUNNING:
-            curr_status = self.get_collector_status()
-            if curr_status == SystemState.RUNNING:
-                Reporter.report("Collector is up and running :)")
-                break
-            elif curr_status == SystemState.NOT_RUNNING:
-                Reporter.report(f"Collector is not up and running :(, going to sleep "
-                                f"{validation_delay} seconds and check again")
-                time.sleep(validation_delay)
-            else:
-                assert False, f"Unknown collector state {curr_status.name}"
-
-        if curr_status != SystemState.RUNNING:
-            if use_health_monitor:
-                self.start_health_mechanism()
-            else:
-                assert False, f"Collector state is {curr_status.name} after waiting {timeout} seconds"
-        assert self.get_current_process_id() is not None, \
-            f"Collector on host {self} returning wrong status because pid does not exist"
 
     @allure.step('{0} - Start health mechanism')
     def start_health_mechanism(self):

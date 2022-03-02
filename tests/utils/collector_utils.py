@@ -1,9 +1,13 @@
+import functools
 import allure
 from datetime import datetime
 from infra.enums import SystemState
 from infra.system_components.collector import Collector
+from .test_utils import TestUtils
 
 INSTALL_UNINSTALL_LOGS_FOLDER_PATH = "C:\\InstallUninstallLogs"
+COLLECTOR_KEEPALIVE_INTERVAL = 5
+MAX_WAIT_FOR_STATUS = 2 * COLLECTOR_KEEPALIVE_INTERVAL
 
 
 class CollectorUtils:
@@ -24,14 +28,30 @@ class CollectorUtils:
     @staticmethod
     @allure.step("{0} - Validate collector is currently running")
     def validate_collector_is_currently_running(collector: Collector):
-        collector_status = collector.get_collector_status()
-        assert collector_status == SystemState.RUNNING, f"{collector} is not running"
+        is_status_running = collector.is_status_running_in_cli()
+        assert is_status_running, f"{collector} status is not running"
 
     @staticmethod
     @allure.step("Validate collector is currently running according to the management")
     def validate_collector_is_currently_running_according_to_management(management, collector: Collector):
-        collector_status_management = management.get_collector_status(collector_ip=collector.os_station.host_ip)
-        assert collector_status_management == SystemState.RUNNING, f"{collector} is not running"
+        is_status_running = management.is_collector_status_running_in_mgmt(collector)
+        assert is_status_running, f"{collector} status is not running in MGMT: {management}"
+
+    @staticmethod
+    @allure.step("Wait for a running status of {collector} in {management}")
+    def wait_for_running_collector_status_in_mgmt(management, collector, timeout=None):
+        timeout = timeout or MAX_WAIT_FOR_STATUS
+        predict_condition_func = functools.partial(management.is_collector_status_running_in_mgmt, collector)
+        TestUtils.wait_for_predict_condition(predict_condition_func=predict_condition_func,
+                                             timeout_sec=timeout, interval_sec=COLLECTOR_KEEPALIVE_INTERVAL)
+
+    @staticmethod
+    @allure.step("Wait for a running status of {collector} in cli")
+    def wait_for_running_collector_status_in_cli(collector, timeout=None):
+        timeout = timeout or MAX_WAIT_FOR_STATUS
+        predict_condition_func = collector.is_status_running_in_cli
+        TestUtils.wait_for_predict_condition(predict_condition_func=predict_condition_func,
+                                             timeout_sec=timeout, interval_sec=COLLECTOR_KEEPALIVE_INTERVAL)
 
     @staticmethod
     @allure.step("Validate that collector state is equal both on management and on the machine command line")
