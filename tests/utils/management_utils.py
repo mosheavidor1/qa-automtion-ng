@@ -20,3 +20,16 @@ class ManagementUtils:
         Assertion.invoke_assertion(expected=expected_result, actual=is_event_created,
                                    message=r"event was\wasn't created as expected",
                                    assert_type=AssertTypeEnum.SOFT)
+
+    @staticmethod
+    @allure.step("validate exception exists with given parameters")
+    def validate_exception(management, process, event_id=None, group='All Collector Groups',
+                           destination='All Destinations', user='All Users'):
+        exceptions = management.rest_api_client.get_exceptions()
+        for exception in exceptions:
+            if process in str(exception) and \
+                    exception['selectedCollectorGroups'] == group and \
+                    exception['selectedDestinations'] == destination and \
+                    exception['selectedUsers'] == user:
+                return True
+        return False

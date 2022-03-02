@@ -95,12 +95,12 @@ class ExceptionsTests:
         event_id = exception_function_fixture.get("event_id")
         group_name = exception_function_fixture.get("group_name")
         destination = exception_function_fixture.get("destination")
+        malware_name = exception_function_fixture.get('malware_name')
 
         management.rest_api_client.create_exception(event_id)
-
-        management.ui_client.exceptions.edit_exceptions({"groups": [group_name]})
-
-        management.ui_client.exceptions.edit_exceptions({"destination": [destination]})
+        management.ui_client.exceptions.edit_exceptions({"groups": [group_name]}, {"destination": [destination]})
+        ManagementUtils.validate_exception(management, process=malware_name, event_id=event_id, group=group_name,
+                                           destination=destination)
 
     @pytest.mark.parametrize('xray, exception_function_fixture',
                              [('EN-68888', ExceptionTestType.EDIT_PARTIALLY_COVERED_EXCEPTION)],
@@ -117,10 +117,14 @@ class ExceptionsTests:
         event_id = exception_function_fixture.get("event_id")
         group_name = exception_function_fixture.get("group_name")
         destination = exception_function_fixture.get("destination")
+        malware_name = exception_function_fixture.get('malware_name')
 
         management.rest_api_client.create_exception(event_id, groups=[group_name])
+        ManagementUtils.validate_exception(management, process=malware_name, event_id=event_id, group=group_name)
 
         management.ui_client.exceptions.edit_exceptions({"destination": [destination]})
+        ManagementUtils.validate_exception(management, process=malware_name, event_id=event_id, group=group_name,
+                                           destination=destination)
 
     # @pytest.mark.xray('EN-73320')
     # # @pytest.mark.testim_sanity
