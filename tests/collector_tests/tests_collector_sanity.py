@@ -9,8 +9,7 @@ from infra.allure_report_handler.reporter import Reporter
 @allure.feature("Basic Functionality")
 @pytest.mark.sanity
 @pytest.mark.xray('EN-73287')
-# def test_stop_start_collector_a(collector):
-def test_stop_start_collector_a(management, collector):
+def test_stop_start_collector(management, collector):
     """
     1. Stop a running collector and validate it stopped.
     2. Start collector and validate it started successfully.
@@ -21,9 +20,8 @@ def test_stop_start_collector_a(management, collector):
 
     with allure.step(f"Start {collector} and validate"):
         collector.start_collector()
-        CollectorUtils.validate_collector_is_currently_running_according_to_management(management=management,
-                                                                                       collector=collector)
-        # CollectorUtils.validate_collector_is_currently_running(collector)
+        # CollectorUtils.wait_for_running_collector_status_in_cli(collector)
+        CollectorUtils.wait_for_running_collector_status_in_mgmt(management, collector)
 
 
 @allure.epic("Collectors")
@@ -59,4 +57,5 @@ def test_install_uninstall_collector(management, collector):
             Reporter.report(f"Validate {collector} installed successfully:")
             process_id = collector.get_current_process_id()
             assert process_id is not None, f"{collector} is not alive with pid: {process_id}"
-            collector.validate_collector_is_up_and_running()
+            CollectorUtils.wait_for_running_collector_status_in_cli(collector)
+            CollectorUtils.wait_for_running_collector_status_in_mgmt(management, collector)
