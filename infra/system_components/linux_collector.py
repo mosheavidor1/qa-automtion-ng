@@ -68,6 +68,9 @@ class LinuxCollector(Collector):
     def start_health_mechanism(self):
         pass
 
+    def reboot(self):
+        pass
+
     def install_collector(self, version: str, aggregator_ip: str, organization: str = None, aggregator_port: int = 8081,
                           registration_password: str = '12345678', append_log_to_report=True):
         pass

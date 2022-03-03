@@ -28,6 +28,9 @@ class OsXCollector(Collector):
     def get_collector_info_from_os(self):
         pass
 
+    def reboot(self):
+        pass
+
     def stop_collector(self, password: str):
         pass
 

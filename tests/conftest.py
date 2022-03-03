@@ -362,7 +362,7 @@ def reset_driver_verifier_for_all_collectors(management):
     collectors = management.collectors
     for collector in collectors:
         collector.os_station.execute_cmd(cmd='Verifier.exe /reset', fail_on_err=False)
-        collector.os_station.reboot()
+        collector.reboot()
 
 
 @pytest.fixture(scope="function", autouse=True)
