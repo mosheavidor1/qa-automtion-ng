@@ -5,9 +5,8 @@ import allure
 import sut_details
 from infra.allure_report_handler.reporter import Reporter
 from infra.assertion.assertion import Assertion
-from infra.system_components.aggregator import Aggregator
 from infra.system_components.collector import Collector
-from infra.system_components.core import Core
+from infra.system_components.forti_edr_linux_station import FortiEdrLinuxStation
 from infra.system_components.management import Management
 from infra.utils.utils import StringUtils
 from tests.utils.collector_utils import CollectorUtils
@@ -265,25 +264,90 @@ def revert_to_snapshot(management):
     yield
 
 
+@allure.step("Get machines current time stamps")
+def get_forti_edr_machines_time_stamp_as_dict(forti_edr_stations: List[FortiEdrLinuxStation],
+                                              machine_date_format):
+    new_dict = {}
+    for station in forti_edr_stations:
+        with allure.step(f"Get {station} current date time"):
+            date_time = station.get_current_machine_datetime(date_format=machine_date_format)
+            Reporter.report(f"{station} current time stamp is: {date_time}")
+            new_dict[station] = date_time
+
+    return new_dict
+
+
+def append_logs_from_forti_edr_linux_station(initial_timestamps_dict: dict,
+                                             forti_edr_stations: List[FortiEdrLinuxStation],
+                                             machine_timestamp_date_format,
+                                             log_timestamp_date_format,
+                                             log_timestamp_date_format_regex_linux,
+                                             log_file_datetime_regex_python):
+    for station in forti_edr_stations:
+        try:
+            time_stamp = initial_timestamps_dict.get(station)
+            station.append_logs_to_report_by_given_timestamp(first_log_timestamp=time_stamp,
+                                                             machine_timestamp_date_format=machine_timestamp_date_format,
+                                                             log_timestamp_date_format=log_timestamp_date_format,
+                                                             log_timestamp_date_format_regex_linux=log_timestamp_date_format_regex_linux,
+                                                             log_file_datetime_regex_python=log_file_datetime_regex_python)
+        except Exception as e:
+            Reporter.report(f"Failed to add logs from core to report, original exception: {str(e)}")
+
+
 @pytest.fixture(scope="function", autouse=sut_details.debug_mode)
 def management_logs(management):
-    clear_logs_from_management(management=management)
+    machine_date_format = "%Y-%m-%d %H:%M:%S"
+    log_date_format = "%Y-%m-%d %H:%M:%S"
+    log_timestamp_date_format_regex = "[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1]) ([0-1][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]"
+    log_file_datetime_regex_python = '(\d+)-(\d+)-(\d+)\s+(\d+):(\d+):(\d+)'
+
+    time_stamps_dict = get_forti_edr_machines_time_stamp_as_dict(forti_edr_stations=[management],
+                                                                 machine_date_format=machine_date_format)
     yield
-    append_logs_from_management(management)
+    append_logs_from_forti_edr_linux_station(initial_timestamps_dict=time_stamps_dict,
+                                             forti_edr_stations=[management],
+                                             machine_timestamp_date_format=machine_date_format,
+                                             log_timestamp_date_format=log_date_format,
+                                             log_timestamp_date_format_regex_linux=log_timestamp_date_format_regex,
+                                             log_file_datetime_regex_python=log_file_datetime_regex_python)
 
 
 @pytest.fixture(scope="function", autouse=sut_details.debug_mode)
 def aggregator_logs(management):
-    clear_logs_from_all_aggregators(aggregators=management.aggregators)
+
+    machine_date_format = "%Y-%m-%d %H:%M:%S"
+    log_date_format = "%Y-%m-%d %H:%M:%S"
+    log_timestamp_date_format_regex = "[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1]) ([0-1][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]"
+    log_file_datetime_regex_python = '(\d+)-(\d+)-(\d+)\s+(\d+):(\d+):(\d+)'
+
+    time_stamps_dict = get_forti_edr_machines_time_stamp_as_dict(forti_edr_stations=management.aggregators,
+                                                                 machine_date_format=machine_date_format)
     yield
-    append_logs_from_aggregators(management.aggregators)
+    append_logs_from_forti_edr_linux_station(initial_timestamps_dict=time_stamps_dict,
+                                             forti_edr_stations=management.aggregators,
+                                             machine_timestamp_date_format=machine_date_format,
+                                             log_timestamp_date_format=log_date_format,
+                                             log_timestamp_date_format_regex_linux=log_timestamp_date_format_regex,
+                                             log_file_datetime_regex_python=log_file_datetime_regex_python)
 
 
 @pytest.fixture(scope="function", autouse=sut_details.debug_mode)
 def cores_logs(management):
-    start_time_dict = get_cores_machine_time(cores=management.cores)
+    machine_date_format = "%d/%m/%Y %H:%M:%S"
+    log_date_format = "%d/%m/%Y %H:%M:%S"
+    log_timestamp_date_format_regex = '(0[1-9]|[1-2][0-9]|3[0-1])/(0[1-9]|1[0-2])/[0-9]{4} ([0-1][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]'
+    log_file_datetime_regex_python = '(\d+)\/(\d+)\/(\d+)\s+(\d+):(\d+):(\d+)'
+
+    time_stamps_dict = get_forti_edr_machines_time_stamp_as_dict(forti_edr_stations=management.cores,
+                                                                 machine_date_format=machine_date_format)
     yield
-    append_logs_from_cores(cores=management.cores, initial_time_stamp_dict=start_time_dict)
+    append_logs_from_forti_edr_linux_station(initial_timestamps_dict=time_stamps_dict,
+                                             forti_edr_stations=management.cores,
+                                             machine_timestamp_date_format=machine_date_format,
+                                             log_timestamp_date_format=log_date_format,
+                                             log_timestamp_date_format_regex_linux=log_timestamp_date_format_regex,
+                                             log_file_datetime_regex_python=log_file_datetime_regex_python)
 
 
 @pytest.fixture(scope="function", autouse=sut_details.debug_mode)
@@ -308,27 +372,6 @@ def check_if_collector_has_crashed(management):
     check_if_collectors_has_crashed(management.collectors)
 
 
-@allure.step("Clear logs from management")
-def clear_logs_from_management(management: Management):
-    management.clear_logs()
-
-
-@allure.step("Clear logs from aggregators")
-def clear_logs_from_all_aggregators(aggregators: List[Aggregator]):
-    for single_aggr in aggregators:
-        single_aggr.clear_logs()
-
-
-@allure.step("Get cores machine time at the beginning of the test")
-def get_cores_machine_time(cores: List[Core]):
-    new_dict = {}
-    for single_core in cores:
-        date_time = single_core.get_current_machine_datetime(date_format="'+%d/%m/%Y %H:%M:%S'")
-        new_dict[single_core] = date_time
-
-    return new_dict
-
-
 @allure.step("Get collectors machine time at the beginning of the test")
 def get_collectors_machine_time(collectors: List[Collector]):
     new_dict = {}
@@ -337,33 +380,6 @@ def get_collectors_machine_time(collectors: List[Collector]):
         new_dict[single_collector] = date_time
 
     return new_dict
-
-
-@allure.step("Append logs from Management")
-def append_logs_from_management(management: Management):
-    try:
-        management.append_logs_to_report()
-    except Exception as e:
-        Reporter.report(f"Failed to add logs from management to report, original exception: {str(e)}")
-
-
-@allure.step("Append logs from Aggregators")
-def append_logs_from_aggregators(aggregators: List[Aggregator]):
-    for single_aggregator in aggregators:
-        try:
-            single_aggregator.append_logs_to_report()
-        except Exception as e:
-            Reporter.report(f"Failed to add logs from aggregator to report, original exception: {str(e)}")
-
-
-@allure.step("Append logs from cores")
-def append_logs_from_cores(cores: List[Core], initial_time_stamp_dict: dict):
-    for single_core in cores:
-        try:
-            time_stamp = initial_time_stamp_dict.get(single_core)
-            single_core.append_logs_to_report_by_given_timestamp(first_log_timestamp=time_stamp)
-        except Exception as e:
-            Reporter.report(f"Failed to add logs from core to report, original exception: {str(e)}")
 
 
 @allure.step("Append logs from collectors")
