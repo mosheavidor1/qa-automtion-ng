@@ -1,6 +1,5 @@
 import random
 import re
-import time
 from enum import Enum
 from typing import List
 
@@ -13,12 +12,15 @@ from smbprotocol.exceptions import PipeBroken
 import third_party_details
 from infra.allure_report_handler.reporter import Reporter
 from infra.decorators import retry
+from infra.common_utils import wait_for_predict_condition
 
 from infra.os_stations.os_station_base import OsStation
 from infra.os_stations.ps_py_exec_client_wrapper import PsPyExecClientWrapper
 from infra.utils.utils import StringUtils
 
+INTERVAL_STATION_KEEPALIVE = 5
 WAIT_FOR_STATION_UP_TIMEOUT = 5 * 60
+WAIT_FOR_STATION_DOWN_TIMEOUT = WAIT_FOR_STATION_UP_TIMEOUT
 
 
 class WindowsServiceStartTypeEnum(Enum):
@@ -151,22 +153,43 @@ class WindowsStation(OsStation):
         uptime_sec_before_reboot = self.get_machine_uptime_seconds()
         cmd = 'shutdown -r -t 0'
         self.execute_cmd(cmd=cmd, fail_on_err=True, return_output=True, attach_output_to_report=True)
-        is_system_up = self.is_reachable()
-        start_time = time.time()
-        while time.time() - start_time < WAIT_FOR_STATION_UP_TIMEOUT and not is_system_up:
-            time.sleep(5)
-            is_system_up = self.is_reachable()
-
-        assert is_system_up, f"Failed to connect to machine after reboot within {WAIT_FOR_STATION_UP_TIMEOUT}"
+        self.wait_until_machine_is_unreachable()
+        self.wait_until_machine_is_reachable()
         uptime_sec_after_reboot = self.get_machine_uptime_seconds()
         assert uptime_sec_after_reboot < uptime_sec_before_reboot, "Machine was not actually rebooted"
 
     def is_reachable(self):
         try:
-            self.connect()
+            self._remote_connection_session = PsPyExecClientWrapper(self._host_ip,
+                                                                    unique_connection_id=random.randint(1000000,
+                                                                                                        9999999),
+                                                                    username=self._user_name,
+                                                                    password=self._password,
+                                                                    encrypt=self.__encrypted_connection)
+
+            self._remote_connection_session.connect()
+            self._remote_connection_session.create_service()
             return True
         except:
             return False
+
+    @allure.step("Wait until machine is reachable")
+    def wait_until_machine_is_reachable(self, timeout=None):
+        timeout = timeout or WAIT_FOR_STATION_UP_TIMEOUT
+        predict_condition_func = self.is_reachable
+        wait_for_predict_condition(predict_condition_func=predict_condition_func,
+                                   timeout_sec=timeout, interval_sec=INTERVAL_STATION_KEEPALIVE)
+
+    @allure.step("Wait until machine is unreachable")
+    def wait_until_machine_is_unreachable(self, timeout=None):
+        timeout = timeout or WAIT_FOR_STATION_DOWN_TIMEOUT
+
+        def predict():
+            result = not self.is_reachable()
+            return result
+
+        wait_for_predict_condition(predict_condition_func=predict,
+                                   timeout_sec=timeout, interval_sec=INTERVAL_STATION_KEEPALIVE)
 
     @allure.step("Stop service {service_name}")
     def stop_service(self, service_name: str) -> str:
