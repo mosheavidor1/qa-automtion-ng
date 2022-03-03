@@ -357,7 +357,7 @@ def collector_logs(management):
     append_logs_from_collectors(collectors=management.collectors, initial_time_stamp_dict=start_time_dict)
 
 
-@pytest.fixture(scope="session", autouse=sut_details.debug_mode)
+@pytest.fixture(scope="session", autouse=False)
 def reset_driver_verifier_for_all_collectors(management):
     collectors = management.collectors
     for collector in collectors:
