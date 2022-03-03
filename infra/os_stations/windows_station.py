@@ -18,6 +18,8 @@ from infra.os_stations.os_station_base import OsStation
 from infra.os_stations.ps_py_exec_client_wrapper import PsPyExecClientWrapper
 from infra.utils.utils import StringUtils
 
+WAIT_FOR_STATION_UP_TIMEOUT = 5 * 60
+
 
 class WindowsServiceStartTypeEnum(Enum):
     BOOT = 'boot' # Specifies a device driver that is loaded by the boot loader.
@@ -146,23 +148,25 @@ class WindowsStation(OsStation):
 
     @allure.step("Reboot")
     def reboot(self):
-        time_to_sleep_before_shutdown = 0
-        time_to_sleep_after_shutdown = time_to_sleep_before_shutdown + 5
-        cmd = f'shutdown -r -t {time_to_sleep_before_shutdown}'
+        uptime_sec_before_reboot = self.get_machine_uptime_seconds()
+        cmd = 'shutdown -r -t 0'
         self.execute_cmd(cmd=cmd, fail_on_err=True, return_output=True, attach_output_to_report=True)
-        time.sleep(time_to_sleep_after_shutdown)
-
-        timeout = 5 * 60
-        is_system_up = False
+        is_system_up = self.is_reachable()
         start_time = time.time()
-        while time.time() - start_time < timeout and not is_system_up:
-            try:
-                self.connect()
-                is_system_up = True
-            except:
-                time.sleep(5)
+        while time.time() - start_time < WAIT_FOR_STATION_UP_TIMEOUT and not is_system_up:
+            time.sleep(5)
+            is_system_up = self.is_reachable()
 
-        assert is_system_up, f"Failed to connect to machine after reboot within {timeout}"
+        assert is_system_up, f"Failed to connect to machine after reboot within {WAIT_FOR_STATION_UP_TIMEOUT}"
+        uptime_sec_after_reboot = self.get_machine_uptime_seconds()
+        assert uptime_sec_after_reboot < uptime_sec_before_reboot, "Machine was not actually rebooted"
+
+    def is_reachable(self):
+        try:
+            self.connect()
+            return True
+        except:
+            return False
 
     @allure.step("Stop service {service_name}")
     def stop_service(self, service_name: str) -> str:
@@ -438,3 +442,11 @@ class WindowsStation(OsStation):
         cmd = f'sc config {service_name} start={service_start_type.value}'
         result = self.execute_cmd(cmd=cmd, fail_on_err=True, return_output=True, attach_output_to_report=True)
         return result
+
+    @allure.step("Get current windows machine uptime in seconds")
+    def get_machine_uptime_seconds(self):
+        cmd = 'powershell "[int]((get-date)-' \
+              '((Get-CimInstance -ClassName Win32_OperatingSystem).LastBootUpTime)).TotalSeconds"'
+        uptime_sec = self.execute_cmd(cmd=cmd, fail_on_err=True, return_output=True, attach_output_to_report=True)
+        Reporter.report(f"Uptime sec is {uptime_sec}")
+        return int(uptime_sec)

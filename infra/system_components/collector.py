@@ -104,6 +104,10 @@ class Collector:
     def is_status_running_in_cli(self):
         pass
 
+    @abstractmethod
+    def reboot(self):
+        pass
+
     @allure.step("Get current collector process ID")
     def get_current_process_id(self):
         service_name = self.get_service_name()

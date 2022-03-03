@@ -140,6 +140,11 @@ class WindowsCollector(Collector):
     def is_status_running_in_cli(self):
         return self.get_collector_status() == SystemState.RUNNING
 
+    @allure.step("Reboot Collector")
+    def reboot(self):
+        self.os_station.reboot()
+        self._process_id = self.get_current_process_id()
+
     @allure.step("{0} - Copy collected crash dumps to C:\CrashDumpsCollected")
     def __move_crash_files_to_dedicated_crash_folder_files(self, dumps_files: List[str]):
         """
