@@ -381,3 +381,26 @@ class RestCommands(object):
             return True
         else:
             assert False, f"failed to create exception, error: {response}"
+
+    def get_exceptions(self, event_id=None):
+        """
+        :param event_id: string, optional, if no event id given returns all the exceptions
+        :return: dictionary or list of dictionaries (if no event id given) with the following parameters:
+                    exceptionId, originEventId, userName, updatedAt, createdAt, comment, selectedDestinations,
+                    optionalDestinations, selectedCollectorGroups, optionalCollectorGroups, alerts.
+        """
+        if event_id:
+            status, response = self.rest.exceptions.GetEventExceptions(event_id)
+        else:
+            status, response = self.rest.exceptions.ListExceptions()
+
+        if not status:
+            assert False, f'Could not get response from the management. \n{response}'
+
+        if event_id:
+            exceptions = loads(response.text)[0]
+        else:
+            exceptions = loads(response.text)
+
+        Reporter.report(f'Successfully got information of the following event id: {event_id}.')
+        return exceptions
