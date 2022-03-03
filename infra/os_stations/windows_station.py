@@ -101,7 +101,11 @@ class WindowsStation(OsStation):
 
                 if attach_output_to_report:
                     if output is not None and len(output) > 1000:
-                        Reporter.attach_str_as_file(file_name=cmd, file_content=output)
+
+                        if len(output) < 2000000:
+                            Reporter.attach_str_as_file(file_name=cmd, file_content=output)
+                        else:
+                            Reporter.report("Content is to big to attach to allure report, sorry")
                     else:
                         Reporter.report(f"command output: {output}")
 

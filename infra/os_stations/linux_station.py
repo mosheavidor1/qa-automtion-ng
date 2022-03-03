@@ -70,7 +70,15 @@ class LinuxStation(OsStation):
                     output = self.__escape_ansi(output).strip()
 
                 if attach_output_to_report:
-                    Reporter.report(f"command output: {output}")
+                    if output is not None and len(output) > 1000:
+
+                        if len(output) < 2000000:
+                            Reporter.attach_str_as_file(file_name='command output', file_content=output)
+                        else:
+                            Reporter.report("Content is to big to attach to allure report, sorry")
+
+                    else:
+                        Reporter.report(f"command output: {output}")
 
                 if fail_on_err and stderr_err_output != '':
                     assert False, "Failing because stderr was returned"
@@ -113,8 +121,8 @@ class LinuxStation(OsStation):
         raise Exception("Not Implemented yet")
 
     @allure.step("Get current linux machine date time")
-    def get_current_machine_datetime(self, date_format="'+%d/%m/%Y %H:%M:%S'"):
-        cmd = f"date {date_format}"
+    def get_current_machine_datetime(self, date_format="%d/%m/%Y %H:%M:%S"):
+        cmd = f"date '+{date_format}'"
         result = self.execute_cmd(cmd=cmd, return_output=True, fail_on_err=True, attach_output_to_report=True)
         return result
 
@@ -135,20 +143,22 @@ class LinuxStation(OsStation):
 
     @allure.step("Get file content within range")
     def get_file_content_within_range(self, file_path, start_index, end_index=None):
-        if start_index == end_index or start_index > end_index:
-            return ""
 
-        cmd = f"sed -n '{str(start_index)},{str(end_index)}p; {str(end_index+1)}q' {file_path}"
+        cmd = f"sed -n '{str(start_index)},$p' {file_path}"
 
-        if end_index is None:
-            cmd = f"sed -n '{str(start_index)},%p' {file_path}"
+        if end_index is not None:
+
+            if start_index == end_index or start_index > end_index:
+                return ""
+
+            cmd = f"sed -n '{str(start_index)},{str(end_index)}p; {str(end_index+1)}q' {file_path}"
 
         output = self.execute_cmd(cmd=cmd)
         return output
 
     @allure.step("Get Line numbers that matching to pattern")
     def get_line_numbers_matching_to_pattern(self, file_path, pattern):
-        cmd = f'cat {file_path} | grep -n "{pattern}" | cut -d : -f 1'
+        cmd = f'cat {file_path} | grep -nE "{pattern}" | cut -d : -f 1'
         output = self.execute_cmd(cmd=cmd)
         if output is None:
             return None
@@ -341,7 +351,7 @@ class LinuxStation(OsStation):
         raise Exception("There is no implementation yet")
 
     @allure.step("Get file last modify date")
-    def get_file_last_modify_date(self, file_path: str, date_format: str='"%d/%m/%Y %H:%M:%S"') -> str:
-        cmd = f'date -r {file_path} -u +{date_format}'
+    def get_file_last_modify_date(self, file_path: str, date_format: str="%d/%m/%Y %H:%M:%S") -> str:
+        cmd = f'date -r {file_path} +"{date_format}"'
         output = self.execute_cmd(cmd=cmd, return_output=True, fail_on_err=True)
         return output

@@ -126,17 +126,27 @@ class FortiEdrLinuxStation(LinuxStation):
 
         return copied_files_dir
 
-    def _get_first_log_row_that_macthing_to_date_regex(self, file_path, machine_timestamp_regex='(\d+)\/(\d+)\/(\d+)\s+(\d+):(\d+):(\d+)') -> str:
-        first_row_log_with_date = self.execute_cmd(f"egrep '[0-9]{{2}}/[0-9]{{2}}/[0-9]{{4}} [0-9]{{2}}:[0-9]{{2}}:[0-9]{{2}}' {file_path} | head -n 1")
-        first_date_only = StringUtils.get_txt_by_regex(text=first_row_log_with_date, regex=f'({machine_timestamp_regex})', group=1)
+    def _get_first_log_row_that_macthing_to_date_regex(self,
+                                                       file_path,
+                                                       log_file_datetime_regex_linux,
+                                                       log_file_datetime_regex_python) -> str:
+        first_row_log_with_date = self.execute_cmd(f"egrep '{log_file_datetime_regex_linux}' {file_path} | head -n 1")
+        first_date_only = StringUtils.get_txt_by_regex(text=first_row_log_with_date, regex=f'({log_file_datetime_regex_python})', group=1)
         return first_date_only
 
     @allure.step("Checking if log file created after the given timestamp {given_timestamp}")
-    def _is_log_file_created_after_given_timestamp(self, log_file_path, given_timestamp) -> bool:
-        first_timestamp_in_log = self._get_first_log_row_that_macthing_to_date_regex(file_path=log_file_path)
+    def _is_log_file_created_after_given_timestamp(self,
+                                                   log_file_path,
+                                                   given_timestamp,
+                                                   log_datetime_format,
+                                                   log_file_datetime_regex_linux: str,
+                                                   log_file_datetime_regex_python: str) -> bool:
+        first_timestamp_in_log = self._get_first_log_row_that_macthing_to_date_regex(file_path=log_file_path,
+                                                                                     log_file_datetime_regex_linux=log_file_datetime_regex_linux,
+                                                                                     log_file_datetime_regex_python=log_file_datetime_regex_python)
 
-        first_time_stamp_datetime = datetime.strptime(first_timestamp_in_log, "%d/%m/%Y %H:%M:%S")
-        given_time_stamp_datetime = datetime.strptime(given_timestamp, "%d/%m/%Y %H:%M:%S")
+        first_time_stamp_datetime = datetime.strptime(first_timestamp_in_log, log_datetime_format)
+        given_time_stamp_datetime = datetime.strptime(given_timestamp, log_datetime_format)
 
         if first_time_stamp_datetime >= given_time_stamp_datetime:
             Reporter.report(f"Log file was created after given time stamp: {given_timestamp}")
@@ -144,6 +154,85 @@ class FortiEdrLinuxStation(LinuxStation):
 
         Reporter.report(f"Log file was not created after given time stamp: {given_timestamp}")
         return False
+
+    def _get_log_files_ready_for_append(self,
+                                        first_log_timestamp,
+                                        machine_datetime_format):
+        log_folder = self.get_logs_folder_path()
+        log_files = self.get_list_of_files_in_folder(folder_path=log_folder, file_suffix='.log')
+
+        relevant_log_files = []
+        with allure.step(f"Filter log files that was created after: {first_log_timestamp}"):
+            for file in log_files:
+                current_file_modified_date = self.get_file_last_modify_date(file_path=file,
+                                                                            date_format=machine_datetime_format)
+
+                first_timestamp_date_time = datetime.strptime(first_log_timestamp, machine_datetime_format)
+                current_file_modified_date_time = datetime.strptime(current_file_modified_date, machine_datetime_format)
+                if current_file_modified_date_time > first_timestamp_date_time:
+                    relevant_log_files.append(file)
+
+        return relevant_log_files
+
+    @allure.step("{0} - Append logs to report from a given log timestamp {first_log_timestamp}")
+    def append_logs_to_report_by_given_timestamp(self,
+                                                 first_log_timestamp: str,
+                                                 machine_timestamp_date_format: str,
+                                                 log_timestamp_date_format: str,
+                                                 log_timestamp_date_format_regex_linux: str,
+                                                 log_file_datetime_regex_python: str):
+        """
+        This method will append logs to report from the given initial timestamp
+        """
+
+        # first_log_timestamp = "2022-02-27 08:48:00"
+        first_log_timestamp_date_time = datetime.strptime(first_log_timestamp, machine_timestamp_date_format)
+
+        all_log_files = self._get_log_files_ready_for_append(first_log_timestamp=first_log_timestamp,
+                                                             machine_datetime_format=machine_timestamp_date_format)
+
+        if all_log_files is None or all_log_files == []:
+            Reporter.report(f"There is no logs that was created after {first_log_timestamp}")
+
+        for single_file in all_log_files:
+
+            content = None
+
+            lines_with_matching_date = self.get_line_numbers_matching_to_pattern(file_path=single_file,
+                                                                                 pattern=first_log_timestamp)
+            if lines_with_matching_date is not None and len(lines_with_matching_date) > 0:
+                # if start date exist in logs file (same second) -> get the data between the initial date till end
+                first_matching_log_line = lines_with_matching_date[0]
+                content = self.get_file_content_within_range(file_path=single_file, start_index=first_matching_log_line,
+                                                             end_index=None)
+
+            elif self._is_log_file_created_after_given_timestamp(log_file_path=single_file,
+                                                                 given_timestamp=first_log_timestamp,
+                                                                 log_datetime_format=log_timestamp_date_format,
+                                                                 log_file_datetime_regex_python=log_file_datetime_regex_python,
+                                                                 log_file_datetime_regex_linux=log_timestamp_date_format_regex_linux):
+                # else if log file was created after the given time stamp
+                # (searching for first row in log file that contains date and extract the date, then comparing it)
+                # if created after - getting all file
+                content = self.get_file_content(file_path=single_file)
+
+            else:
+                # else go trough the entire file in order to search logs rows that matching to our test time,
+                # logs that created after the start time
+                tmp_content = self.get_file_content(file_path=single_file)
+                tmp_content_splitted = tmp_content.split('\n')
+                for single_line in tmp_content_splitted:
+                    line_date = StringUtils.get_txt_by_regex(text=single_line, regex=f'({log_file_datetime_regex_python})',
+                                                             group=1)
+
+                    if line_date is not None:
+                        if datetime.strptime(line_date, log_timestamp_date_format) > first_log_timestamp_date_time:
+                            first_index = tmp_content.index(line_date)
+                            content = tmp_content[first_index:]
+                            break
+
+            if content is not None:
+                Reporter.attach_str_as_file(file_name=single_file, file_content=content)
 
 
 
