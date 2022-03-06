@@ -87,8 +87,10 @@ class ExceptionsTests:
                              indirect=True)
     @pytest.mark.sanity
     @pytest.mark.management_sanity
+    @allure.link('http://10.151.100.52/browse/EN-73885')
     def test_edit_fully_covered_exception(self, xray, exception_function_fixture):
         """
+        EN-73885 - when fixed add event_id as input to validate_exception
         steps:
         1. create event DynamicCodeTests
         2. crete exception for DynamicCodeTests
@@ -103,16 +105,17 @@ class ExceptionsTests:
 
         management.rest_api_client.create_exception(event_id)
         management.ui_client.exceptions.edit_exceptions({"groups": [group_name]}, {"destination": [destination]})
-        ManagementUtils.validate_exception(management, process=malware_name, event_id=event_id, group=group_name,
-                                           destination=destination)
+        ManagementUtils.validate_exception(management, process=malware_name, group=group_name, destination=destination)
 
     @pytest.mark.parametrize('xray, exception_function_fixture',
                              [('EN-68888', ExceptionTestType.EDIT_PARTIALLY_COVERED_EXCEPTION)],
                              indirect=True)
     @pytest.mark.sanity
     @pytest.mark.management_sanity
+    @allure.link('http://10.151.100.52/browse/EN-73885')
     def test_edit_partially_covered_exception(self, xray, exception_function_fixture):
         """
+        EN-73885 - when fixed add event_id as input to validate_exception
         steps:
         1. create event DynamicCodeTests
         2. crete exception for DynamicCodeTests with empty group
@@ -128,8 +131,7 @@ class ExceptionsTests:
         ManagementUtils.validate_exception(management, process=malware_name, event_id=event_id, group=group_name)
 
         management.ui_client.exceptions.edit_exceptions({"destination": [destination]})
-        ManagementUtils.validate_exception(management, process=malware_name, event_id=event_id, group=group_name,
-                                           destination=destination)
+        ManagementUtils.validate_exception(management, process=malware_name, event_id=event_id, group=group_name, destination=destination)
 
     # @pytest.mark.xray('EN-73320')
     # # @pytest.mark.testim_sanity

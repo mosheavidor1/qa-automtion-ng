@@ -19,38 +19,6 @@ class RestCommands(object):
         self.rest = NsloRest(NsloManagementConnection(management_ip, management_user, management_password,
                                                       organization=organization))
 
-    @allure.step("Delete all events")
-    def delete_all_events(self, timeout=60):
-        event_ids = []
-        response = self.rest.events.ListEvents()
-        as_list_of_dicts = json.loads(response[1].text)
-        for single_event in as_list_of_dicts:
-            event_id = single_event.get('eventId')
-            event_ids.append(event_id)
-
-        if len(event_ids) > 0:
-            self.rest.events.DeleteEvents(eventIds=event_ids)
-            time.sleep(timeout)
-
-        else:
-            Reporter.report("No events, nothing to delete")
-
-    @allure.step("Delete all exceptions")
-    def delete_all_exceptions(self, timeout=60):
-        exception_ids = []
-        response = self.rest.exceptions.ListExceptions()
-        as_list_of_dicts = json.loads(response[1].text)
-        for single_exception in as_list_of_dicts:
-            event_id = single_exception.get('exceptionId')
-            exception_ids.append(event_id)
-
-        if len(exception_ids) > 0:
-            for exc_id in exception_ids:
-                self.rest.exceptions.DeleteException(exceptionId=exc_id)
-            time.sleep(timeout)
-        else:
-            Reporter.report("No execptions, nothing to delete")
-
     def _validate_data(self, raw_data, validating_data):
         """
         Checks if validating_data in raw data.
@@ -138,10 +106,7 @@ class RestCommands(object):
         :param validation_data: dictionary, the data to get from the collector.
         :return: according to the get_info function.
         """
-        if organization:
-            status, response = self.rest.inventory.ListCollectors(organization=organization)
-        else:
-            status, response = self.rest.inventory.ListCollectors()
+        status, response = self.rest.inventory.ListCollectors(organization=organization)
         return self._get_info(status, response, 'collector', validation_data, output_parameters)
 
     def get_aggregator_info(self, validation_data=None, output_parameters=None):
@@ -165,6 +130,95 @@ class RestCommands(object):
         """
         status, response = self.rest.inventory.ListCores()
         return self._get_info(status, response, 'core', validation_data, output_parameters)
+
+    def get_system_summery(self, parameter=None, log=False):
+        """
+        :param parameter: string or list, the information parameter to get from the system summery.
+        :param log: boolean, True to log the full system summery.
+        :return: string, the information for the given parameter.
+        """
+        if isinstance(parameter, str):
+            parameter = [parameter]
+
+        status, response = self.rest.admin.GetSystemSummary()
+
+        if not status:
+            assert False, f'Could not get response from the management. \n{response}'
+
+        summery = loads(response.text)
+
+        if parameter:
+            summery = self._filter_data([summery], parameter)
+            if summery:
+                return summery[0]
+
+        return summery
+
+    def set_system_mode(self, prevention):
+        """
+        :param prevention: boolean, True for prevention mode or False for simulation.
+        """
+        if prevention:
+            status, response = self.rest.admin.SetSystemModePrevention()
+        else:
+            status, response = self.rest.admin.SetSystemModeSimulation()
+
+        if not status:
+            assert False, f'Could not get response from the management. \n{response}'
+        else:
+            Reporter.report(f'Successfully changed system mode')
+            return True
+
+    def create_group(self, name, organization=None):
+        """
+        :param name: string, the name of the group.
+        :return: True if succeeded creating the group, False if failed.
+        """
+        group_status, group_response = self.rest.inventory.ListCollectorGroups(organization=organization)
+        groups_list = self._get_info(group_status, group_response)
+
+        for group in groups_list:
+            if name == group["name"]:
+                Reporter.report('group ' + name + ' already exist')
+                return True
+
+        status, response = self.rest.inventory.CreateCollectorGroup(name, organization)
+
+        group_status, group_response = self.rest.inventory.ListCollectorGroups(organization=organization)
+        groups_list = self._get_info(group_status, group_response)
+        if not status:
+            assert False, f'Could not get response from the management. \n{response}'
+
+        result = False
+        for group in groups_list:
+            if name in group["name"]:
+                result = True
+        assert result
+
+        Reporter.report('Created the group ' + name + ' successfully.')
+        return True
+
+    def move_collector(self, validation_data, group_name):
+        """
+        :param validation_data: dictionary, the data of the collector to be moved.
+        :param group_name: string, the name of the group to move the collector to.
+        :return: True if succeeded, False if failed.
+        """
+        collector_name = list(map(lambda x: list(x.values())[0], self.get_collector_info(validation_data, 'name')))
+        status, response = self.rest.inventory.MoveCollectors(collector_name, group_name)
+        collector_group = self.get_collector_info(validation_data, 'collectorGroupName')
+        if not status:
+            assert False, f'Could not get response from the management. \n{response}'
+
+        if collector_group[0]["collectorGroupName"] != group_name:
+            assert False, 'Could not move the collector ' + str(
+                collector_name) + ' to the group ' + group_name + '.'
+
+        Reporter.report(
+            'Moved the collector ' + str(collector_name) + ' to the group ' + group_name + ' successfully.')
+        return True
+
+    """ ************************************************ Events ************************************************ """
 
     @allure.step("Get security events")
     def get_security_events(self,
@@ -242,96 +296,23 @@ class RestCommands(object):
         Reporter.report('Deleted the given events successfully.')
         return True
 
-    def get_system_summery(self, parameter=None, log=False):
-        """
-        :param parameter: string or list, the information parameter to get from the system summery.
-        :param log: boolean, True to log the full system summery.
-        :return: string, the information for the given parameter.
-        """
-        if isinstance(parameter, str):
-            parameter = [parameter]
+    @allure.step("Delete all events")
+    def delete_all_events(self, timeout=60):
+        event_ids = []
+        response = self.rest.events.ListEvents()
+        as_list_of_dicts = json.loads(response[1].text)
+        for single_event in as_list_of_dicts:
+            event_id = single_event.get('eventId')
+            event_ids.append(event_id)
 
-        status, response = self.rest.admin.GetSystemSummary()
+        if len(event_ids) > 0:
+            self.rest.events.DeleteEvents(eventIds=event_ids)
+            time.sleep(timeout)
 
-        if not status:
-            assert False, f'Could not get response from the management. \n{response}'
-
-        summery = loads(response.text)
-
-        if parameter:
-            summery = self._filter_data([summery], parameter)
-            if summery:
-                return summery[0]
-
-        return summery
-
-    def create_group(self, name, organization=None):
-        """
-        :param name: string, the name of the group.
-        :return: True if succeeded creating the group, False if failed.
-        """
-        group_status, group_response = self.rest.inventory.ListCollectorGroups(organization=organization)
-        groups_list = self._get_info(group_status, group_response)
-
-        for group in groups_list:
-            if name == group["name"]:
-                Reporter.report('group ' + name + ' already exist')
-                return True
-
-        if organization:
-            status, response = self.rest.inventory.CreateCollectorGroup(name, organization)
         else:
-            status, response = self.rest.inventory.CreateCollectorGroup(name)
-        group_status, group_response = self.rest.inventory.ListCollectorGroups(organization=organization)
-        groups_list = self._get_info(group_status, group_response)
-        if not status:
-            assert False, f'Could not get response from the management. \n{response}'
+            Reporter.report("No events, nothing to delete")
 
-        result = False
-        for group in groups_list:
-            if name in group["name"]:
-                result = True
-        assert result
-
-        Reporter.report('Created the group ' + name + ' successfully.')
-        return True
-
-    def move_collector(self, validation_data, group_name):
-        """
-        :param validation_data: dictionary, the data of the collector to be moved.
-        :param group_name: string, the name of the group to move the collector to.
-        :return: True if succeeded, False if failed.
-        """
-        collector_name = list(map(lambda x: list(x.values())[0], self.get_collector_info(validation_data, 'name')))
-        status, response = self.rest.inventory.MoveCollectors(collector_name, group_name)
-        collector_group = self.get_collector_info(validation_data, 'collectorGroupName')
-        if not status:
-            assert False, f'Could not get response from the management. \n{response}'
-
-        if collector_group[0]["collectorGroupName"] != group_name:
-            assert False, 'Could not move the collector ' + str(
-                collector_name) + ' to the group ' + group_name + '.'
-
-        Reporter.report(
-            'Moved the collector ' + str(collector_name) + ' to the group ' + group_name + ' successfully.')
-        return True
-
-    def assign_policy(self, policy_name, group_name, timeout=60, organization=None):
-        """
-        :param timeout: time to wait for collector configuration to be uploaded
-        :param policy_name: string, the name of the policy to assign,
-        :param group_name: string or list, the name of the group that the policy will be assigned to.
-        :return: True if succeeded, False if failed.
-        """
-        if organization:
-            status, response = self.rest.policies.AssignCollector(policy_name, group_name, organization)
-        else:
-            status, response = self.rest.policies.AssignCollector(policy_name, group_name)
-        if not status:
-            assert False, f'Could not get response from the management. \n{response}'
-        Reporter.report(f"Assigned the policy {policy_name} to the group {group_name} successfully")
-        time.sleep(timeout)
-        return True
+    """ ************************************************ Exceptions ************************************************ """
 
     def create_exception(self, eventId, groups=None, destinations=None, organization="Default", useAnyPath=None,
                          useInException=None, wildcardFiles=None, wildcardPaths=None, **kwargs):
@@ -404,3 +385,61 @@ class RestCommands(object):
 
         Reporter.report(f'Successfully got information of the following event id: {event_id}.')
         return exceptions
+
+    @allure.step("Delete all exceptions")
+    def delete_all_exceptions(self, timeout=60):
+        exception_ids = []
+        response = self.rest.exceptions.ListExceptions()
+        as_list_of_dicts = json.loads(response[1].text)
+        for single_exception in as_list_of_dicts:
+            event_id = single_exception.get('exceptionId')
+            exception_ids.append(event_id)
+
+        if len(exception_ids) > 0:
+            for exc_id in exception_ids:
+                self.rest.exceptions.DeleteException(exceptionId=exc_id)
+            time.sleep(timeout)
+        else:
+            Reporter.report("No execptions, nothing to delete")
+
+    """ ************************************************ Policies ************************************************ """
+
+    def get_policy_info(self, validation_data=None, output_parameters=None, organization=None):
+        """
+        :param validation_data: string, the data about the wanted policy.
+        :param output_parameters: string or list, the parameters to get from the given policy.
+               parameter options: 'name', 'operationMode', 'agentGroups', 'rules'.
+        :return: list of dictionaries, the information for the given data.
+        """
+        status, response = self.rest.policies.ListPolicies(organization=organization)
+        return self._get_info(status, response, 'policy', validation_data, output_parameters)
+
+    def set_policy_mode(self, name, mode, organization=None):
+        """
+        :param name: string, the policy name.
+        :param mode: string, 'Prevention' or 'Simulation'.
+        :return: True if succeeded, False if failed.
+        """
+        status, response = self.rest.policies.SetPolicyMode(name, mode, organization)
+
+        if not status:
+            assert False, f'Could not get response from the management. \n{response}'
+
+        Reporter.report('Changed the policy ' + name + 'mode to: ' + mode + '.')
+        return status
+
+    def assign_policy(self, policy_name, group_name, timeout=60, organization=None):
+        """
+        :param timeout: time to wait for collector configuration to be uploaded
+        :param policy_name: string, the name of the policy to assign,
+        :param group_name: string or list, the name of the group that the policy will be assigned to.
+        :return: True if succeeded, False if failed.
+        """
+        status, response = self.rest.policies.AssignCollector(policy_name, group_name, organization)
+
+        if not status:
+            assert False, f'Could not get response from the management. \n{response}'
+        Reporter.report(f"Assigned the policy {policy_name} to the group {group_name} successfully")
+        time.sleep(timeout)
+        return True
+
