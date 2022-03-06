@@ -5,6 +5,7 @@ import pytest
 @allure.epic("Management")
 @allure.feature("Audit")
 @pytest.mark.sanity
+@pytest.mark.management_sanity
 class AuditTests:
 
     @pytest.mark.xray('EN-73328')

@@ -8,6 +8,7 @@ from infra.allure_report_handler.reporter import Reporter
 @allure.epic("Collectors")
 @allure.feature("Basic Functionality")
 @pytest.mark.sanity
+@pytest.mark.collector_sanity
 @pytest.mark.xray('EN-73287')
 def test_stop_start_collector(management, collector):
     """
@@ -27,6 +28,7 @@ def test_stop_start_collector(management, collector):
 @allure.epic("Collectors")
 @allure.feature("Basic Functionality")
 @pytest.mark.sanity
+@pytest.mark.collector_sanity
 @pytest.mark.xray('EN-70422')
 def test_install_uninstall_collector(management, collector):
     """
@@ -64,6 +66,7 @@ def test_install_uninstall_collector(management, collector):
 @allure.epic("Collectors")
 @allure.feature("Basic Functionality")
 @pytest.mark.sanity
+@pytest.mark.collector_sanity
 @pytest.mark.xray('EN-73912')
 def test_reboot_collector(management, collector):
     """

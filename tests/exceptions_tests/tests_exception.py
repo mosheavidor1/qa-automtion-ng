@@ -17,6 +17,7 @@ class ExceptionsTests:
                              ],
                              indirect=True)
     @pytest.mark.sanity
+    @pytest.mark.management_sanity
     def test_create_full_covered_exception(self, xray, exception_function_fixture):
         """
         test name: Full covered exception - event excepted
@@ -38,6 +39,7 @@ class ExceptionsTests:
                              [('EN-68890', ExceptionTestType.CREATE_PARTIALLY_COVERED_EXCEPTION)],
                              indirect=True)
     @pytest.mark.sanity
+    @pytest.mark.management_sanity
     def test_create_partially_covered_exception(self, xray, exception_function_fixture):
         """
         test name: Partially covered exception - event excepted
@@ -63,6 +65,7 @@ class ExceptionsTests:
                              [('EN-68891', ExceptionTestType.CREATE_PARTIALLY_COVERED_EXCEPTION_EVENT_CREATED)],
                              indirect=True)
     @pytest.mark.sanity
+    @pytest.mark.management_sanity
     def test_create_partially_covered_exception_event_created(self, xray, exception_function_fixture):
         """
         steps:
@@ -83,6 +86,7 @@ class ExceptionsTests:
                              [('EN-68885', ExceptionTestType.EDIT_FULL_COVERED_EXCEPTION)],
                              indirect=True)
     @pytest.mark.sanity
+    @pytest.mark.management_sanity
     def test_edit_fully_covered_exception(self, xray, exception_function_fixture):
         """
         steps:
@@ -106,6 +110,7 @@ class ExceptionsTests:
                              [('EN-68888', ExceptionTestType.EDIT_PARTIALLY_COVERED_EXCEPTION)],
                              indirect=True)
     @pytest.mark.sanity
+    @pytest.mark.management_sanity
     def test_edit_partially_covered_exception(self, xray, exception_function_fixture):
         """
         steps:
