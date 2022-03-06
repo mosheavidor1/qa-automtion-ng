@@ -11,18 +11,20 @@ class ExceptionTestType(Enum):
     EDIT_FULL_COVERED_EXCEPTION = "EDIT_FULL_COVERED_EXCEPTION"
     EDIT_PARTIALLY_COVERED_EXCEPTION = "EDIT_PARTIALLY_COVERED_EXCEPTION"
     CREATE_PARTIALLY_COVERED_EXCEPTION_EVENT_CREATED = "CREATE_PARTIALLY_COVERED_EXCEPTION_EVENT_CREATED"
+    DELETE_EXCEPTION = "DELETE_EXCEPTION"
 
 
 @pytest.fixture(scope="class", autouse=True)
 def setup_method(management):
     # validation if the system is in prevention mode, else turn it on
     policies_names = [management.rest_api_client.rest.NsloPolicies.NSLO_POLICY_EXECUTION_PREVENTION,
-                          management.rest_api_client.rest.NsloPolicies.NSLO_POLICY_EXFILTRATION_PREVENTION,
-                          management.rest_api_client.rest.NsloPolicies.NSLO_POLICY_RANSOMWARE_PREVENTION]
+                      management.rest_api_client.rest.NsloPolicies.NSLO_POLICY_EXFILTRATION_PREVENTION,
+                      management.rest_api_client.rest.NsloPolicies.NSLO_POLICY_RANSOMWARE_PREVENTION]
     policies = management.rest_api_client.get_policy_info()
-    operation_mode = sum([True if policy.get('name') in policies_names and policy.get('operationMode') == 'Prevention' else False for policy in policies])
-    if operation_mode != 3:
-        ManagementUtils.turn_on_prevention_mode(management)
+    operation_mode = sum([True if policy.get('name') in policies_names and
+                                  policy.get('operationMode') == 'Prevention' else False for policy in policies])
+    if operation_mode < len(policies_names):
+        management.turn_on_prevention_mode()
 
 
 @pytest.fixture(scope="function")

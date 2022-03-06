@@ -366,7 +366,7 @@ class RestCommands(object):
     def get_exceptions(self, event_id=None):
         """
         :param event_id: string, optional, if no event id given returns all the exceptions
-        :return: dictionary or list of dictionaries (if no event id given) with the following parameters:
+        :return: list of dictionaries with the following parameters:
                     exceptionId, originEventId, userName, updatedAt, createdAt, comment, selectedDestinations,
                     optionalDestinations, selectedCollectorGroups, optionalCollectorGroups, alerts.
         """
@@ -378,13 +378,22 @@ class RestCommands(object):
         if not status:
             assert False, f'Could not get response from the management. \n{response}'
 
-        if event_id:
-            exceptions = loads(response.text)[0]
-        else:
-            exceptions = loads(response.text)
+        exceptions = loads(response.text)
 
         Reporter.report(f'Successfully got information of the following event id: {event_id}.')
         return exceptions
+
+    def delete_exception(self, exception_id):
+        """
+        :param exceptionId: string.
+        """
+        status, response = self.rest.exceptions.DeleteException(exception_id)
+
+        if not status:
+            assert False, f'Could not get response from the management. \n{response}'
+
+        Reporter.report(f'Deleted the exception of the event: {exception_id} successfully.')
+        return True
 
     @allure.step("Delete all exceptions")
     def delete_all_exceptions(self, timeout=60):
