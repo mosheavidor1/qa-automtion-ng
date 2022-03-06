@@ -366,3 +366,11 @@ class Management(FortiEdrLinuxStation):
         collector_ip = collector.os_station.host_ip
         return self.get_collector_status(collector_ip) == SystemState.RUNNING
 
+    def turn_on_prevention_mode(self, organization=None):
+        self.rest_api_client.set_system_mode(prevention=True)
+        self.rest_api_client.set_policy_mode(self.rest_api_client.rest.NsloPolicies.NSLO_POLICY_EXECUTION_PREVENTION,
+                                             self.rest_api_client.rest.NSLO_PREVENTION_MODE, organization)
+        self.rest_api_client.set_policy_mode(self.rest_api_client.rest.NsloPolicies.NSLO_POLICY_EXFILTRATION_PREVENTION,
+                                             self.rest_api_client.rest.NSLO_PREVENTION_MODE, organization)
+        self.rest_api_client.set_policy_mode(self.rest_api_client.rest.NsloPolicies.NSLO_POLICY_RANSOMWARE_PREVENTION,
+                                             self.rest_api_client.rest.NSLO_PREVENTION_MODE, organization)
