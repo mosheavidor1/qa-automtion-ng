@@ -25,11 +25,11 @@ class ManagementUtils:
     @allure.step("validate exception exists with given parameters")
     def validate_exception(management, process, event_id=None, group='All Collector Groups',
                            destination='All Destinations', user='All Users'):
-        exceptions = management.rest_api_client.get_exceptions()
+        exceptions = management.rest_api_client.get_exceptions(event_id)
         for exception in exceptions:
             if process in str(exception) and \
-                    exception['selectedCollectorGroups'] == group and \
-                    exception['selectedDestinations'] == destination and \
-                    exception['selectedUsers'] == user:
-                return True
+                    group in exception['selectedCollectorGroups'] and \
+                    destination in exception['selectedDestinations'] and \
+                    user in exception['selectedUsers']:
+                return exception['exceptionId']
         return False

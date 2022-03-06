@@ -5,6 +5,7 @@ from infra.system_components.management import Management
 from tests.exceptions_tests.conftest import ExceptionTestType
 from tests.utils.management_utils import ManagementUtils
 from tests.utils.collector_utils import CollectorUtils
+from infra.assertion.assertion import AssertTypeEnum, Assertion
 
 
 @allure.epic("Management")
@@ -105,7 +106,9 @@ class ExceptionsTests:
 
         management.rest_api_client.create_exception(event_id)
         management.ui_client.exceptions.edit_exceptions({"groups": [group_name]}, {"destination": [destination]})
-        ManagementUtils.validate_exception(management, process=malware_name, group=group_name, destination=destination)
+        exception_id = ManagementUtils.validate_exception(management, process=malware_name, group=group_name,
+                                                          destination=destination)
+        assert exception_id
 
     @pytest.mark.parametrize('xray, exception_function_fixture',
                              [('EN-68888', ExceptionTestType.EDIT_PARTIALLY_COVERED_EXCEPTION)],
@@ -128,10 +131,40 @@ class ExceptionsTests:
         malware_name = exception_function_fixture.get('malware_name')
 
         management.rest_api_client.create_exception(event_id, groups=[group_name])
-        ManagementUtils.validate_exception(management, process=malware_name, event_id=event_id, group=group_name)
+        exception_id = ManagementUtils.validate_exception(management, process=malware_name, group=group_name)
+        assert exception_id
 
         management.ui_client.exceptions.edit_exceptions({"destination": [destination]})
-        ManagementUtils.validate_exception(management, process=malware_name, event_id=event_id, group=group_name, destination=destination)
+        exception_id = ManagementUtils.validate_exception(management, process=malware_name, group=group_name,
+                                                          destination=destination)
+        assert exception_id
+
+    @pytest.mark.parametrize('xray, exception_function_fixture',
+                             [('EN-68892', ExceptionTestType.DELETE_EXCEPTION)],
+                             indirect=True)
+    @pytest.mark.sanity
+    @pytest.mark.management_sanity
+    def test_delete_exception(self, xray, exception_function_fixture):
+        """
+        steps:
+        1. create event DynamicCodeTests
+        2. crete exception for DynamicCodeTests
+        3. remove Exception
+        """
+        management: Management = exception_function_fixture.get('management')
+        malware_name = exception_function_fixture.get('malware_name')
+        event_id = exception_function_fixture.get("event_id")
+
+        management.rest_api_client.create_exception(event_id)
+        exception_id = ManagementUtils.validate_exception(management, process=malware_name, event_id=event_id)
+        assert exception_id
+
+        management.rest_api_client.delete_exception(exception_id)
+        exception_id = ManagementUtils.validate_exception(management, process=malware_name, event_id=event_id)
+        if exception_id:
+            Assertion.invoke_assertion(expected=False, actual=exception_id,
+                                       message=r"exception wasn't deleted as expected",
+                                       assert_type=AssertTypeEnum.SOFT)
 
     # @pytest.mark.xray('EN-73320')
     # # @pytest.mark.testim_sanity
