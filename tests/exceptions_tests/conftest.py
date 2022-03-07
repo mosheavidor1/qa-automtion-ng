@@ -33,7 +33,7 @@ def exception_function_fixture(management, request):
 
     malware_name = "DynamicCodeTests.exe"
     group_name = "empty"
-    destination = "IP set"
+    destination = "Internal Destinations"
 
     management.rest_api_client.delete_all_exceptions(timeout=1)
     management.rest_api_client.delete_all_events()
