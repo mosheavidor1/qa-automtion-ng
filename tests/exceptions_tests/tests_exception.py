@@ -105,7 +105,8 @@ class ExceptionsTests:
         malware_name = exception_function_fixture.get('malware_name')
 
         management.rest_api_client.create_exception(event_id)
-        management.ui_client.exceptions.edit_exceptions({"groups": [group_name], "destinations": [destination]})
+        management.ui_client.exceptions.edit_exceptions(
+            {"groups": [group_name], "destinations": [destination], "eventID": event_id})
         exception_id = ManagementUtils.validate_exception(management, process=malware_name, group=group_name,
                                                           destination=destination)
         assert exception_id, "exception validation failed,exception wasn't created"
@@ -134,7 +135,7 @@ class ExceptionsTests:
         exception_id = ManagementUtils.validate_exception(management, process=malware_name, group=group_name)
         assert exception_id, "exception validation failed,exception wasn't created"
 
-        management.ui_client.exceptions.edit_exceptions({"destinations": [destination]})
+        management.ui_client.exceptions.edit_exceptions({"destinations": [destination], "eventID": event_id})
         exception_id = ManagementUtils.validate_exception(management, process=malware_name, group=group_name,
                                                           destination=destination)
         assert exception_id, "exception validation failed,exception wasn't created"
