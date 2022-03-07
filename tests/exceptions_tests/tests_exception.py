@@ -105,10 +105,10 @@ class ExceptionsTests:
         malware_name = exception_function_fixture.get('malware_name')
 
         management.rest_api_client.create_exception(event_id)
-        management.ui_client.exceptions.edit_exceptions({"groups": [group_name]}, {"destination": [destination]})
+        management.ui_client.exceptions.edit_exceptions({"groups": [group_name], "destinations": [destination]})
         exception_id = ManagementUtils.validate_exception(management, process=malware_name, group=group_name,
                                                           destination=destination)
-        assert exception_id
+        assert exception_id, "exception validation failed,exception wasn't created"
 
     @pytest.mark.parametrize('xray, exception_function_fixture',
                              [('EN-68888', ExceptionTestType.EDIT_PARTIALLY_COVERED_EXCEPTION)],
@@ -132,12 +132,12 @@ class ExceptionsTests:
 
         management.rest_api_client.create_exception(event_id, groups=[group_name])
         exception_id = ManagementUtils.validate_exception(management, process=malware_name, group=group_name)
-        assert exception_id
+        assert exception_id, "exception validation failed,exception wasn't created"
 
-        management.ui_client.exceptions.edit_exceptions({"destination": [destination]})
+        management.ui_client.exceptions.edit_exceptions({"destinations": [destination]})
         exception_id = ManagementUtils.validate_exception(management, process=malware_name, group=group_name,
                                                           destination=destination)
-        assert exception_id
+        assert exception_id, "exception validation failed,exception wasn't created"
 
     @pytest.mark.parametrize('xray, exception_function_fixture',
                              [('EN-68892', ExceptionTestType.DELETE_EXCEPTION)],
@@ -157,7 +157,7 @@ class ExceptionsTests:
 
         management.rest_api_client.create_exception(event_id)
         exception_id = ManagementUtils.validate_exception(management, process=malware_name, event_id=event_id)
-        assert exception_id
+        assert exception_id, "exception validation failed,exception wasn't created"
 
         management.rest_api_client.delete_exception(exception_id)
         exception_id = ManagementUtils.validate_exception(management, process=malware_name, event_id=event_id)
