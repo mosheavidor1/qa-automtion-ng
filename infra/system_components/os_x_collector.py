@@ -82,3 +82,6 @@ class OsXCollector(Collector):
 
     def copy_log_parser_to_machine(self):
         pass
+
+    def remove_all_crash_dumps_files(self):
+        pass

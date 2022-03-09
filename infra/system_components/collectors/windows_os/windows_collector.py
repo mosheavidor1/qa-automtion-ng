@@ -223,6 +223,13 @@ class WindowsCollector(Collector):
 
         return crash_dumps_list
 
+    @allure.step("Remove crash dumps files")
+    def remove_all_crash_dumps_files(self):
+        files_to_remove = self.get_crash_dumps_files()
+        if files_to_remove is not None and isinstance(files_to_remove, list) and len(files_to_remove) > 0:
+            for file in files_to_remove:
+                self.os_station.remove_file(file_path=file)
+
     @allure.step("{0} - Get collector status via cli")
     def get_collector_status(self) -> SystemState:
         cmd = f'"{self.__collector_service_exe}" --status'

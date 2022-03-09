@@ -86,3 +86,6 @@ class LinuxCollector(Collector):
 
     def clear_logs(self):
         pass
+
+    def remove_all_crash_dumps_files(self):
+        pass

@@ -155,3 +155,7 @@ class Collector:
     @abstractmethod
     def create_event(self, malware_name="DynamicCodeTests"):
         pass
+
+    @abstractmethod
+    def remove_all_crash_dumps_files(self):
+        pass
