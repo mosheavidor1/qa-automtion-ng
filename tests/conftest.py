@@ -367,7 +367,8 @@ def reset_driver_verifier_for_all_collectors(management):
 
 @pytest.fixture(scope="function", autouse=True)
 def check_if_collector_has_crashed(management):
-    Reporter.report("Nothing to show at the beginning of the run")
+    # Reporter.report("Nothing to show at the beginning of the run")
+    remove_crash_dumps_from_all_collectors(management.collectors)
     yield
     check_if_collectors_has_crashed(management.collectors)
 
@@ -400,8 +401,14 @@ def revert_to_first_snapshot_for_all_collectors(collectors: List[Collector]):
         single_collector.update_process_id()
 
 
+@allure.step("Remove crash dumps from all collectors")
+def remove_crash_dumps_from_all_collectors(collectors_list: List[Collector]):
+    for collector in collectors_list:
+        collector.remove_all_crash_dumps_files()
+
+
 @allure.step("Check if collectors has crashed")
-def check_if_collectors_has_crashed(collectors_list):
+def check_if_collectors_has_crashed(collectors_list: List[Collector]):
     crashed_collectors = []
     if collectors_list is not None and len(collectors_list) > 0:
         for single_collector in collectors_list:
