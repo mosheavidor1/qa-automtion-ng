@@ -424,7 +424,7 @@ def check_if_collectors_has_crashed(collectors_list: List[Collector]):
             assert False, f"Crash was detected in the collectors: {str(crashed_collectors)}"
 
     else:
-        Reporter.report("Collectors list is None, can not check anything")
+        assert False, "Didn't pass any collector"
 
 
 @pytest.fixture()

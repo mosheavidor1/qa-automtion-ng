@@ -14,3 +14,7 @@ win_user_name = 'user1'
 win_password = 'P@ssword1!'
 
 debug_mode = True if os.getenv("debug_mode") == 'true' else False
+
+# Linux COLLECTOR CREDENTIALS
+linux_user_name = 'root'
+linux_password = 'enSilo$$'

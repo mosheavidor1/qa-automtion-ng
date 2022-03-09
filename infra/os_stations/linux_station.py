@@ -222,9 +222,15 @@ class LinuxStation(OsStation):
 
         return disk_usage
 
-    @allure.step("Get {service_name} service process ID")
-    def get_service_process_ids(self, service_name: str) -> List[int]:
-        raise Exception("Not implemented yet")
+    @allure.step("Get {service_identifier} service process ID")
+    def get_service_process_ids(self, service_identifier: str) -> List[int]:
+        # pid_of_fortiedr_scanner in old infra
+        cmd = f"ps aux | grep '{service_identifier}' | grep -v grep | awk '{{print $2}}'"
+        pid = self.execute_cmd(cmd=cmd)
+        if pid is None:
+            return None
+        pids = [int(pid)]
+        return pids
 
     @allure.step("Kill process with the id: {pid}")
     def kill_process_by_id(self, pid):

@@ -1,3 +1,4 @@
+import allure
 from infra.containers.system_component_containers import CollectorDetails
 from infra.enums import OsTypeEnum
 from infra.system_components.collector import Collector
@@ -15,11 +16,17 @@ class OsXCollector(Collector):
                          password=password,
                          collector_details=collector_details,
                          os_type=OsTypeEnum.OS_X)
+        self._process_id = self.get_current_process_id()
+
+    @property
+    def cached_process_id(self) -> int:
+        return self._process_id
 
     def update_process_id(self):
         pass
 
-    def get_service_name(self):
+    @allure.step("Get current collector process ID")
+    def get_current_process_id(self):
         pass
 
     def get_version(self):
