@@ -365,10 +365,14 @@ def reset_driver_verifier_for_all_collectors(management):
         collector.reboot()
 
 
+@pytest.fixture(scope="session", autouse=True)
+def remove_crash_dump_files_on_collector_machines(management):
+    remove_crash_dumps_from_all_collectors(management.collectors)
+
+
 @pytest.fixture(scope="function", autouse=True)
 def check_if_collector_has_crashed(management):
-    # Reporter.report("Nothing to show at the beginning of the run")
-    remove_crash_dumps_from_all_collectors(management.collectors)
+    Reporter.report("Nothing to show at the beginning of the run")
     yield
     check_if_collectors_has_crashed(management.collectors)
 
