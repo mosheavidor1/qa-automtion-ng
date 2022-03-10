@@ -21,6 +21,7 @@ INTERVAL_WAIT_FOR_SERVICE = 5
 MAX_WAIT_FOR_SERVICE = 60
 REGISTRATION_PASS = management_registration_password
 DEFAULT_AGGREGATOR_PORT = 8081
+SERVICE_NAME = "FortiEDRCollectorService."
 
 
 class WindowsCollector(Collector):
@@ -37,7 +38,7 @@ class WindowsCollector(Collector):
                          collector_details=collector_details,
                          os_type=OsTypeEnum.WINDOWS,
                          encrypted_connection=encrypted_connection)
-
+        self._process_id = self.get_current_process_id()
         self.__collector_installation_path: str = r"C:\Program Files\Fortinet\FortiEDR"
         self.__collector_service_exe: str = f"{self.__collector_installation_path}\FortiEDRCollectorService.exe"
         self.__program_data: str = r"C:\ProgramData\FortiEdr"
@@ -56,7 +57,7 @@ class WindowsCollector(Collector):
         # TODO - Remove this method when we will have new templates
         processes = ['nssm.exe', 'blg2log.exe', 'filebeat.exe']
         for single_process in processes:
-            pids = self.os_station.get_service_process_ids(service_name=single_process)
+            pids = self.os_station.get_service_process_ids(single_process)
             if pids is not None and len(pids) > 0:
                 for pid in pids:
                     self.os_station.kill_process_by_id(pid=pid)
@@ -64,6 +65,10 @@ class WindowsCollector(Collector):
     @property
     def collector_installation_path(self) -> str:
         return self.__collector_installation_path
+
+    @property
+    def cached_process_id(self) -> int:
+        return self._process_id
 
     @property
     def collector_service_ext(self) -> str:
@@ -81,14 +86,18 @@ class WindowsCollector(Collector):
     def crash_dumps_dir(self) -> str:
         return self.__crash_dumps_dir
 
+    @allure.step("Get current collector process ID")
+    def get_current_process_id(self):
+        process_ids = self.os_station.get_service_process_ids(SERVICE_NAME)
+        process_id = process_ids[0] if process_ids is not None else None  # Why process_ids[0] who told that this is the correct one
+        Reporter.report(f"Current process ID is: {process_id}")
+        return process_id
+
     def get_qa_files_path(self):
         return self.__qa_files_path
 
     def get_collector_info_from_os(self):
         pass
-
-    def get_service_name(self) -> str:
-        return "FortiEDRCollectorService."
 
     def _get_crash_folders(self) -> List[str]:
         """
@@ -124,6 +133,12 @@ class WindowsCollector(Collector):
         self.os_station.execute_cmd(cmd=cmd, fail_on_err=True)
         self.update_process_id()
         Reporter.report("Collector started successfully")
+
+    @allure.step("Update process ID")
+    def update_process_id(self):
+        Reporter.report(f"Current process ID is: {self._process_id}")
+        self._process_id = self.get_current_process_id()
+        Reporter.report(f"Collector process ID updated to: {self._process_id}")
 
     def is_up(self):
         pass
@@ -165,9 +180,9 @@ class WindowsCollector(Collector):
     def has_crash(self) -> bool:
         curr_pid = self.get_current_process_id()
         is_pid_changed = False
-        if curr_pid != self.process_id:
+        if curr_pid != self.cached_process_id:
             is_pid_changed = True
-            Reporter.report(f"Process ID was changed, last known ID is: {self.process_id}, current ID is: {curr_pid}")
+            Reporter.report(f"Process ID was changed, last known ID is: {self.cached_process_id}, current ID is: {curr_pid}")
             self._process_id = curr_pid
 
         has_dump = self.has_crash_dumps(append_to_report=False)
@@ -449,7 +464,7 @@ class WindowsCollector(Collector):
             target_path_in_local_machine=target_path, shared_drive_path=malware_folder,
             files_to_copy=[malware_name])
 
-        pids = self.os_station.get_service_process_ids(service_name=malware_name)
+        pids = self.os_station.get_service_process_ids(malware_name)
         if pids is not None:
             for single_pid in pids:
                 self.os_station.kill_process_by_id(pid=single_pid)

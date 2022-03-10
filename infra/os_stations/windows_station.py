@@ -269,18 +269,15 @@ class WindowsStation(OsStation):
         Reporter.report(f"Disk usage: {usage}")
         return usage
 
-    @allure.step("Get {service_name} service process IDs")
-    def get_service_process_ids(self, service_name: str) -> List[int]:
-        result = self.execute_cmd(cmd=f'TASKLIST | find "{service_name}"')
-
+    @allure.step("Get {service_identifier} service process IDs")
+    def get_service_process_ids(self, service_identifier: str) -> List[int]:
+        result = self.execute_cmd(cmd=f'TASKLIST | find "{service_identifier}"')
         if result is None:
             return None
-
         result_splitted = result.split('\r\n')
-
         pids = []
-        for single_row in result_splitted:
-            pid = StringUtils.get_txt_by_regex(text=single_row, regex=f"{service_name}\s+(\d+)", group=1)
+        for row in result_splitted:
+            pid = StringUtils.get_txt_by_regex(text=row, regex=f"{service_identifier}\s+(\d+)", group=1)
             if pid is not None:
                 pids.append(int(pid))
 

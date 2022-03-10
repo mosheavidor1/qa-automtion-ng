@@ -18,6 +18,7 @@ from infra.system_components.collector import Collector
 from infra.system_components.core import Core
 from infra.system_components.forti_edr_linux_station import FortiEdrLinuxStation
 from infra.system_components.collectors.windows_os.windows_collector import WindowsCollector
+from infra.system_components.collectors.linux_os.linux_collector import LinuxCollector
 from infra.test_im.management_ui_client import ManagementUiClient
 from infra.utils.utils import StringUtils
 from tests.utils.collector_utils import CollectorUtils
@@ -260,23 +261,13 @@ class Management(FortiEdrLinuxStation):
 
                 collector.os_station.user_name = user_name
                 collector.os_station.password = password
-
                 self._collectors.append(collector)
 
+            elif 'linux' in collector_details.os_family.lower():
+                collector = LinuxCollector(host_ip=collector_details.ip_address, user_name=sut_details.linux_user_name,
+                                           password=sut_details.linux_password, collector_details=collector_details)
+                self._collectors.append(collector)
 
-            # TBD - Uncomment when the logic of linux collector will be implemented
-
-            # elif 'ubunto' in collector_details.os_family.lower() \
-            #         or 'centos' in collector_details.os_family.lower() \
-            #         or 'oracle' in collector_details.os_family.lower() \
-            #         or 'suse' in collector_details.os_family.lower() \
-            #         or 'amazon' in collector_details.os_family.lower():
-            #
-            #     collector = LinuxCollector(host_ip=collector_details.ip_address,
-            #                                user_name='root',
-            #                                password='enSilo$$',
-            #                                collector_details=collector_details)
-            #
             # elif 'osx' in collector_details.os_family.lower():
             #     collector = OsXCollector(host_ip=collector_details.ip_address,
             #                              user_name='root',
@@ -286,8 +277,6 @@ class Management(FortiEdrLinuxStation):
             # else:
             #     raise Exception(
             #         f"Can not create an collector object since collector from the {collector_details.os_family} family is not known by the automation'")
-            #
-            # self._collectors.append(collector)
 
     @allure.step("Check all system components services are up and running")
     def validate_all_system_components_are_running(self):
@@ -303,20 +292,13 @@ class Management(FortiEdrLinuxStation):
                     core.stop_service()
                     core.start_service()
 
-        # classic example of polymorphism
         for sys_comp in non_collector_sys_components:
             sys_comp.validate_system_component_is_in_desired_state(desired_state=SystemState.RUNNING)
 
-        for single_collector in self._collectors:
+        for collector in self._collectors:
             CollectorUtils.validate_collector_is_currently_running_according_to_management(management=self,
-                                                                                           collector=single_collector)
-
-            # first validating it's up on CLI
-            # single_collector.validate_collector_is_up_and_running(use_health_monitor=True)
-
-            # then validate it's up both on mangement and the service on machine itself
-            # CollectorUtils.validate_collector_state_is_equal_both_on_machine_and_management(management=self,
-            #                                                                                 collector=single_collector)
+                                                                                           collector=collector)
+            # CollectorUtils.validate_collector_is_currently_running(collector)
 
     @allure.step("Add Rest-API role for {user_name}")
     def enable_rest_api_for_user_via_db(self, user_name='admin'):
