@@ -1,10 +1,13 @@
 import time
+from typing import List
 
 import allure
 from ensilo.platform.rest.nslo_management_rest import NsloManagementConnection, NsloRest
 from json import loads
 import json
 from infra.allure_report_handler.reporter import Reporter
+from infra.containers.management_api_body_containers import OrganizationData, CreateOrganizationData
+from infra.utils.utils import JsonUtils
 
 
 class RestCommands(object):
@@ -18,6 +21,14 @@ class RestCommands(object):
         self.management_password = management_password
         self.rest = NsloRest(NsloManagementConnection(management_ip, management_user, management_password,
                                                       organization=organization))
+
+    def _validate_expected_status_code(self,
+                                       expected_status_code: int,
+                                       actual_status_code: int,
+                                       error_message: str):
+        if expected_status_code != actual_status_code:
+            if not (expected_status_code == 200 and actual_status_code == 201):
+                assert False, error_message
 
     def _validate_data(self, raw_data, validating_data):
         """
@@ -154,7 +165,7 @@ class RestCommands(object):
 
         return summery
 
-    def set_system_mode(self, prevention):
+    def set_system_mode(self, prevention: bool):
         """
         :param prevention: boolean, True for prevention mode or False for simulation.
         """
@@ -454,4 +465,66 @@ class RestCommands(object):
         Reporter.report(f"Assigned the policy {policy_name} to the group {group_name} successfully")
         time.sleep(timeout)
         return True
+
+    @allure.step("Get all organizations")
+    def get_all_organizations(self, expected_status_code: int = 200) -> List[dict]:
+        status, response = self.rest.organizations.ListOrganizations()
+
+        self._validate_expected_status_code(expected_status_code=expected_status_code,
+                                            actual_status_code=response.status_code,
+                                            error_message=f"List organizations - expected response code: {expected_status_code}, actual: {response.status_code}")
+
+        as_dict = json.loads(response.content)
+        return as_dict
+
+    @allure.step("Create organization")
+    def create_organization(self,
+                            organization_data: CreateOrganizationData,
+                            expected_status_code: int = 200):
+
+        data = json.loads(JsonUtils.object_to_json(obj=organization_data,
+                                                   null_sensitive=True))
+
+        status, response = self.rest.passthrough.ExecuteRequest(url='/organizations/create-organization',
+                                                                mode='post',
+                                                                body=data,
+                                                                inputParams=None)
+
+        self._validate_expected_status_code(expected_status_code=expected_status_code,
+                                            actual_status_code=response.status_code,
+                                            error_message=f"Create-organization - expected response code: {expected_status_code}, actual: {response.status_code}")
+
+    @allure.step("Update organization")
+    def update_organization(self,
+                            organization_data: OrganizationData,
+                            expected_status_code: int = 200):
+
+        json_as_str = JsonUtils.object_to_json(obj=organization_data,
+                                               null_sensitive=True)
+        data = json.loads(json_as_str)
+
+        status, response = self.rest.passthrough.ExecuteRequest(
+            url=f'/organizations/update-organization?organization={organization_data.name}',
+            mode='put',
+            body=data,
+            inputParams=None)
+
+        self._validate_expected_status_code(expected_status_code=expected_status_code,
+                                            actual_status_code=response.status_code,
+                                            error_message=f"Update-organization - expected response code: {expected_status_code}, actual: {response.status_code}")
+
+    @allure.step("Delete organization")
+    def delete_organization(self,
+                            organization_name: str,
+                            expected_status_code: int = 200):
+
+        status, response = self.rest.passthrough.ExecuteRequest(
+            url=f'/organizations/delete-organization?organization={organization_name}',
+            mode='delete',
+            body=None,
+            inputParams=None)
+
+        self._validate_expected_status_code(expected_status_code=expected_status_code,
+                                            actual_status_code=response.status_code,
+                                            error_message=f"Delete-organization - expected response code: {expected_status_code}, actual: {response.status_code}")
 
