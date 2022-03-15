@@ -42,6 +42,7 @@ class Collector:
     @property
     @abstractmethod
     def cached_process_id(self) -> int:
+        """ Caching the current process id in order later validate if it changed """
         pass
 
     @abstractmethod
@@ -102,6 +103,7 @@ class Collector:
 
     @abstractmethod
     def update_process_id(self):
+        """ Update the cached pid to the current pid """
         pass
 
     @abstractmethod

@@ -4,6 +4,8 @@ from enum import Enum
 class SystemState(Enum):
     RUNNING = 'RUNNING'
     NOT_RUNNING = 'NOT_RUNNING'
+    DISCONNECTED = 'DISCONNECTED'
+    DOWN = 'DOWN'
 
 
 class ComponentType(Enum):

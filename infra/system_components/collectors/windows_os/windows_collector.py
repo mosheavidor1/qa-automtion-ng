@@ -5,6 +5,10 @@ from typing import List
 import allure
 
 import third_party_details
+from infra.system_components.collectors.collectors_common_utils import (
+    wait_until_collector_pid_disappears,
+    wait_until_collector_pid_appears
+)
 from infra.allure_report_handler.reporter import Reporter
 from infra.containers.system_component_containers import CollectorDetails
 from infra.enums import SystemState, OsTypeEnum
@@ -68,6 +72,7 @@ class WindowsCollector(Collector):
 
     @property
     def cached_process_id(self) -> int:
+        """ Caching the current process id in order later validate if it changed """
         return self._process_id
 
     @property
@@ -121,22 +126,20 @@ class WindowsCollector(Collector):
     def stop_collector(self, password=None):
         password = password or REGISTRATION_PASS
         cmd = f'"{self.__collector_service_exe}" --stop -rp:{password}'
-        Reporter.report("Going to stop the collector")
         self.os_station.execute_cmd(cmd=cmd, fail_on_err=True)
-        self._process_id = None
-        Reporter.report("Collector stopped successfully")
+        wait_until_collector_pid_disappears(self)
+        self.update_process_id()
 
     @allure.step("{0} - Start collector")
     def start_collector(self):
         cmd = f'"{self.__collector_service_exe}" --start'
-        Reporter.report("Going to start the collector")
         self.os_station.execute_cmd(cmd=cmd, fail_on_err=True)
+        wait_until_collector_pid_appears(self)
         self.update_process_id()
-        Reporter.report("Collector started successfully")
 
     @allure.step("Update process ID")
     def update_process_id(self):
-        Reporter.report(f"Current process ID is: {self._process_id}")
+        Reporter.report(f"Cached process ID is: {self._process_id}")
         self._process_id = self.get_current_process_id()
         Reporter.report(f"Collector process ID updated to: {self._process_id}")
 
@@ -155,10 +158,14 @@ class WindowsCollector(Collector):
     def is_status_running_in_cli(self):
         return self.get_collector_status() == SystemState.RUNNING
 
+    def is_status_down_in_cli(self):
+        return self.get_collector_status() == SystemState.DOWN
+
     @allure.step("Reboot Collector")
     def reboot(self):
         self.os_station.reboot()
-        self._process_id = self.get_current_process_id()
+        wait_until_collector_pid_appears(self)
+        self.update_process_id()
 
     @allure.step("{0} - Copy collected crash dumps to C:\CrashDumpsCollected")
     def __move_crash_files_to_dedicated_crash_folder_files(self, dumps_files: List[str]):
@@ -183,7 +190,6 @@ class WindowsCollector(Collector):
         if curr_pid != self.cached_process_id:
             is_pid_changed = True
             Reporter.report(f"Process ID was changed, last known ID is: {self.cached_process_id}, current ID is: {curr_pid}")
-            self._process_id = curr_pid
 
         has_dump = self.has_crash_dumps(append_to_report=False)
 
@@ -257,7 +263,8 @@ class WindowsCollector(Collector):
         system_state = SystemState.NOT_RUNNING
         if forti_edr_service_status == 'Up' and forti_edr_driver_status == 'Up' and forti_edr_status == 'Running':
             system_state = SystemState.RUNNING
-
+        elif forti_edr_service_status == 'Down' and forti_edr_driver_status is None and forti_edr_status is None:
+            system_state = SystemState.DOWN
         return system_state
 
     @allure.step('{0} - Start health mechanism')
@@ -277,28 +284,18 @@ class WindowsCollector(Collector):
         registration_pass = registration_pass or REGISTRATION_PASS
         version = version or self.get_version()
         installer_path = get_installer_path(self, version)
-
         cmd = generate_installation_cmd(installer_path, aggregator_ip, aggregator_port, registration_pass, logs_path)
         self.os_station.execute_cmd(cmd=cmd, fail_on_err=True)
-        self._process_id = self.get_current_process_id()
+        wait_until_collector_pid_appears(self)
+        self.update_process_id()
 
     @allure.step("{0} - Uninstall FortiEDR Collector")
     def uninstall_collector(self, logs_path, registration_password=None):
         registration_password = registration_password or REGISTRATION_PASS
         uninstall_script_path = create_uninstallation_script(self, registration_password, logs_path)
         self.os_station.execute_cmd(cmd=uninstall_script_path, asynchronous=False)
-        self._process_id = self.get_current_process_id()
-
-    @allure.step("{0} - Wait until installation folder will be empty")
-    def wait_until_installation_folder_will_be_empty(self, timeout: int = 30, interval_sec=5):
-        is_installation_folder_empty = self.is_installation_folder_empty()
-        start_time = time.time()
-
-        while not is_installation_folder_empty and time.time() - start_time < timeout:
-            time.sleep(interval_sec)
-            is_installation_folder_empty = self.is_installation_folder_empty()
-
-        assert is_installation_folder_empty, f"Installation folder contains files, should be empty"
+        wait_until_collector_pid_disappears(self)
+        self.update_process_id()
 
     def is_installation_folder_empty(self):
         files = self.os_station.get_list_of_files_in_folder(folder_path=self.__collector_installation_path)

@@ -1,29 +1,15 @@
 import functools
 import allure
 from datetime import datetime
-from infra.enums import SystemState
 from infra.system_components.collector import Collector
 from .test_utils import TestUtils
 
 INSTALL_UNINSTALL_LOGS_FOLDER_PATH = "C:\\InstallUninstallLogs"
 COLLECTOR_KEEPALIVE_INTERVAL = 5
-MAX_WAIT_FOR_STATUS = 12 * COLLECTOR_KEEPALIVE_INTERVAL
+MAX_WAIT_FOR_STATUS = 5 * 60
 
 
 class CollectorUtils:
-
-    @staticmethod
-    @allure.step("{0} - Validate collector stopped")
-    def validate_collector_stopped(collector: Collector):
-        """ Validate that collector stopped:
-        1. Collector should return correct status (not running).
-        2. PID should be None.
-        """
-        pid = collector.get_current_process_id()
-        assert collector.get_collector_status() == SystemState.NOT_RUNNING, \
-            f"Collector on host {collector} was not stopped, pid is {pid}"
-        assert pid is None, \
-            f"Collector on host {collector} returning wrong status because pid {pid} still exists"
 
     @staticmethod
     @allure.step("{0} - Validate collector is currently running")
@@ -32,16 +18,21 @@ class CollectorUtils:
         assert is_status_running, f"{collector} status is not running"
 
     @staticmethod
-    @allure.step("Validate collector is currently running according to the management")
-    def validate_collector_is_currently_running_according_to_management(management, collector: Collector):
-        is_status_running = management.is_collector_status_running_in_mgmt(collector)
-        assert is_status_running, f"{collector} status is not running in MGMT: {management}"
+    @allure.step("Wait until status of {collector} in {management} is not running")
+    def wait_for_not_running_collector_status_in_mgmt(management, collector, timeout=None):
+        timeout = timeout or MAX_WAIT_FOR_STATUS
+
+        def is_collector_status_not_running():
+            is_not_running = not management.is_collector_status_running_in_mgmt(collector)
+            return is_not_running
+        TestUtils.wait_for_predict_condition(predict_condition_func=is_collector_status_not_running,
+                                             timeout_sec=timeout, interval_sec=COLLECTOR_KEEPALIVE_INTERVAL)
 
     @staticmethod
-    @allure.step("Wait for a running status of {collector} in {management}")
-    def wait_for_running_collector_status_in_mgmt(management, collector, timeout=None):
+    @allure.step("Wait until status of {collector} in {management} is 'Disconnected'")
+    def wait_for_disconnected_collector_status_in_mgmt(management, collector, timeout=None):
         timeout = timeout or MAX_WAIT_FOR_STATUS
-        predict_condition_func = functools.partial(management.is_collector_status_running_in_mgmt, collector)
+        predict_condition_func = functools.partial(management.is_collector_status_disconnected_in_mgmt, collector)
         TestUtils.wait_for_predict_condition(predict_condition_func=predict_condition_func,
                                              timeout_sec=timeout, interval_sec=COLLECTOR_KEEPALIVE_INTERVAL)
 
@@ -50,6 +41,25 @@ class CollectorUtils:
     def wait_for_running_collector_status_in_cli(collector, timeout=None):
         timeout = timeout or MAX_WAIT_FOR_STATUS
         predict_condition_func = collector.is_status_running_in_cli
+        TestUtils.wait_for_predict_condition(predict_condition_func=predict_condition_func,
+                                             timeout_sec=timeout, interval_sec=COLLECTOR_KEEPALIVE_INTERVAL)
+
+    @staticmethod
+    @allure.step("Wait until status of {collector} in cli is 'not running'")
+    def wait_for_not_running_status_in_cli(collector, timeout=None):
+        timeout = timeout or MAX_WAIT_FOR_STATUS
+
+        def is_collector_status_not_running():
+            is_not_running = not collector.is_status_running_in_cli()
+            return is_not_running
+        TestUtils.wait_for_predict_condition(predict_condition_func=is_collector_status_not_running,
+                                             timeout_sec=timeout, interval_sec=COLLECTOR_KEEPALIVE_INTERVAL)
+
+    @staticmethod
+    @allure.step("Wait until status of {collector} in cli is 'down")
+    def wait_for_service_down_status_in_cli(collector, timeout=None):
+        timeout = timeout or MAX_WAIT_FOR_STATUS
+        predict_condition_func = collector.is_status_down_in_cli
         TestUtils.wait_for_predict_condition(predict_condition_func=predict_condition_func,
                                              timeout_sec=timeout, interval_sec=COLLECTOR_KEEPALIVE_INTERVAL)
 
@@ -77,8 +87,3 @@ class CollectorUtils:
         logs_folder = collector.os_station.create_new_folder(fr'{INSTALL_UNINSTALL_LOGS_FOLDER_PATH}')
         logs_path = fr"{logs_folder}\{logs_file_name}"
         return logs_path
-
-    @staticmethod
-    def validate_installation_folder_is_empty(collector: Collector):
-        is_empty = collector.is_installation_folder_empty()
-        assert is_empty, f"Installation folder contains files, should be empty"

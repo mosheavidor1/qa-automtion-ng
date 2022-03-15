@@ -3,6 +3,7 @@ import pytest
 from tests.utils.collector_utils import CollectorUtils
 from tests.utils.test_utils import TestUtils
 from infra.allure_report_handler.reporter import Reporter
+from infra.system_components.collectors.collectors_common_utils import wait_for_running_collector_status_in_mgmt
 
 
 @allure.epic("Collectors")
@@ -17,12 +18,15 @@ def test_stop_start_collector(management, collector):
     """
     with allure.step(f"Stop {collector} and validate"):
         collector.stop_collector()
-        CollectorUtils.validate_collector_stopped(collector)
+        Reporter.report(f"Validate {collector} stopped successfully:")
+        CollectorUtils.wait_for_service_down_status_in_cli(collector)
+        CollectorUtils.wait_for_disconnected_collector_status_in_mgmt(management, collector)
 
     with allure.step(f"Start {collector} and validate"):
         collector.start_collector()
+        Reporter.report(f"Validate {collector} started successfully:")
         # CollectorUtils.wait_for_running_collector_status_in_cli(collector)
-        CollectorUtils.wait_for_running_collector_status_in_mgmt(management, collector)
+        wait_for_running_collector_status_in_mgmt(management, collector)
 
 
 @allure.epic("Collectors")
@@ -46,9 +50,8 @@ def test_install_uninstall_collector(management, collector):
         with TestUtils.append_log_to_report_on_failure_context(collector, uninstallation_log_path):
             collector.uninstall_collector(uninstallation_log_path)
             Reporter.report(f"Validate {collector} uninstalled successfully:")
-            process_id = collector.get_current_process_id()
-            assert process_id is None, f"{collector} is still alive with pid: {process_id}"
-            CollectorUtils.validate_installation_folder_is_empty(collector)
+            assert collector.is_installation_folder_empty(), f"Installation folder contains files, should be empty"
+            CollectorUtils.wait_for_disconnected_collector_status_in_mgmt(management, collector)
 
     with allure.step(f"Install {collector} and validate"):
         installation_log_path = CollectorUtils.create_logs_path(collector, "install_logs")
@@ -57,10 +60,8 @@ def test_install_uninstall_collector(management, collector):
                                         aggregator_ip=management.aggregators[0].host_ip,
                                         logs_path=installation_log_path)
             Reporter.report(f"Validate {collector} installed successfully:")
-            process_id = collector.get_current_process_id()
-            assert process_id is not None, f"{collector} is not alive with pid: {process_id}"
+            wait_for_running_collector_status_in_mgmt(management, collector)
             CollectorUtils.wait_for_running_collector_status_in_cli(collector)
-            CollectorUtils.wait_for_running_collector_status_in_mgmt(management, collector)
 
 
 @allure.epic("Collectors")
@@ -73,9 +74,9 @@ def test_reboot_collector(management, collector):
     1. Reboot the machine and wait until it is reachable after reboot.
     2. Validate that collector is in status 'running' in management and via cli.
     """
-    with allure.step(f"Reboot the machine and wait until is reachable"):
+    with allure.step(f"Reboot the machine and wait until is reachable:"):
         collector.reboot()
 
-    with allure.step(f"Validate that {collector} is running"):
+    with allure.step(f"Validate that {collector} is running:"):
+        wait_for_running_collector_status_in_mgmt(management, collector)
         CollectorUtils.wait_for_running_collector_status_in_cli(collector)
-        CollectorUtils.wait_for_running_collector_status_in_mgmt(management, collector)
