@@ -6,7 +6,8 @@ from ensilo.platform.rest.nslo_management_rest import NsloManagementConnection, 
 from json import loads
 import json
 from infra.allure_report_handler.reporter import Reporter
-from infra.containers.management_api_body_containers import OrganizationData, CreateOrganizationData
+from infra.containers.management_api_body_containers import OrganizationRestData, CreateOrganizationRestData, \
+    CreateUserRestData, UserRestData
 from infra.utils.utils import JsonUtils
 
 
@@ -479,7 +480,7 @@ class RestCommands(object):
 
     @allure.step("Create organization")
     def create_organization(self,
-                            organization_data: CreateOrganizationData,
+                            organization_data: CreateOrganizationRestData,
                             expected_status_code: int = 200):
 
         data = json.loads(JsonUtils.object_to_json(obj=organization_data,
@@ -496,7 +497,7 @@ class RestCommands(object):
 
     @allure.step("Update organization")
     def update_organization(self,
-                            organization_data: OrganizationData,
+                            organization_data: OrganizationRestData,
                             expected_status_code: int = 200):
 
         json_as_str = JsonUtils.object_to_json(obj=organization_data,
@@ -527,4 +528,43 @@ class RestCommands(object):
         self._validate_expected_status_code(expected_status_code=expected_status_code,
                                             actual_status_code=response.status_code,
                                             error_message=f"Delete-organization - expected response code: {expected_status_code}, actual: {response.status_code}")
+
+    @allure.step("Create user")
+    def create_user(self,
+                    user_data: CreateUserRestData,
+                    expected_status_code: int = 200):
+
+        status, response = self.rest.users.CreateUser(username=user_data.username,
+                                                      organization=user_data.organization,
+                                                      password=user_data.password,
+                                                      roles=[user_role.value for user_role in user_data.roles],
+                                                      firstName=user_data.firstName,
+                                                      lastName=user_data.lastName,
+                                                      email=user_data.email,
+                                                      title=user_data.title)
+
+        self._validate_expected_status_code(expected_status_code=expected_status_code,
+                                            actual_status_code=response.status_code,
+                                            error_message=f"Create-user - expected response code: {expected_status_code}, actual: {response.status_code}")
+
+    @allure.step("Update user")
+    def update_user(self,
+                    user_data: UserRestData,
+                    expected_status_code: int = 200):
+        status, response = self.rest.users.UpdateUser(username=user_data.username,
+                                                      organization=user_data.organization,
+                                                      roles=user_data.roles,
+                                                      firstName=user_data.firstName,
+                                                      lastName=user_data.lastName,
+                                                      email=user_data.email,
+                                                      title=user_data.title,
+                                                      new_username=None)
+
+        self._validate_expected_status_code(expected_status_code=expected_status_code,
+                                            actual_status_code=response.status_code,
+                                            error_message=f"Update-user - expected response code: {expected_status_code}, actual: {response.status_code}")
+
+    @allure.step("Delete user")
+    def delete_user(self):
+        pass
 

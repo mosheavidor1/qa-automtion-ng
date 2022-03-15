@@ -1,4 +1,9 @@
-class OrganizationData:
+from typing import List
+
+from infra.enums import UserRoles
+
+
+class OrganizationRestData:
 
     def __init__(self,
                  expiration_date: str,
@@ -17,7 +22,7 @@ class OrganizationData:
         self.iotAllocated = str(iot_allocated)
 
 
-class CreateOrganizationData(OrganizationData):
+class CreateOrganizationRestData(OrganizationRestData):
 
     def __init__(self,
                  expiration_date: str,
@@ -52,5 +57,47 @@ class CreateOrganizationData(OrganizationData):
 
         self.password = password
         self.passwordConfirmation = password_confirmation
+
+
+class UserRestData:
+    def __init__(self,
+                 organization: str,
+                 email: str,
+                 first_name: str,
+                 last_name: str,
+                 roles: List[UserRoles],
+                 title: str,
+                 user_name: str):
+        self.organization = organization
+        self.email = email
+        self.firstName = first_name
+        self.lastName = last_name
+        self.roles = roles
+        self.title = title
+        self.username = user_name
+
+
+class CreateUserRestData(UserRestData):
+    def __init__(self,
+                 organization: str,
+                 email: str,
+                 first_name: str,
+                 last_name: str,
+                 roles: List[UserRoles],
+                 title: str,
+                 user_name: str,
+                 password: str,
+                 confirm_password: str):
+        super().__init__(organization=organization,
+                         email=email,
+                         first_name=first_name,
+                         last_name=last_name,
+                         roles=roles,
+                         title=title,
+                         user_name=user_name)
+        self.password = password
+        self.confirmPassword = confirm_password
+
+
 
 

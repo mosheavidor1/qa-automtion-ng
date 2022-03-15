@@ -1,6 +1,13 @@
 from enum import Enum
 
 
+class UserRoles(Enum):
+    USER = 'User'
+    ADMIN = 'Admin'
+    LOCAL_ADMIN = 'Local Admin'
+    REST_API = 'Rest API'
+
+
 class SystemState(Enum):
     RUNNING = 'RUNNING'
     NOT_RUNNING = 'NOT_RUNNING'
