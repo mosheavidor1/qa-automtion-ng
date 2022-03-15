@@ -21,7 +21,7 @@ from infra.system_components.collectors.windows_os.windows_collector import Wind
 from infra.system_components.collectors.linux_os.linux_collector import LinuxCollector
 from infra.test_im.management_ui_client import ManagementUiClient
 from infra.utils.utils import StringUtils
-from tests.utils.collector_utils import CollectorUtils
+from infra.system_components.collectors.collectors_common_utils import wait_for_running_collector_status_in_mgmt
 
 
 @Singleton
@@ -282,6 +282,7 @@ class Management(FortiEdrLinuxStation):
     def validate_all_system_components_are_running(self):
         # non collector system components inherited from fortiEDRLinuxStation
         non_collector_sys_components = [self] + self._aggregators + self._cores
+        collector_status_timeout = 30
 
         with allure.step("Workaround for core - change DeploymentMethod to Cloud although it's onPrem"):
             for core in self.cores:
@@ -296,8 +297,8 @@ class Management(FortiEdrLinuxStation):
             sys_comp.validate_system_component_is_in_desired_state(desired_state=SystemState.RUNNING)
 
         for collector in self._collectors:
-            CollectorUtils.validate_collector_is_currently_running_according_to_management(management=self,
-                                                                                           collector=collector)
+            wait_for_running_collector_status_in_mgmt(management=self, collector=collector,
+                                                      timeout=collector_status_timeout)
             # CollectorUtils.validate_collector_is_currently_running(collector)
 
     @allure.step("Add Rest-API role for {user_name}")
@@ -342,11 +343,18 @@ class Management(FortiEdrLinuxStation):
         if relevant_collector_info.get('state') == 'Running':
             return SystemState.RUNNING
 
+        elif relevant_collector_info.get('state') == 'Disconnected':
+            return SystemState.DISCONNECTED
+
         return SystemState.NOT_RUNNING
 
     def is_collector_status_running_in_mgmt(self, collector):
         collector_ip = collector.os_station.host_ip
         return self.get_collector_status(collector_ip) == SystemState.RUNNING
+
+    def is_collector_status_disconnected_in_mgmt(self, collector):
+        collector_ip = collector.os_station.host_ip
+        return self.get_collector_status(collector_ip) == SystemState.DISCONNECTED
 
     def turn_on_prevention_mode(self, organization=None):
         self.rest_api_client.set_policy_mode(self.rest_api_client.rest.NsloPolicies.NSLO_POLICY_EXECUTION_PREVENTION,

@@ -9,7 +9,6 @@ from infra.system_components.collector import Collector
 from infra.system_components.forti_edr_linux_station import FortiEdrLinuxStation
 from infra.system_components.management import Management
 from infra.utils.utils import StringUtils
-from tests.utils.collector_utils import CollectorUtils
 
 import json
 import os
@@ -228,13 +227,11 @@ def management():
 @pytest.fixture(scope="function")
 def collector(management):
     collector = management.collectors[0]
-    CollectorUtils.validate_collector_is_currently_running_according_to_management(management=management,
-                                                                                   collector=collector)
+    assert management.is_collector_status_running_in_mgmt(collector), f"{collector} is not running in {management}"
     # CollectorUtils.validate_collector_is_currently_running(collector)
 
     yield collector
-    CollectorUtils.validate_collector_is_currently_running_according_to_management(management=management,
-                                                                                   collector=collector)
+    assert management.is_collector_status_running_in_mgmt(collector), f"{collector} is not running in {management}"
     # CollectorUtils.validate_collector_is_currently_running(collector)
 
 

@@ -29,7 +29,7 @@ class LinuxCollector(Collector):
 
     @property
     def cached_process_id(self) -> int:
-        """ Caching process id in order later validate if it changed """
+        """ Caching the current process id in order later validate if it changed """
         return self._process_id
 
     @allure.step("Get current collector process ID")
@@ -80,7 +80,6 @@ class LinuxCollector(Collector):
         if curr_pid != cached_pid:
             has_crashed = True
             Reporter.report(f"{self} crashed because pid changed (from {cached_pid} to {curr_pid})")
-            self._process_id = curr_pid
 
         if self.has_crash_dumps(append_to_report=False):
             has_crashed = True
