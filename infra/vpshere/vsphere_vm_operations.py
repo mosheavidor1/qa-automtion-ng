@@ -24,14 +24,19 @@ class VsphereMachineOperations:
         self._vm_obj = vm_obj
         self._vm_data_parsed = {}
         self._snapshots_list = []
+        self._snapshots_dict = {}
 
     @property
     def vm_data_parsed_dict(self) -> dict:
         return self._vm_data_parsed
 
     @property
-    def snapshot_list(self) -> []:
+    def snapshot_list(self) -> list:
         return self._snapshots_list
+
+    @property
+    def snapshots_dict(self) -> dict:
+        return self._snapshots_dict
 
     @property
     def vm_obj(self):
@@ -63,7 +68,7 @@ class VsphereMachineOperations:
             }
             return self._vm_data_parsed
         else:
-            raise Exception("No VM object created")
+            raise Exception("No VM parsed data created")
 
     @allure.step("Create VM snapshot")
     def snapshot_create(self, snapshot_name, snapshot_description="", memory=True, quiesce=False):
@@ -83,7 +88,7 @@ class VsphereMachineOperations:
         else:
             raise Exception("No VM object created")
 
-    @allure.step("Revert to VM snapshot by name")
+    @allure.step("Revert to snapshot with the name: {snapshot_name}")
     def snapshot_revert_by_name(self,
                                 snapshot_name: str,
                                 suppress_power_on: bool = False):
@@ -128,32 +133,55 @@ class VsphereMachineOperations:
             try:
                 task = revert_object.RevertToSnapshot_Task(suppressPowerOn=suppress_power_on)
                 WaitForTask(task, self._service_instance)
-                Reporter.report(f"Snapshot revert status: {task.info.state}")
-            except IndexError as e:
+                # Reporter.report(f"Snapshot revert status: {task.info.state}")
+            except Exception as e:
+                # Reporter.report(f"Snapshot revert status: {task.info.state}")
                 Reporter.report(str(e))
-                raise "Revert to snapshot by creation order has failed"
 
-    @allure.step("Remove VM snapshot")
-    def snapshot_remove(self, snapshot_object: object):
-        # raise Exception("Not implemented yet.")
+    @allure.step("Remove current VM snapshot")
+    def snapshot_remove(self, remove_children=False):
+        """This function removes a current snapshot.
 
-        task = snapshot_object.RemoveSnapshot_Task()
-        WaitForTask(task, self._service_instance)
+        Usage
+        ----------
+        remove_children: bool
+            Use this when all the children of the snapshot should be removed.
+        """
         try:
-            self._snapshots_list.pop(snapshot_object)
+            task = self.vm_obj.snapshot.currentSnapshot.RemoveSnapshot_Task(remove_children)
+            WaitForTask(task, self._service_instance)
+            Reporter.report(f"Snapshot removal status: {task}")
+            if self._vm_obj.snapshot.currentSnapshot.name in self._snapshots_list:
+                self._snapshots_list.pop(self.vm_obj.snapshot.currentSnapshot)
+                Reporter.report(f"Snapshot from a snapshots list")
+                # Reporter.report(f"Snapshot removal status: {task.info.state}")
         except Exception as e:
+            # Reporter.report(f"Snapshot removal status: {task.info.state}")
             Reporter.report(str(e))
-        # Reporter.report(f"Snapshot removal status: {task}")
 
-    @allure.step("Rename VM snapshot")
-    def snapshot_rename(self, snapshot_object: object, new_name: str):
-        raise Exception("Not implemented yet.")
+    @allure.step("Rename current VM snapshot")
+    def snapshot_rename(self, new_name: str):
+        """This function renames a current snapshot.
+
+        Parameters
+        ----------
+        new_name : str
+            New name of a snapshot
+        """
+        task = self.vm_obj.snapshot.currentSnapshot.Rename(new_name)
+        WaitForTask(task, self._service_instance)
+        # Reporter.report(f"Snapshot rename status: {task}")
 
     @allure.step("Remove all snapshots")
     def remove_all_snapshots(self):
+        Reporter.report(f"Total snapshots: {len(self._snapshots_list)}, to be removed")
         task = self._vm_obj.RemoveAllSnapshots()
         WaitForTask(task, self._service_instance)
         # Reporter.report(f"All Snapshots removal status: {task}")
+
+        self._snapshots_list.clear()
+        Reporter.report(f"All Snapshots removal status: {task}")
+        Reporter.report(f"Snapshots list: {len(self._snapshots_list)}")
 
     @allure.step("Print all snapshots")
     def get_all_snapshots(self, snapshots=None):
@@ -165,15 +193,15 @@ class VsphereMachineOperations:
         #     snapshot_name, snapshot_object = self._snapshots_list
         # raise Exception("Not implemented yet.")
 
-    @allure.step("Get VM snapshot id by name")
+    @allure.step("Get VM snapshot-id by name")
     def get_snapshot_by_name(self, snapshot_name=None):
         try:
             if snapshot_name in self._snapshots_list[0]:
-                Reporter.report("Snapshot found")
+                Reporter.report("Snapshot-id found")
                 return self._snapshots_list[0][snapshot_name]
         except AttributeError as e:
-            Reporter.report(f"No snapshot found")
-            return False
+            Reporter.report(f"No snapshot-id found")
+            Reporter.report(str(e))
 
     @allure.step("VM power reboot")
     def reboot(self):
@@ -193,3 +221,8 @@ class VsphereMachineOperations:
         WaitForTask(task, self._service_instance)
         # Reporter.report(f"Machine power off: {task.info.state}")
 
+    @allure.step("VM suspend")
+    def suspend(self):
+        task = self._vm_obj.Suspend()
+        WaitForTask(task, self._service_instance)
+        # Reporter.report(f"Machine suspend: {task.info.state}")

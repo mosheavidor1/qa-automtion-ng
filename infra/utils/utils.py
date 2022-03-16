@@ -1,6 +1,12 @@
 import json
 import re
+
+import allure
+import requests
 from functools import singledispatch
+
+from infra.allure_report_handler.reporter import Reporter
+from infra.enums import HttpRequestMethods
 
 
 @singledispatch
@@ -77,3 +83,58 @@ class DictionaryUtils:
     def get_dictionary_diff(first_dict, second_dict):
         value = {k: second_dict[k] for k in set(second_dict) - set(first_dict)}
         return value
+
+
+class HttpRequesterUtils:
+
+    @staticmethod
+    @allure.step("Going to send an HTTP request")
+    def send_request(request_method: HttpRequestMethods,
+                     url: str,
+                     auth: tuple = None,
+                     headers: dict = None,
+                     body: dict = None,
+                     expected_status_code: int = 200):
+
+        Reporter.attach_str_as_file(file_name='request_method', file_content=request_method.name)
+        Reporter.attach_str_as_file(file_name='url', file_content=url)
+        Reporter.attach_str_as_file(file_name='headers', file_content=json.dumps(headers, indent=4))
+        Reporter.attach_str_as_file(file_name='body', file_content=json.dumps(headers, indent=4))
+
+        response = None
+        match request_method:
+
+            case HttpRequestMethods.GET:
+                response = requests.get(url=url, auth=auth, headers=headers)
+
+            case HttpRequestMethods.POST:
+                body = json.dumps(body) if body is not None else body
+                response = requests.post(url=url, auth=auth, headers=headers, data=body)
+
+            case HttpRequestMethods.PUT:
+                body = json.dumps(body) if body is not None else body
+                response = requests.put(url=url, auth=auth, headers=headers, data=body)
+
+            case HttpRequestMethods.DELETE:
+                response = requests.delete(url=url, auth=auth, headers=headers)
+
+            case HttpRequestMethods.CONNECT | \
+                 HttpRequestMethods.HEAD | \
+                 HttpRequestMethods.OPTIONS | \
+                 HttpRequestMethods.TRACE:
+                raise Exception(f"There is not implementation for {request_method.name}, sorry :(")
+
+        Reporter.attach_str_as_file(file_name='response status code', file_content=str(response.status_code))
+
+        if expected_status_code != response.status_code:
+            if not (expected_status_code == 200 and response.status_code == 201):
+                assert False, f"expected status code is: {expected_status_code}, actual status code is: {response.status_code}"
+
+        try:
+            content = json.loads(response.content)
+        except json.decoder.JSONDecodeError:
+            content = str(response.content)
+
+        Reporter.attach_str_as_file(file_name='response body', file_content=json.dumps(content, indent=4))
+
+        return content

@@ -36,3 +36,16 @@ class CollectorTypes(Enum):
     UBUNTU_16 = 'UBUNTU_16'
     UBUNTU_18 = 'UBUNTU_18'
     UBUNTU_20 = 'UBUNTU_20'
+
+
+class HttpRequestMethods(Enum):
+    GET = 'GET'
+    HEAD = 'HEAD'
+    POST = 'POST'
+    PUT = 'PUT'
+    DELETE = 'DELETE'
+    CONNECT = 'CONNECT'
+    TRACE = 'TRACT'
+    OPTIONS = 'OPTIONS'
+
+

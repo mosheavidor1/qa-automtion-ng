@@ -3,6 +3,7 @@ from enum import Enum
 
 import allure
 from pyVim.connect import SmartConnectNoSSL, Disconnect
+from pyVmomi import vim
 
 from infra.allure_report_handler.reporter import Reporter
 from infra.vpshere.vsphere_cluster_details import ClusterDetails
@@ -27,6 +28,26 @@ class VsphereClusterHandler(object):
     @property
     def cluster_details(self):
         return self._cluster_details
+
+    @property
+    def service_instance(self):
+        return self._service_instance
+
+    @property
+    def datacenter_object(self) -> object:
+        return [vim.Datacenter]
+
+    @property
+    def resource_pool_object(self) -> object:
+        return [vim.ResourcePool]
+
+    @property
+    def datastore_object(self) -> object:
+        return [vim.Datastore]
+
+    @property
+    def folder_object(self) -> object:
+        return [vim.Folder]
 
     @allure.step("Connect to vsphere")
     def connect_to_vsphere(self, user_name: str = USER_NAME_DOMAIN, password: str = PASSWORD):
@@ -119,14 +140,16 @@ class VsphereClusterHandler(object):
 
 
 if __name__ == '__main__':
-    cluster_details = ClusterDetails(vhost="10.51.100.120", name="Ensilo_vcsa20", resource_pools=["QA22", "QA23"], datastore_name="loc-vt22-r10-d1")
+    cluster_details = ClusterDetails(vhost="10.51.100.120", name="Ensilo_vcsa20", resource_pools=["QA22", "QA23"],
+                                     datastore_name="loc-vt22-r10-d1")
     vsphere_cluster_handler = VsphereClusterHandler(cluster_details=cluster_details)
-    vm_ops = vsphere_cluster_handler.get_specific_vm_from_cluster(vm_search_type=VmSearchTypeEnum.VM_NAME, txt_to_search='dima_colletor10x64')
-    vm_ops.snapshot_create(snapshot_name='dima test')
-    vm_ops.snapshot_create(snapshot_name='dima test2')
-    vm_ops.power_off()
-    vm_ops.power_on()
-    vm_ops.remove_all_snapshots()
+    vm_ops = vsphere_cluster_handler.get_specific_vm_from_cluster(vm_search_type=VmSearchTypeEnum.VM_NAME,
+                                                                  txt_to_search='dima_colletor10x64')
+
+    # vm_ops.power_off()
+    # vm_ops.snapshot_rename(vm_ops.vm_obj.snapshot.currentSnapshot, 'dima test new name')
+    # vm_ops.power_on()
+    # vm_ops.remove_all_snapshots()
     # vm_ops.snapshot_revert_by_name(snapshot_name='dima test')
 
-
+    print("END...")
