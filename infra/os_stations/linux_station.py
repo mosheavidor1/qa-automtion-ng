@@ -165,17 +165,16 @@ class LinuxStation(OsStation):
         lines = output.split('\n')
         return lines
 
-    @allure.step("Get list of files inside {folder_path} with the suffix {file_suffix}")
-    def get_list_of_files_in_folder(self,
-                                    folder_path: str,
-                                    file_suffix: str = None):
-
+    @allure.step("Get list of files paths inside {folder_path} with the suffix {file_suffix}")
+    def get_list_of_files_in_folder(self, folder_path: str, file_suffix: str = None):
         result = self.execute_cmd(f'ls {folder_path}')
-        files = result.split('\n')
+        if result is None:
+            return result
+        files_names = result.split('\n')
         if file_suffix is not None:
-            files = [f'{folder_path}/{x}' for x in files if file_suffix in x]
-
-        return files
+            files_names = [file_name for file_name in files_names if file_suffix in file_name]
+        files_paths = [f'{folder_path}/{file_name}' for file_name in files_names]
+        return files_paths
 
     @allure.step("Combine multiple text files into one file")
     def combine_text_file_into_single_file(self,

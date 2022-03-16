@@ -410,10 +410,9 @@ def revert_to_first_snapshot_for_all_collectors(collectors: List[Collector]):
 def check_if_collectors_has_crashed(collectors_list: List[Collector]):
     crashed_collectors = []
     if collectors_list is not None and len(collectors_list) > 0:
-        for single_collector in collectors_list:
-            has_crashed = single_collector.has_crash()
-            if has_crashed:
-                crashed_collectors.append(f'{single_collector}')
+        for collector in collectors_list:
+            if collector.has_crash():
+                crashed_collectors.append(f'{collector}')
 
         if len(crashed_collectors) > 0:
             assert False, f"Crash was detected in the collectors: {str(crashed_collectors)}"
