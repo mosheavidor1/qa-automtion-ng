@@ -237,8 +237,17 @@ def collector(management):
 
 @pytest.fixture(scope="session", autouse=sut_details.debug_mode)
 def create_snapshot_for_all_collectors_at_the_beginning_of_the_run(management):
+    """
+    The role of this method is to create snapshot before the tests start.
+    we do it because we revert to this (initial) snapshot before each test start in order to run on "clean"
+    collector environment
+
+    :param management: Management object
+    :return: None
+    """
     collectors: List[Collector] = management.collectors
     for single_collector in collectors:
+        single_collector.remove_all_crash_dumps_files()
         single_collector.os_station.vm_operations.remove_all_snapshots()
         single_collector.os_station.vm_operations.snapshot_create(snapshot_name=f'beginning_pytest_session_snapshot_{time.time()}')
 
@@ -354,17 +363,12 @@ def collector_logs(management):
     append_logs_from_collectors(collectors=management.collectors, initial_time_stamp_dict=start_time_dict)
 
 
-@pytest.fixture(scope="session", autouse=sut_details.debug_mode)
+@pytest.fixture(scope="session", autouse=False)
 def reset_driver_verifier_for_all_collectors(management):
     collectors = management.collectors
     for collector in collectors:
         collector.os_station.execute_cmd(cmd='Verifier.exe /reset', fail_on_err=False)
         collector.reboot()
-
-
-@pytest.fixture(scope="session", autouse=True)
-def remove_crash_dump_files_on_collector_machines(management):
-    remove_crash_dumps_from_all_collectors(management.collectors)
 
 
 @pytest.fixture(scope="function", autouse=True)
@@ -400,12 +404,6 @@ def revert_to_first_snapshot_for_all_collectors(collectors: List[Collector]):
         first_snapshot_name = single_collector.os_station.vm_operations.snapshot_list[0][0]
         single_collector.os_station.vm_operations.snapshot_revert_by_name(snapshot_name=first_snapshot_name)
         single_collector.update_process_id()
-
-
-@allure.step("Remove crash dumps from all collectors")
-def remove_crash_dumps_from_all_collectors(collectors_list: List[Collector]):
-    for collector in collectors_list:
-        collector.remove_all_crash_dumps_files()
 
 
 @allure.step("Check if collectors has crashed")
