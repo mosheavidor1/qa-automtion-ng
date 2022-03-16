@@ -1,5 +1,6 @@
 import allure
 import time
+from typing import List
 from infra.containers.system_component_containers import CollectorDetails
 from infra.enums import OsTypeEnum, SystemState
 from infra.system_components.collector import Collector
@@ -10,6 +11,8 @@ SERVICE_NAME = "FortiEDRCollector"
 COLLECTOR_INSTALLATION_FOLDER_PATH = F"/opt/{SERVICE_NAME}"
 COLLECTOR_CONTROL_PATH = f"{COLLECTOR_INSTALLATION_FOLDER_PATH}/control.sh"
 COLLECTOR_BIN_PATH = f"{COLLECTOR_INSTALLATION_FOLDER_PATH}/bin/{SERVICE_NAME}"
+COLLECTOR_CRASH_DUMPS_FOLDER_PATH = f"{COLLECTOR_INSTALLATION_FOLDER_PATH}/CrashDumps/Collector"
+CRASH_FOLDERS_PATHS = ["/var/crash", COLLECTOR_CRASH_DUMPS_FOLDER_PATH]
 
 
 class LinuxCollector(Collector):
@@ -95,8 +98,26 @@ class LinuxCollector(Collector):
         Reporter.report(f"Is {self} crashed: {has_crashed} ")
         return has_crashed
 
-    def has_crash_dumps(self, append_to_report: bool):
-        pass
+    @allure.step("{0} - Checking if crash dumps exists")
+    def has_crash_dumps(self, append_to_report: bool = False) -> bool:
+        """ The path of the crash dumps files will be attached to the report """
+        crash_dump_files_path = self.get_crash_dumps_files_paths()
+        if crash_dump_files_path is not None:
+            Reporter.attach_str_as_file(file_name='crash_dumps', file_content=str('\r\n'.join(crash_dump_files_path)))
+            return True
+        else:
+            Reporter.report(f"No crash dump file found in {self}")
+            return False
+
+    @allure.step("Get crash dump files paths")
+    def get_crash_dumps_files_paths(self) -> List[str]:
+        crash_dumps_paths = []
+        for folder_path in CRASH_FOLDERS_PATHS:
+            files_paths = self.os_station.get_list_of_files_in_folder(folder_path=folder_path)
+            if files_paths is not None and len(files_paths) > 0:
+                crash_dumps_paths += files_paths
+
+        return crash_dumps_paths if len(crash_dumps_paths) > 0 else None
 
     @allure.step("{0} - Get collector status via cli")
     def get_collector_status(self):
@@ -136,5 +157,9 @@ class LinuxCollector(Collector):
     def clear_logs(self):
         pass
 
+    @allure.step("Remove crash dumps files")
     def remove_all_crash_dumps_files(self):
-        pass
+        files_paths = self.get_crash_dumps_files_paths()
+        if files_paths is not None and isinstance(files_paths, list) and len(files_paths) > 0:
+            for file_path in files_paths:
+                self.os_station.remove_file(file_path=file_path)
