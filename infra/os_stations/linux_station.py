@@ -271,7 +271,7 @@ class LinuxStation(OsStation):
 
     @allure.step("Unmount shared drive {local_mounted_drive}")
     def remove_mounted_drive(self, local_mounted_drive: str = None):
-        cmd = f"sudo sudo umount --force {local_mounted_drive}"
+        cmd = f"sudo umount --force {local_mounted_drive}"
         self.execute_cmd(cmd=cmd, return_output=False, fail_on_err=True)
 
     def copy_files(self, source: str, target: str):
@@ -326,6 +326,8 @@ class LinuxStation(OsStation):
 
             for single_file in files_to_copy:
                 self.copy_files(source=f'{mounted_dir_name}/{single_file}', target=target_folder)
+
+            mounted_successfully = True
 
             return target_folder
 

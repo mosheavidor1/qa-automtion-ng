@@ -210,6 +210,28 @@ class RestCommands(object):
         Reporter.report('Created the group ' + name + ' successfully.')
         return True
 
+    @allure.step("Move collectors {collectors_names} to group: {target_group_name} in organization: {target_organization}")
+    def move_collectors(self,
+                        collectors_names: List[str],
+                        target_group_name: str,
+                        current_collectors_organization: str = "Default",
+                        target_organization: str = "Default",
+                        expected_status_code: int = 200):
+
+        collectors_to_move = [fr'{current_collectors_organization}\{collector_name}' for collector_name in collectors_names]
+        target_collector_group = fr'{target_organization}\{target_group_name}'
+        organization = None
+        if target_organization != "Default":
+            organization = 'All organizations'
+
+        status, response = self.rest.inventory.MoveCollectors(collectors=collectors_to_move,
+                                                              group=target_collector_group,
+                                                              organization=organization)
+
+        self._validate_expected_status_code(expected_status_code=expected_status_code,
+                                            actual_status_code=response.status_code,
+                                            error_message=f"Move Collector - expected response code: {expected_status_code}, actual: {response.status_code}")
+
     def move_collector(self, validation_data, group_name):
         """
         :param validation_data: dictionary, the data of the collector to be moved.
@@ -566,5 +588,26 @@ class RestCommands(object):
 
     @allure.step("Delete user")
     def delete_user(self):
-        pass
+        raise Exception("Not Implemented yet")
 
+    @allure.step("Reset user password")
+    def reset_user_password(self, user_name: str, new_password: str, organization: str, expected_status_code: int = 200):
+        status, response = self.rest.users.ResetPassword(username=user_name,
+                                                         password=new_password,
+                                                         organization=organization)
+        self._validate_expected_status_code(expected_status_code=expected_status_code,
+                                            actual_status_code=response.status_code,
+                                            error_message=f"Reset user password - expected response code: {expected_status_code}, actual: {response.status_code}")
+
+    @allure.step("Get Collector Groups in organization {organization_name}")
+    def get_collector_groups(self,
+                             organization_name="Default",
+                             expected_status_code: int = 200):
+        status, response = self.rest.inventory.ListCollectorGroups(organization=organization_name)
+
+        self._validate_expected_status_code(expected_status_code=expected_status_code,
+                                            actual_status_code=response.status_code,
+                                            error_message=f"Reset user password - expected response code: {expected_status_code}, actual: {response.status_code}")
+
+        as_list_of_dicts = json.loads(response.content)
+        return as_list_of_dicts
