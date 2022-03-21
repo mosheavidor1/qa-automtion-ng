@@ -1,4 +1,5 @@
 import functools
+from contextlib import contextmanager
 import allure
 from infra.common_utils import wait_for_predict_condition
 
@@ -40,3 +41,47 @@ def wait_for_running_collector_status_in_mgmt(management, collector, timeout=Non
     predict_condition_func = functools.partial(management.is_collector_status_running_in_mgmt, collector)
     wait_for_predict_condition(predict_condition_func=predict_condition_func, timeout_sec=timeout,
                                interval_sec=COLLECTOR_KEEPALIVE_INTERVAL)
+
+
+@allure.step("Wait until status of {collector} in {management} is 'Disconnected'")
+def wait_for_disconnected_collector_status_in_mgmt(management, collector, timeout=None):
+    timeout = timeout or MAX_WAIT_FOR_STATUS
+    predict_condition_func = functools.partial(management.is_collector_status_disconnected_in_mgmt, collector)
+    wait_for_predict_condition(predict_condition_func=predict_condition_func,
+                               timeout_sec=timeout, interval_sec=COLLECTOR_KEEPALIVE_INTERVAL)
+
+
+@allure.step("Wait for a running status of {collector} in cli")
+def wait_for_running_collector_status_in_cli(collector, timeout=None):
+    timeout = timeout or MAX_WAIT_FOR_STATUS
+    predict_condition_func = collector.is_status_running_in_cli
+    wait_for_predict_condition(predict_condition_func=predict_condition_func,
+                               timeout_sec=timeout, interval_sec=COLLECTOR_KEEPALIVE_INTERVAL)
+
+
+@contextmanager
+def collector_safe_operations_context(collector, is_running=True):
+    condition = collector.is_status_running_in_cli if is_running else collector.is_status_down_in_cli
+    assert condition(), f"{collector} status is not correct before performing the actions"
+    check_if_collectors_has_crashed([collector])
+
+    try:
+        yield
+    finally:
+        assert condition(), f"{collector} status is not correct after performing the actions"
+        check_if_collectors_has_crashed([collector])
+
+
+@allure.step("Check if collectors has crashed")
+def check_if_collectors_has_crashed(collectors_list):
+    crashed_collectors = []
+    if collectors_list is not None and len(collectors_list) > 0:
+        for collector in collectors_list:
+            if collector.has_crash():
+                crashed_collectors.append(f'{collector}')
+
+        if len(crashed_collectors) > 0:
+            assert False, f"Crash was detected in the collectors: {str(crashed_collectors)}"
+
+    else:
+        assert False, "Didn't pass any collector"

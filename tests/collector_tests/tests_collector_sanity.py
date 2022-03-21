@@ -3,13 +3,18 @@ import pytest
 from tests.utils.collector_utils import CollectorUtils
 from tests.utils.test_utils import TestUtils
 from infra.allure_report_handler.reporter import Reporter
-from infra.system_components.collectors.collectors_common_utils import wait_for_running_collector_status_in_mgmt
+from infra.system_components.collectors.collectors_common_utils import (
+    wait_for_running_collector_status_in_mgmt,
+    wait_for_disconnected_collector_status_in_mgmt,
+    wait_for_running_collector_status_in_cli
+)
 
 
 @allure.epic("Collectors")
 @allure.feature("Basic Functionality")
 @pytest.mark.sanity
 @pytest.mark.collector_sanity
+@pytest.mark.collector_linux_sanity
 @pytest.mark.xray('EN-73287')
 def test_stop_start_collector(management, collector):
     """
@@ -20,12 +25,12 @@ def test_stop_start_collector(management, collector):
         collector.stop_collector()
         Reporter.report(f"Validate {collector} stopped successfully:")
         CollectorUtils.wait_for_service_down_status_in_cli(collector)
-        CollectorUtils.wait_for_disconnected_collector_status_in_mgmt(management, collector)
+        wait_for_disconnected_collector_status_in_mgmt(management, collector)
 
     with allure.step(f"Start {collector} and validate"):
         collector.start_collector()
         Reporter.report(f"Validate {collector} started successfully:")
-        # CollectorUtils.wait_for_running_collector_status_in_cli(collector)
+        wait_for_running_collector_status_in_cli(collector)
         wait_for_running_collector_status_in_mgmt(management, collector)
 
 
@@ -51,7 +56,7 @@ def test_install_uninstall_collector(management, collector):
             collector.uninstall_collector(uninstallation_log_path)
             Reporter.report(f"Validate {collector} uninstalled successfully:")
             assert collector.is_installation_folder_empty(), f"Installation folder contains files, should be empty"
-            CollectorUtils.wait_for_disconnected_collector_status_in_mgmt(management, collector)
+            wait_for_disconnected_collector_status_in_mgmt(management, collector)
 
     with allure.step(f"Install {collector} and validate"):
         installation_log_path = CollectorUtils.create_logs_path(collector, "install_logs")
@@ -61,7 +66,7 @@ def test_install_uninstall_collector(management, collector):
                                         logs_path=installation_log_path)
             Reporter.report(f"Validate {collector} installed successfully:")
             wait_for_running_collector_status_in_mgmt(management, collector)
-            CollectorUtils.wait_for_running_collector_status_in_cli(collector)
+            wait_for_running_collector_status_in_cli(collector)
 
 
 @allure.epic("Collectors")
@@ -79,4 +84,4 @@ def test_reboot_collector(management, collector):
 
     with allure.step(f"Validate that {collector} is running:"):
         wait_for_running_collector_status_in_mgmt(management, collector)
-        CollectorUtils.wait_for_running_collector_status_in_cli(collector)
+        wait_for_running_collector_status_in_cli(collector)
