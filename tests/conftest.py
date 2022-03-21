@@ -423,6 +423,7 @@ def revert_to_first_snapshot_for_all_collectors(management):
         if 'linux' in collector.details.os_family.lower():  # To establish new connection after revert
             time.sleep(wait_after_revert)
             collector.os_station.disconnect()
+        collector.update_process_id()
         check_if_collectors_has_crashed([collector])
         wait_for_disconnected_collector_status_in_mgmt(management, collector)
         collector.start_collector()
