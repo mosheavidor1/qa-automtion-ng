@@ -13,7 +13,7 @@ pipeline {
         string( name: 'branchName',
                 defaultValue: 'main',
                 description: 'Branch to build')	
-        
+
         string( name: 'management_host_ip',
                 defaultValue: '',
                 description: 'Management Host IP')
