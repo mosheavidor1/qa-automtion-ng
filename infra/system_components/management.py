@@ -282,7 +282,6 @@ class Management(FortiEdrLinuxStation):
     def validate_all_system_components_are_running(self):
         # non collector system components inherited from fortiEDRLinuxStation
         non_collector_sys_components = [self] + self._aggregators + self._cores
-        collector_status_timeout = 30
 
         with allure.step("Workaround for core - change DeploymentMethod to Cloud although it's onPrem"):
             for core in self.cores:
@@ -297,9 +296,9 @@ class Management(FortiEdrLinuxStation):
             sys_comp.validate_system_component_is_in_desired_state(desired_state=SystemState.RUNNING)
 
         for collector in self._collectors:
-            wait_for_running_collector_status_in_mgmt(management=self, collector=collector,
-                                                      timeout=collector_status_timeout)
-            # CollectorUtils.validate_collector_is_currently_running(collector)
+            assert self.is_collector_status_running_in_mgmt(collector), f"{collector} is not running in {self}"
+            Reporter.report(f"Assert that {collector} status is running in CLI")
+            assert collector.is_status_running_in_cli(), f"{collector} status is not running"
 
     @allure.step("Add Rest-API role for {user_name}")
     def enable_rest_api_for_user_via_db(self, user_name='admin'):
@@ -349,6 +348,7 @@ class Management(FortiEdrLinuxStation):
         return SystemState.NOT_RUNNING
 
     def is_collector_status_running_in_mgmt(self, collector):
+        Reporter.report(f"Validate {collector} status is running in {self}")
         collector_ip = collector.os_station.host_ip
         return self.get_collector_status(collector_ip) == SystemState.RUNNING
 

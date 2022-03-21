@@ -39,6 +39,7 @@ class LinuxStation(OsStation):
     @allure.step("Disconnect from remote machine")
     def disconnect(self):
         self._remote_connection_session.close()
+        self._remote_connection_session = None
 
     def __escape_ansi(self, line):
         ansi_escape = re.compile(r'(?:\x1B[@-_]|[\x80-\x9F])[0-?]*[ -/]*[@-~]')

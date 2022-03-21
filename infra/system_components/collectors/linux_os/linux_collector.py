@@ -6,6 +6,11 @@ from infra.enums import OsTypeEnum, SystemState
 from infra.system_components.collector import Collector
 from infra.utils.utils import StringUtils
 from infra.allure_report_handler.reporter import Reporter
+from infra.system_components.collectors.collectors_common_utils import (
+    wait_until_collector_pid_disappears,
+    wait_until_collector_pid_appears
+)
+from sut_details import management_registration_password
 
 SERVICE_NAME = "FortiEDRCollector"
 COLLECTOR_INSTALLATION_FOLDER_PATH = F"/opt/{SERVICE_NAME}"
@@ -13,6 +18,7 @@ COLLECTOR_CONTROL_PATH = f"{COLLECTOR_INSTALLATION_FOLDER_PATH}/control.sh"
 COLLECTOR_BIN_PATH = f"{COLLECTOR_INSTALLATION_FOLDER_PATH}/bin/{SERVICE_NAME}"
 COLLECTOR_CRASH_DUMPS_FOLDER_PATH = f"{COLLECTOR_INSTALLATION_FOLDER_PATH}/CrashDumps/Collector"
 CRASH_FOLDERS_PATHS = ["/var/crash", COLLECTOR_CRASH_DUMPS_FOLDER_PATH]
+REGISTRATION_PASS = management_registration_password
 
 
 class LinuxCollector(Collector):
@@ -48,8 +54,16 @@ class LinuxCollector(Collector):
         self._process_id = self.get_current_process_id()
         Reporter.report(f"Collector process ID updated to: {self._process_id}")
 
+    @allure.step("{0} - Get collector version")
     def get_version(self):
-        pass
+        cmd = f"{COLLECTOR_CONTROL_PATH} --version"
+        result = self.os_station.execute_cmd(cmd=cmd,
+                                             return_output=True,
+                                             fail_on_err=True,
+                                             attach_output_to_report=True)
+        version = StringUtils.get_txt_by_regex(text=result, regex='FortiEDR\s+Collector\s+version\s+(\d+.\d+.\d+.\d+)', group=1)
+
+        return version
 
     def get_collector_info_from_os(self):
         pass
@@ -57,11 +71,21 @@ class LinuxCollector(Collector):
     def get_os_architecture(self):
         pass
 
-    def stop_collector(self, password: str):
-        pass
+    @allure.step("{0} - Stop collector")
+    def stop_collector(self, password=None):
+        password = password or REGISTRATION_PASS
+        cmd = f"{COLLECTOR_CONTROL_PATH} --stop {password}"
+        result = self.os_station.execute_cmd(cmd=cmd, fail_on_err=True)
+        assert result.lower() == "stop operation succeeded"
+        wait_until_collector_pid_disappears(self)
+        self.update_process_id()
 
+    @allure.step("{0} - Start collector")
     def start_collector(self):
-        pass
+        cmd = f"{COLLECTOR_CONTROL_PATH} --start"
+        self.os_station.execute_cmd(cmd=cmd, fail_on_err=True)
+        wait_until_collector_pid_appears(self)
+        self.update_process_id()
 
     def is_up(self):
         pass
@@ -129,11 +153,15 @@ class LinuxCollector(Collector):
         system_state = SystemState.NOT_RUNNING
         if forti_edr_service_status == 'Up' and forti_edr_driver_status == 'Up' and forti_edr_status == 'Running':
             system_state = SystemState.RUNNING
-
+        elif forti_edr_service_status == 'Down' and forti_edr_driver_status == 'Down' and forti_edr_status == 'Stopped':
+            system_state = SystemState.DOWN
         return system_state
 
     def is_status_running_in_cli(self):
         return self.get_collector_status() == SystemState.RUNNING
+
+    def is_status_down_in_cli(self):
+        return self.get_collector_status() == SystemState.DOWN
 
     def start_health_mechanism(self):
         pass

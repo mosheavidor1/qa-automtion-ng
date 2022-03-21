@@ -106,13 +106,10 @@ class VsphereMachineOperations:
         for item in self._snapshots_list:
             if item[0] == snapshot_name:
                 Reporter.report(f"Snapshot found and starting revert to snapshot name: {snapshot_name}")
-                try:
-                    task = item[1].RevertToSnapshot_Task(suppressPowerOn=suppress_power_on)
-                    WaitForTask(task, self._service_instance)
-
-                    # Reporter.report(task)
-                except Exception as e:
-                    Reporter.report(str(e))
+                task = item[1].RevertToSnapshot_Task(suppressPowerOn=suppress_power_on)
+                WaitForTask(task, self._service_instance)
+                return
+        raise Exception(f"Snapshot '{snapshot_name}' was not found")
 
     @allure.step("Revert to VM snapshot creation order")
     def snapshot_revert_by_creation_order(self, number: int, suppress_power_on: bool = False):
