@@ -252,10 +252,10 @@ def create_snapshot_for_all_collectors_at_the_beginning_of_the_run(management):
     collectors: List[Collector] = management.collectors
     for collector in collectors:
         Reporter.report(f"Preparing {collector} for snapshot:")
+        collector.remove_all_crash_dumps_files()
         collector.stop_collector()  # Stop because we want to take snapshot of a static mode
         wait_for_disconnected_collector_status_in_mgmt(management, collector)
         with collector_safe_operations_context(collector, is_running=False):
-            collector.remove_all_crash_dumps_files()
             collector.os_station.vm_operations.remove_all_snapshots()
             Reporter.report(f"{collector} is ready for snapshot")
             snap_name = f'beginning_pytest_session_snapshot_{time.time()}'
