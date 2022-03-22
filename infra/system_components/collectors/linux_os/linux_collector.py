@@ -189,5 +189,6 @@ class LinuxCollector(Collector):
     def remove_all_crash_dumps_files(self):
         files_paths = self.get_crash_dumps_files_paths()
         if files_paths is not None and isinstance(files_paths, list) and len(files_paths) > 0:
+            Reporter.report(f"Remove crash files: {files_paths}")
             for file_path in files_paths:
                 self.os_station.remove_file(file_path=file_path)
