@@ -10,7 +10,6 @@ from infra.system_components.forti_edr_linux_station import FortiEdrLinuxStation
 from infra.system_components.management import Management
 from infra.utils.utils import StringUtils
 from infra.system_components.collectors.collectors_common_utils import (
-    collector_safe_operations_context,
     wait_for_running_collector_status_in_cli,
     wait_for_running_collector_status_in_mgmt,
     wait_for_disconnected_collector_status_in_mgmt,
@@ -251,15 +250,14 @@ def create_snapshot_for_all_collectors_at_the_beginning_of_the_run(management):
     """
     collectors: List[Collector] = management.collectors
     for collector in collectors:
-        Reporter.report(f"Preparing {collector} for snapshot:")
-        collector.stop_collector()  # Stop because we want to take snapshot of a static mode
+        Reporter.report(f"Preparing {collector} for snapshot: stop it + remove old snaps + remove crashes")
+        collector.stop_collector()  # Stop because we want to take snapshot of a collector in a static mode
         wait_for_disconnected_collector_status_in_mgmt(management, collector)
-        with collector_safe_operations_context(collector, is_running=False):
-            collector.remove_all_crash_dumps_files()
-            collector.os_station.vm_operations.remove_all_snapshots()
-            Reporter.report(f"{collector} is ready for snapshot")
-            snap_name = f'beginning_pytest_session_snapshot_{time.time()}'
-            collector.os_station.vm_operations.snapshot_create(snapshot_name=snap_name)
+        collector.os_station.vm_operations.remove_all_snapshots()
+        collector.remove_all_crash_dumps_files()
+        snap_name = f'beginning_pytest_session_snapshot_{time.time()}'
+        collector.os_station.vm_operations.snapshot_create(snapshot_name=snap_name)
+        Reporter.report(f"Snapshot '{snap_name}' created")
 
 
 @pytest.fixture(scope="function", autouse=True)
@@ -416,19 +414,21 @@ def revert_to_first_snapshot_for_all_collectors(management):
     wait_after_revert = 10
     collectors = management.collectors
     for collector in collectors:
-        check_if_collectors_has_crashed([collector])
         first_snapshot_name = collector.os_station.vm_operations.snapshot_list[0][0]
         collector.os_station.vm_operations.snapshot_revert_by_name(snapshot_name=first_snapshot_name)
-        Reporter.report(f"{collector} vm reverted to:'{first_snapshot_name}', power it on and validate No crash:")
+        Reporter.report(f"{collector} vm reverted to:'{first_snapshot_name}'")
         if 'linux' in collector.details.os_family.lower():  # To establish new connection after revert
             time.sleep(wait_after_revert)
             collector.os_station.disconnect()
-        collector.update_process_id()
-        check_if_collectors_has_crashed([collector])
+        Reporter.report("Wait until collector is offline in MGMT because it still might be online from previous test")
         wait_for_disconnected_collector_status_in_mgmt(management, collector)
+        Reporter.report("Sometimes the revert action creates a crash files so we want to remove them")
+        collector.remove_all_crash_dumps_files()
+        Reporter.report("Start the collector so it will be ready for a new test")
         collector.start_collector()
         wait_for_running_collector_status_in_cli(collector)
         wait_for_running_collector_status_in_mgmt(management, collector)
+        Reporter.report("Check that starting collector didn't create any crashes (for debugging)")
         check_if_collectors_has_crashed([collector])
 
 
