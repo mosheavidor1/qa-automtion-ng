@@ -1,4 +1,3 @@
-import functools
 import allure
 from datetime import datetime
 from infra.system_components.collector import Collector

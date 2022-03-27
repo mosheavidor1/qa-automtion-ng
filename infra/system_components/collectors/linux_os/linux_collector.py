@@ -13,12 +13,18 @@ from infra.system_components.collectors.collectors_common_utils import (
 from sut_details import management_registration_password
 
 SERVICE_NAME = "FortiEDRCollector"
-COLLECTOR_INSTALLATION_FOLDER_PATH = F"/opt/{SERVICE_NAME}"
-COLLECTOR_CONTROL_PATH = f"{COLLECTOR_INSTALLATION_FOLDER_PATH}/control.sh"
-COLLECTOR_BIN_PATH = f"{COLLECTOR_INSTALLATION_FOLDER_PATH}/bin/{SERVICE_NAME}"
+COLLECTOR_INSTALLER_FOLDER_PATH = "/home"
+COLLECTOR_INSTALLATION_FOLDER_PATH = f"/opt/{SERVICE_NAME}"
+COLLECTOR_SCRIPTS_FOLDER_PATH = f"{COLLECTOR_INSTALLATION_FOLDER_PATH}/scripts"
 COLLECTOR_CRASH_DUMPS_FOLDER_PATH = f"{COLLECTOR_INSTALLATION_FOLDER_PATH}/CrashDumps/Collector"
+
+COLLECTOR_CONTROL_PATH = f"{COLLECTOR_INSTALLATION_FOLDER_PATH}/control.sh"
+COLLECTOR_CONFIG_PATH = f"{COLLECTOR_SCRIPTS_FOLDER_PATH}/fortiedrconfig.sh"
+COLLECTOR_BIN_PATH = f"{COLLECTOR_INSTALLATION_FOLDER_PATH}/bin/{SERVICE_NAME}"
 CRASH_FOLDERS_PATHS = ["/var/crash", COLLECTOR_CRASH_DUMPS_FOLDER_PATH]
+
 REGISTRATION_PASS = management_registration_password
+DEFAULT_AGGREGATOR_PORT = 8081
 
 
 class LinuxCollector(Collector):
@@ -66,9 +72,6 @@ class LinuxCollector(Collector):
         return version
 
     def get_collector_info_from_os(self):
-        pass
-
-    def get_os_architecture(self):
         pass
 
     @allure.step("{0} - Stop collector")
@@ -169,12 +172,57 @@ class LinuxCollector(Collector):
     def reboot(self):
         pass
 
-    def install_collector(self, version: str, aggregator_ip: str, organization: str = None, aggregator_port: int = 8081,
-                          registration_password: str = '12345678', append_log_to_report=True):
-        pass
+    @allure.step("Check if installation folder exists")
+    def is_installation_folder_exists(self):
+        result = self.os_station.is_path_exist(COLLECTOR_INSTALLATION_FOLDER_PATH)
+        return result
 
-    def uninstall_collector(self, registration_password: str = '12345678', append_log_to_report=True):
-        pass
+    @allure.step("{0} - Get the installed package name")
+    def get_installed_package_name(self):
+        cmd = f"rpm -qa | grep -i {SERVICE_NAME}"
+        full_name = self.os_station.execute_cmd(cmd=cmd, asynchronous=False)
+        if full_name is None:
+            return None
+        short_name = full_name.split("-")[0]
+        return short_name
+
+    @allure.step("{0} - Get the installer path")
+    def get_installer_rpm_path(self, version, installed_package_name):
+        arch = self.os_station.get_os_architecture()
+        path = f"{COLLECTOR_INSTALLER_FOLDER_PATH}/{installed_package_name}-{version}.{arch}.rpm"
+        return path
+
+    @allure.step("{0} - Uninstall linux Collector")
+    def uninstall_collector(self, registration_password=None, stop_collector=True):
+        """ Must stop collector before uninstallation """
+        package_name = self.get_installed_package_name()
+        assert package_name is not None, f"{self} is not installed"
+        if stop_collector:
+            self.stop_collector(registration_password)
+        cmd = f"rpm -e {package_name}"
+        result = self.os_station.execute_cmd(cmd=cmd, asynchronous=False)
+        wait_until_collector_pid_disappears(self)
+        self.update_process_id()
+        return result
+
+    @allure.step("{0} - Install linux Collector")
+    def install_collector(self, installer_path):
+        install_cmd = f"yum install -y {installer_path}"
+        result = self.os_station.execute_cmd(cmd=install_cmd, fail_on_err=False)
+        assert "FortiEDR Collector installed successfully" in result, f"{self} failed to install"
+
+    @allure.step("{0} - Configure linux Collector")
+    def configure_collector(self, aggregator_ip, aggregator_port=None, registration_password=None):
+        """ Can't read the stdout of the configuration cmd,
+        need to trigger the configuration -> close ssh transporter -> wait few sec """
+        wait_after_configuration = 10  # Arbitrary
+        aggregator_port = aggregator_port or DEFAULT_AGGREGATOR_PORT
+        registration_password = registration_password or REGISTRATION_PASS
+        cmd = f"{COLLECTOR_CONFIG_PATH} {aggregator_ip}:{aggregator_port} {registration_password}"
+        self.os_station.execute_cmd(cmd=cmd, fail_on_err=True, return_output=False, attach_output_to_report=False)
+        time.sleep(wait_after_configuration)  # Wait few sec after triggering the configuration cmd
+        wait_until_collector_pid_appears(self)
+        self.update_process_id()
 
     def copy_log_parser_to_machine(self):
         pass
