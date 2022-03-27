@@ -178,7 +178,7 @@ class ExceptionsTests:
         1. create event DynamicCodeTests
         2. create exception for DynamicCodeTests
         3. edit exception - change group to empty group
-        4.
+        4. edit exception - add comments
         """
         management: Management = exception_function_fixture.get('management')
         event_id = exception_function_fixture.get("event_id")
@@ -192,6 +192,29 @@ class ExceptionsTests:
         exception_id = ManagementUtils.validate_exception(management, process=malware_name, group=group_name,
                                                           comment=comment)
         assert exception_id, "exception validation failed,exception wasn't created properly"
+
+    @pytest.mark.parametrize('xray, exception_function_fixture',
+                             [('EN-68989', ExceptionTestType.GENERAL)],
+                             indirect=True)
+    @pytest.mark.sanity
+    @pytest.mark.management_sanity
+    def test_multiple_exceptions(self, xray, exception_function_fixture):
+        """
+        steps:
+        1. create event DynamicCodeTests
+        2. create exception for DynamicCodeTests
+        3. edit exception - add another exception to the same event
+        """
+        management: Management = exception_function_fixture.get('management')
+        event_id = exception_function_fixture.get("event_id")
+        group_name = "Default Collector Group"
+
+        management.rest_api_client.create_exception(event_id, groups=group_name)
+        management.ui_client.exceptions.add_another_exception()
+        exception_id = ManagementUtils.validate_exception(management, event_id=event_id, group=group_name)
+        assert exception_id, "exception validation failed,exception wasn't created properly"
+        exception_id_2 = ManagementUtils.validate_exception(management, event_id=event_id)
+        assert exception_id_2, "exception validation failed,exception wasn't created properly"
 
     # @pytest.mark.xray('EN-73320')
     # # @pytest.mark.testim_sanity

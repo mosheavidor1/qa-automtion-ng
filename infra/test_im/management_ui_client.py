@@ -142,6 +142,16 @@ class ManagementUiClient:
                                               assert_type=assert_type,
                                               test_timeout=test_timeout)
 
+        def add_another_exception(self,
+                                  data: dict = None,
+                                  assert_type: AssertTypeEnum = AssertTypeEnum.HARD,
+                                  test_timeout: int = 600):
+            self.parent.start_testim_flow(test_name="Add another exception",
+                                          management_ui_ip=self.parent.management_ui_ip,
+                                          data=data,
+                                          assert_type=assert_type,
+                                          test_timeout=test_timeout)
+
     class FortiEdrSecurityEvents:
 
         def __init__(self, parent):

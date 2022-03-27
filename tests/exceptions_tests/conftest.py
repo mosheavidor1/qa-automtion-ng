@@ -1,7 +1,5 @@
 from enum import Enum
-
 import pytest
-from tests.utils.management_utils import ManagementUtils
 
 
 class ExceptionTestType(Enum):
