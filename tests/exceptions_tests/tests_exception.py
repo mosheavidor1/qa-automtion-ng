@@ -33,7 +33,7 @@ class ExceptionsTests:
         malware_name = exception_function_fixture.get('malware_name')
         event_id = exception_function_fixture.get("event_id")
 
-        management.rest_api_client.create_exception(event_id)
+        management.admin_rest_api_client.exceptions.create_exception(event_id)
         ManagementUtils.create_excepted_event_and_check(management, collector, malware_name, expected_result=False)
 
     @pytest.mark.parametrize('xray, exception_function_fixture',
@@ -57,7 +57,7 @@ class ExceptionsTests:
         event_id = exception_function_fixture.get("event_id")
         group_name = exception_function_fixture.get("group_name")
 
-        management.rest_api_client.create_exception(event_id, groups=[group_name])
+        management.admin_rest_api_client.exceptions.create_exception(event_id, groups=[group_name])
         CollectorUtils.move_collector_and_assign_group_policies(management, collector, group_name)
 
         ManagementUtils.create_excepted_event_and_check(management, collector, malware_name, expected_result=False)
@@ -80,7 +80,7 @@ class ExceptionsTests:
         event_id = exception_function_fixture.get("event_id")
         group_name = exception_function_fixture.get("group_name")
 
-        management.rest_api_client.create_exception(event_id, groups=[group_name])
+        management.admin_rest_api_client.exceptions.create_exception(event_id, groups=[group_name])
         ManagementUtils.create_excepted_event_and_check(management, collector, malware_name, expected_result=True)
 
     @pytest.mark.parametrize('xray, exception_function_fixture',
@@ -104,7 +104,7 @@ class ExceptionsTests:
         destination = exception_function_fixture.get("destination")
         malware_name = exception_function_fixture.get('malware_name')
 
-        management.rest_api_client.create_exception(event_id)
+        management.admin_rest_api_client.exceptions.create_exception(event_id)
         management.ui_client.exceptions.edit_exceptions(
             {"groups": [group_name], "destinations": [destination], "eventID": event_id})
         exception_id = ManagementUtils.validate_exception(management, process=malware_name, group=group_name,
@@ -131,7 +131,7 @@ class ExceptionsTests:
         destination = exception_function_fixture.get("destination")
         malware_name = exception_function_fixture.get('malware_name')
 
-        management.rest_api_client.create_exception(event_id, groups=[group_name])
+        management.admin_rest_api_client.exceptions.create_exception(event_id, groups=[group_name])
         exception_id = ManagementUtils.validate_exception(management, process=malware_name, group=group_name)
         assert exception_id, "exception validation failed,exception wasn't created"
 
@@ -156,11 +156,11 @@ class ExceptionsTests:
         malware_name = exception_function_fixture.get('malware_name')
         event_id = exception_function_fixture.get("event_id")
 
-        management.rest_api_client.create_exception(event_id)
+        management.admin_rest_api_client.exceptions.create_exception(event_id)
         exception_id = ManagementUtils.validate_exception(management, process=malware_name, event_id=event_id)
         assert exception_id, "exception validation failed,exception wasn't created"
 
-        management.rest_api_client.delete_exception(exception_id)
+        management.admin_rest_api_client.exceptions.delete_exception(exception_id)
         exception_id = ManagementUtils.validate_exception(management, process=malware_name, event_id=event_id)
         if exception_id:
             Assertion.invoke_assertion(expected=False, actual=exception_id,

@@ -19,10 +19,10 @@ class DynamicContentTests:
         test_im_params = dynamic_content_function_fixture.get('test_im_params')
 
         collector.create_event(malware_name=malware_name)
-        management.rest_api_client.get_security_events({"process": malware_name})
+        management.admin_rest_api_client.events.get_security_events({"process": malware_name})
         management.ui_client.security_events.search_event(data=test_im_params)
         management.ui_client.dynamic_content.add_exception(data=test_im_params)
-        management.rest_api_client.delete_events()
+        management.admin_rest_api_client.events.delete_events()
         time.sleep(30)
         collector.create_event(malware_name=malware_name)
         management.ui_client.security_events.event_does_not_appear(data=test_im_params)

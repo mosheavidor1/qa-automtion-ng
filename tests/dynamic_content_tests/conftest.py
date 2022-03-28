@@ -2,7 +2,7 @@ import pytest
 
 
 @pytest.fixture(scope='function')
-def dynamic_content_function_fixture(management):
+def dynamic_content_function_fixture(management, collector):
     malware_name = "DynamicCodeTests.exe"
     test_im_params = {"secUserName": "FortiEDRAdmin",
                       "secUserTitle": "local admin",
@@ -13,10 +13,8 @@ def dynamic_content_function_fixture(management):
                       "secUserRules": ["Rest API", "Admin", "Local Admin"],
                       "eventName": malware_name}
 
-    collector = management.collectors[0]
-
-    management.rest_api_client.delete_events()
-    management.rest_api_client.delete_all_exceptions()
+    management.admin_rest_api_client.events.delete_events()
+    management.admin_rest_api_client.events.delete_all_exceptions()
 
     test_resources = {
         'management': management,
@@ -26,4 +24,4 @@ def dynamic_content_function_fixture(management):
     }
     yield test_resources
 
-    management.rest_api_client.delete_event_by_name(malware_name)
+    management.admin_rest_api_client.events.delete_event_by_name(malware_name)

@@ -2,9 +2,8 @@ import pytest
 
 
 @pytest.fixture(scope='function')
-def integration_test_function_fixture(management):
+def integration_test_function_fixture(management, collector):
 
-    collector = management.collectors[0]
     malware_name = "DynamicCodeTests.exe"
     test_im_params = {
         "eventName": malware_name,
@@ -18,4 +17,4 @@ def integration_test_function_fixture(management):
     }
     yield test_resources
 
-    management.rest_api_client.delete_event_by_name(malware_name)
+    management.admin_rest_api_client.events.delete_event_by_name(malware_name)

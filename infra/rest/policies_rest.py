@@ -1,0 +1,54 @@
+import time
+
+from ensilo.platform.rest.nslo_management_rest import NsloRest
+
+from infra.allure_report_handler.reporter import Reporter
+from infra.rest.base_rest_functionality import BaseRestFunctionality
+
+
+class PoliciesRest(BaseRestFunctionality):
+
+    def __init__(self, nslo_rest: NsloRest):
+        super().__init__(nslo_rest=nslo_rest)
+        
+    def get_policy_info(self, validation_data=None, output_parameters=None, organization=None):
+        """
+        :param validation_data: string, the data about the wanted policy.
+        :param output_parameters: string or list, the parameters to get from the given policy.
+               parameter options: 'name', 'operationMode', 'agentGroups', 'rules'.
+        :return: list of dictionaries, the information for the given data.
+        """
+        if organization:
+            status, response = self._rest.policies.ListPolicies(organization=organization)
+        else:
+            status, response = self._rest.policies.ListPolicies()
+        return self._get_info(status, response, 'policy', validation_data, output_parameters)
+
+    def set_policy_mode(self, name, mode, organization=None):
+        """
+        :param name: string, the policy name.
+        :param mode: string, 'Prevention' or 'Simulation'.
+        :return: True if succeeded, False if failed.
+        """
+        status, response = self._rest.policies.SetPolicyMode(name, mode, organization)
+
+        if not status:
+            assert False, f'Could not get response from the management. \n{response}'
+
+        Reporter.report('Changed the policy ' + name + 'mode to: ' + mode + '.')
+        return status
+
+    def assign_policy(self, policy_name, group_name, timeout=60, organization=None):
+        """
+        :param timeout: time to wait for collector configuration to be uploaded
+        :param policy_name: string, the name of the policy to assign,
+        :param group_name: string or list, the name of the group that the policy will be assigned to.
+        :return: True if succeeded, False if failed.
+        """
+        status, response = self._rest.policies.AssignCollector(policy_name, group_name, organization)
+
+        if not status:
+            assert False, f'Could not get response from the management. \n{response}'
+        Reporter.report(f"Assigned the policy {policy_name} to the group {group_name} successfully")
+        time.sleep(timeout)
+        return True

@@ -6,7 +6,9 @@ import sut_details
 
 from infra.allure_report_handler.reporter import Reporter
 from infra.assertion.assertion import Assertion
-from infra.enums import CollectorTypes, SystemState
+from infra.containers.management_api_body_containers import CreateOrganizationRestData, CreateUserRestData, \
+    OrganizationRestData
+from infra.enums import CollectorTypes, SystemState, UserRoles
 from infra.system_components.aggregator import Aggregator
 from infra.system_components.collector import Collector
 from infra.system_components.collectors import collectors_common_utils
@@ -51,8 +53,6 @@ def create_environment_properties_file_for_allure_report(management: Management,
     if alluredir is None:
         return
 
-    management = Management.instance()
-
     file_path = os.path.join(alluredir, 'environment.properties')
     with open(file_path, 'a+') as f:
         f.write(f'Management IP {management.host_ip}, Version: {management.details.management_version}\r\n')
@@ -62,7 +62,8 @@ def create_environment_properties_file_for_allure_report(management: Management,
         f.write(f'Core IP {core.details.ip}, Version: {core.details.version}\r\n')
 
         os_details = f'Os Name:{collector.os_station.os_name}, OS Version: {collector.os_station.os_version}, OS Artchitecture: {collector.os_station.os_architecture}'
-        f.write(f'Collector IP {collector.details.ip_address}, Version: {collector.get_version()}, OS Details: {os_details}\r\n')
+        f.write(
+            f'Collector IP {collector.details.ip_address}, Version: {collector.get_version()}, OS Details: {os_details}\r\n')
 
 
 def pytest_configure(config):
@@ -113,7 +114,8 @@ def pytest_runtest_makereport(item, call):
             tests_results[test_path]['passed'] = False
             tests_results[test_path]['failed'] = True
 
-    if (isinstance(result, dict) and result.get('failed') is True) or (hasattr(result, 'failed') and result.failed is True):
+    if (isinstance(result, dict) and result.get('failed') is True) or (
+            hasattr(result, 'failed') and result.failed is True):
         if tests_results[test_path]['hit'] == 1:
             tests_results[test_path]['outcome'] = 'skipped'
 
@@ -263,6 +265,7 @@ def collector(management):
         assert False, f"Automation does not support collector of the type: {collector_type}"
 
     collector_type_as_enum = [c_type for c_type in CollectorTypes if c_type.name == collector_type]
+
     collector_type_as_enum = collector_type_as_enum[0]
 
     collectors = SystemComponentsFactory.get_collectors(management=management,
@@ -278,13 +281,13 @@ def collector(management):
     for collector in collectors:
 
         if 'windows 10' in collector.os_station.os_name.lower() and \
-                collector.os_station.os_architecture == '64-bit'\
+                collector.os_station.os_architecture == '64-bit' \
                 and collector_type_as_enum == CollectorTypes.WINDOWS_10_64:
             desired_collector = collector
             break
 
         if 'windows 10' in collector.os_station.os_name.lower() and \
-                collector.os_station.os_architecture == '32-bit'\
+                collector.os_station.os_architecture == '32-bit' \
                 and collector_type_as_enum == CollectorTypes.WINDOWS_10_32:
             desired_collector = collector
             break
@@ -292,11 +295,92 @@ def collector(management):
     yield desired_collector
 
 
-@pytest.fixture(scope="function")
-def collector_health_check(collector: Collector):
+@pytest.fixture(scope="session", autouse=True)
+# move this entire logic to management object
+def tenant(management, collector):
+    # assign collector instance to tenant object
+    management.tenant.collector = collector
+
+    # admin - check if organization exist, else create it
+    organizations = management.admin_rest_api_client.organizations.get_all_organizations()
+    is_org_exist = False
+    for org in organizations:
+        if management.tenant.organization == org.get('name'):
+            is_org_exist = True
+            break
+
+    if not is_org_exist:
+        default_org_data = management.admin_rest_api_client.organizations.get_specific_organization_data("Default")
+        expiration_date = StringUtils.get_txt_by_regex(text=default_org_data.get('expirationDate'),
+                                                       regex=r'(\d+-\d+-\d+)',
+                                                       group=1)
+        default_org_update = OrganizationRestData(expiration_date=expiration_date,
+                                                  organization_name=default_org_data.get('name'),
+                                                  forensics_and_EDR=default_org_data.get('forensicsAndEDR'),
+                                                  vulnerability_and_IoT=default_org_data.get('vulnerabilityAndIoT'),
+                                                  servers_allocated=100,
+                                                  workstations_allocated=100,
+                                                  iot_allocated=100)
+        management.admin_rest_api_client.organizations.update_organization(organization_data=default_org_update,
+                                                                           expected_status_code=200)
+
+        new_org_data = CreateOrganizationRestData(expiration_date=expiration_date,
+                                                  organization_name=management.tenant.organization,
+                                                  password=management.tenant.registration_password,
+                                                  password_confirmation=management.tenant.registration_password,
+                                                  servers_allocated=100,
+                                                  workstations_allocated=100,
+                                                  iot_allocated=100,
+                                                  forensics_and_EDR=True,
+                                                  vulnerability_and_IoT=True)
+        management.admin_rest_api_client.organizations.create_organization(organization_data=new_org_data,
+                                                                           expected_status_code=200)
+        management.turn_on_prevention_mode(organization=management.tenant.organization)
+
+    # admin - check if user exist in organization, else create it
+    is_user_exist = False
+    users = management.admin_rest_api_client.users_rest.get_users(organization=management.tenant.organization)
+    for user in users:
+        if management.tenant.user_name == user.get('username'):
+            is_user_exist = True
+            break
+
+    if not is_user_exist:
+        user_data = CreateUserRestData(email="user@ensilo.com",
+                                       first_name='firstname',
+                                       last_name='lastname',
+                                       roles=[UserRoles.USER, UserRoles.LOCAL_ADMIN, UserRoles.REST_API],
+                                       title="title",
+                                       user_name=management.tenant.user_name,
+                                       password=f'{management.tenant.user_password}_1',
+                                       confirm_password=f'{management.tenant.user_password}_1',
+                                       organization=management.tenant.organization)
+        management.admin_rest_api_client.users_rest.create_user(user_data=user_data, expected_status_code=200)
+        management.admin_rest_api_client.users_rest.reset_user_password(user_name=management.tenant.user_name,
+                                                                        new_password=management.tenant.user_password,
+                                                                        organization=management.tenant.organization)
+
+    # user - search if desired collector found in organization, else move it from default organization to desired one
+    is_collector_in_org = False
+    collectors_in_org = management.admin_rest_api_client.system_inventory.get_collector_info(
+        organization=management.tenant.organization)
+    for single_collector in collectors_in_org:
+        if single_collector.get('name') == collector.details.name:
+            is_collector_in_org = True
+            break
+
+    if not is_collector_in_org:
+        management.admin_rest_api_client.system_inventory.move_collectors(
+            collectors_names=[f'{collector.details.name}'],
+            target_group_name='Default Collector Group',
+            current_collectors_organization="Default",
+            target_organization=management.tenant.organization)
+
+
+@pytest.fixture(scope="function", autouse=True)
+def collector_health_check(management: Management, collector: Collector):
     assert management.is_collector_status_running_in_mgmt(collector), f"{collector} is not running in {management}"
     # CollectorUtils.validate_collector_is_currently_running(collector)
-
     yield collector
     assert management.is_collector_status_running_in_mgmt(collector), f"{collector} is not running in {management}"
     # CollectorUtils.validate_collector_is_currently_running(collector)
@@ -339,10 +423,10 @@ def validate_all_system_components_are_running(management: Management,
 
         sys_comp.validate_system_component_is_in_desired_state(desired_state=SystemState.RUNNING)
 
-        collectors_common_utils.wait_for_running_collector_status_in_mgmt(management=management,
-                                                                          collector=collector,
-                                                                          timeout=collector_status_timeout)
-        # CollectorUtils.validate_collector_is_currently_running(collector)
+    collectors_common_utils.wait_for_running_collector_status_in_mgmt(management=management,
+                                                                      collector=collector,
+                                                                      timeout=collector_status_timeout)
+    # CollectorUtils.validate_collector_is_currently_running(collector)
 
 
 @pytest.fixture(scope="function", autouse=True)
@@ -409,7 +493,6 @@ def management_logs(management):
 
 @pytest.fixture(scope="function", autouse=sut_details.debug_mode)
 def aggregator_logs(aggregator: Aggregator):
-
     machine_date_format = "%Y-%m-%d %H:%M:%S"
     log_date_format = "%Y-%m-%d %H:%M:%S"
     log_timestamp_date_format_regex = "[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1]) ([0-1][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]"
