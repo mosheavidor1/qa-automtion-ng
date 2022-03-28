@@ -169,8 +169,11 @@ class LinuxCollector(Collector):
     def start_health_mechanism(self):
         pass
 
+    @allure.step("Reboot linux Collector")
     def reboot(self):
-        pass
+        self.os_station.reboot()
+        wait_until_collector_pid_appears(self)
+        self.update_process_id()
 
     @allure.step("Check if installation folder exists")
     def is_installation_folder_exists(self):

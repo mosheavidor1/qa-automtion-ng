@@ -78,6 +78,7 @@ def test_uninstall_install_windows_collector(management, collector):
 @allure.feature("Basic Functionality")
 @pytest.mark.sanity
 @pytest.mark.collector_sanity
+@pytest.mark.collector_linux_sanity
 @pytest.mark.xray('EN-73912')
 def test_reboot_collector(management, collector):
     """
