@@ -1,4 +1,5 @@
 import json
+from typing import List
 
 import allure
 from ensilo.platform.rest.nslo_management_rest import NsloRest
@@ -88,3 +89,14 @@ class OrganizationsRest(BaseRestFunctionality):
         self._validate_expected_status_code(expected_status_code=expected_status_code,
                                             actual_status_code=response.status_code,
                                             error_message=f"Delete-organization - expected response code: {expected_status_code}, actual: {response.status_code}")
+
+    @allure.step("Check if organization with the name {organization_name} exist")
+    def is_organization_exist(self, organization_name: str) -> bool:
+        organizations = self.get_all_organizations()
+
+        for org in organizations:
+            if organization_name == org.get('name'):
+                Reporter.report("The organization exist!")
+                return True
+        Reporter.report("The does not organization exist")
+        return False

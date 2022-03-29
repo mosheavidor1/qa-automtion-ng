@@ -20,7 +20,7 @@ def setup_method(management):
     policies_names = [management.admin_rest_api_client.rest.NsloPolicies.NSLO_POLICY_EXECUTION_PREVENTION,
                       management.admin_rest_api_client.rest.NsloPolicies.NSLO_POLICY_EXFILTRATION_PREVENTION,
                       management.admin_rest_api_client.rest.NsloPolicies.NSLO_POLICY_RANSOMWARE_PREVENTION]
-    policies = management.admin_rest_api_client.policies.get_policy_info()
+    policies = management.admin_rest_api_client.policies.get_policy_info(organization=management.tenant.organization)
     operation_mode = sum([True if policy.get('name') in policies_names and
                                   policy.get('operationMode') == 'Prevention' else False for policy in policies])
     if operation_mode < len(policies_names):
@@ -35,13 +35,14 @@ def exception_function_fixture(management, collector, request):
     group_name = "empty"
     destination = "Internal Destinations"
 
-    management.admin_rest_api_client.exceptions.delete_all_exceptions(timeout=1)
-    management.admin_rest_api_client.events.delete_all_events()
+    # delete by a given organization name
+    management.tenant.rest_api_client.exceptions.delete_all_exceptions(timeout=1)
+    management.tenant.rest_api_client.events.delete_all_events()
 
     start_group = collector.details.collector_group_name
 
     collector.create_event(malware_name=malware_name)
-    events = management.admin_rest_api_client.events.get_security_events({"process": malware_name})
+    events = management.tenant.rest_api_client.events.get_security_events({"process": malware_name})
     event_id = events[0]['eventId']
 
     match test_flow:
@@ -50,7 +51,8 @@ def exception_function_fixture(management, collector, request):
              ExceptionTestType.EDIT_PARTIALLY_COVERED_EXCEPTION | \
              ExceptionTestType.CREATE_PARTIALLY_COVERED_EXCEPTION_EVENT_CREATED:
 
-            management.admin_rest_api_client.create_group(group_name)
+            management.tenant.rest_api_client.system_inventory.create_group(name=group_name,
+                                                                            organization=management.tenant.organization)
 
     test_resources = {
         'management': management,
@@ -63,16 +65,24 @@ def exception_function_fixture(management, collector, request):
     }
     yield test_resources
 
-    management.admin_rest_api_client.exceptions.delete_all_exceptions(timeout=1)
-    management.admin_rest_api_client.events.delete_all_events(timeout=1)
+    management.tenant.rest_api_client.exceptions.delete_all_exceptions(timeout=1)
+    management.tenant.rest_api_client.events.delete_all_events(timeout=1)
 
     match test_flow:
         case ExceptionTestType.CREATE_PARTIALLY_COVERED_EXCEPTION | \
              ExceptionTestType.CREATE_PARTIALLY_COVERED_EXCEPTION_EVENT_CREATED:
 
-            management.admin_rest_api_client.system_inventory.move_collector({'ipAddress': collector.os_station.host_ip}, start_group)
+            management.tenant.rest_api_client.system_inventory.move_collector(
+                validation_data={'ipAddress': collector.os_station.host_ip},
+                group_name=start_group)
 
             match test_flow:
                 case ExceptionTestType.CREATE_PARTIALLY_COVERED_EXCEPTION:
-                    test_im_params = {"groupName": [group_name]}
+                    test_im_params = {
+                        "groupName": [group_name],
+                        "loginUser": management.tenant.user_name,
+                        "loginPassword": management.tenant.user_password,
+                        "loginOrganization": management.tenant.user_password,
+                        "organization": management.tenant.organization
+                    }
                     management.ui_client.inventory.delete_group(data=test_im_params)

@@ -6,6 +6,7 @@ from ensilo.platform.rest.nslo_management_rest import NsloRest
 
 from infra.allure_report_handler.reporter import Reporter
 from infra.rest.base_rest_functionality import BaseRestFunctionality
+from infra.system_components.collector import Collector
 
 
 class SystemInventoryRest(BaseRestFunctionality):
@@ -100,14 +101,16 @@ class SystemInventoryRest(BaseRestFunctionality):
                                             actual_status_code=response.status_code,
                                             error_message=f"Move Collector - expected response code: {expected_status_code}, actual: {response.status_code}")
 
-    def move_collector(self, validation_data, group_name):
+    def move_collector(self,
+                       validation_data,
+                       group_name: str):
         """
         :param validation_data: dictionary, the data of the collector to be moved.
         :param group_name: string, the name of the group to move the collector to.
         :return: True if succeeded, False if failed.
         """
         collector_name = list(map(lambda x: list(x.values())[0], self.get_collector_info(validation_data, 'name')))
-        status, response = self._rest.inventory.MoveCollectors(collector_name, group_name)
+        status, response = self._rest.inventory.MoveCollectors(collectors=collector_name, group=group_name)
         collector_group = self.get_collector_info(validation_data, 'collectorGroupName')
         if not status:
             assert False, f'Could not get response from the management. \n{response}'
@@ -132,3 +135,14 @@ class SystemInventoryRest(BaseRestFunctionality):
 
         as_list_of_dicts = json.loads(response.content)
         return as_list_of_dicts
+
+    @allure.step("Check if collector is in organization: {organization_name}")
+    def is_collector_in_organization(self, collector: Collector, organization_name: str):
+        all_collectors = self.get_collector_info(organization=organization_name)
+        for single_collector in all_collectors:
+            if single_collector.get('name') == collector.details.name and single_collector.get('ipAddress') == collector.os_station.host_ip:
+                Reporter.report("Collector found in the organization")
+                return True
+
+        Reporter.report("Collector does not found in the organization")
+        return False

@@ -17,7 +17,7 @@ class SystemComponentsFactory:
     @staticmethod
     def get_aggregators(management: Management) -> List[Aggregator]:
         aggr_list = []
-        aggregators = management.admin_rest_api_client.get_aggregator_info()
+        aggregators = management.admin_rest_api_client.system_inventory.get_aggregator_info()
         for single_aggr in aggregators:
             ip_addr, port = StringUtils.get_ip_port_as_tuple(single_aggr.get('ipAddress'))
 
@@ -42,7 +42,7 @@ class SystemComponentsFactory:
     @staticmethod
     def get_cores(management: Management) -> List[Core]:
         core_list = []
-        cores = management.admin_rest_api_client.get_core_info()
+        cores = management.admin_rest_api_client.system_inventory.get_core_info()
         for single_core in cores:
             ip_addr, port = StringUtils.get_ip_port_as_tuple(single_core.get('ip'))
 
@@ -64,8 +64,10 @@ class SystemComponentsFactory:
                        collector_type: CollectorTypes) -> List[Collector]:
 
         collector_list = []
-        collectors = management.admin_rest_api_client.get_collector_info()
-        collectors += management.admin_rest_api_client.get_collector_info(organization=management.tenant.organization)
+        collectors = management.admin_rest_api_client.system_inventory.get_collector_info()
+
+        if management.admin_rest_api_client.organizations.is_organization_exist(management.tenant.organization):
+            collectors += management.admin_rest_api_client.system_inventory.get_collector_info(organization=management.tenant.organization)
 
         # TODO - think how to improve it so we don't need to create instance of each collector with OS station
         # connection it can take too much time at the init level

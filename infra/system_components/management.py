@@ -166,7 +166,7 @@ class Management(FortiEdrLinuxStation):
         :param collector_ip: collector ip
         :return: SystemState
         """
-        all_collectors_info = self.admin_rest_api_client.administrator.get_collector_info(
+        all_collectors_info = self.admin_rest_api_client.system_inventory.get_collector_info(
             organization=self.tenant.organization)
         relevant_collector_info = None
         for collector_info in all_collectors_info:

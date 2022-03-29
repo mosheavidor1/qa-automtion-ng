@@ -302,12 +302,7 @@ def tenant(management, collector):
     management.tenant.collector = collector
 
     # admin - check if organization exist, else create it
-    organizations = management.admin_rest_api_client.organizations.get_all_organizations()
-    is_org_exist = False
-    for org in organizations:
-        if management.tenant.organization == org.get('name'):
-            is_org_exist = True
-            break
+    is_org_exist = management.admin_rest_api_client.organizations.is_organization_exist(organization_name=management.tenant.organization)
 
     if not is_org_exist:
         default_org_data = management.admin_rest_api_client.organizations.get_specific_organization_data("Default")
@@ -338,12 +333,8 @@ def tenant(management, collector):
         management.turn_on_prevention_mode(organization=management.tenant.organization)
 
     # admin - check if user exist in organization, else create it
-    is_user_exist = False
-    users = management.admin_rest_api_client.users_rest.get_users(organization=management.tenant.organization)
-    for user in users:
-        if management.tenant.user_name == user.get('username'):
-            is_user_exist = True
-            break
+    is_user_exist = management.admin_rest_api_client.users_rest.is_user_exist(user_name=management.tenant.user_name,
+                                                                              organization_name=management.tenant.organization)
 
     if not is_user_exist:
         user_data = CreateUserRestData(email="user@ensilo.com",
@@ -361,13 +352,8 @@ def tenant(management, collector):
                                                                         organization=management.tenant.organization)
 
     # user - search if desired collector found in organization, else move it from default organization to desired one
-    is_collector_in_org = False
-    collectors_in_org = management.admin_rest_api_client.system_inventory.get_collector_info(
-        organization=management.tenant.organization)
-    for single_collector in collectors_in_org:
-        if single_collector.get('name') == collector.details.name:
-            is_collector_in_org = True
-            break
+    is_collector_in_org = management.admin_rest_api_client.system_inventory.is_collector_in_organization(
+        collector=collector, organization_name=management.tenant.organization)
 
     if not is_collector_in_org:
         management.admin_rest_api_client.system_inventory.move_collectors(

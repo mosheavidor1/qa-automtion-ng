@@ -56,7 +56,7 @@ class ExceptionsRest(BaseRestFunctionality):
         if wildcardPaths:
             body["wildcardPaths"] = wildcardPaths
 
-        response, status = self._rest.passthrough.ExecuteRequest(url=url, mode="post", inputParams=kwargs, body=body)
+        status, response = self._rest.passthrough.ExecuteRequest(url=url, mode="post", inputParams=kwargs, body=body)
         if status:
             return True
         else:

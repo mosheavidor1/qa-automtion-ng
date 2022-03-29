@@ -10,6 +10,7 @@ from infra.assertion.assertion import AssertTypeEnum, Assertion
 
 @allure.epic("Management")
 @allure.feature("Exception")
+@pytest.mark.exception_tests
 class ExceptionsTests:
 
     @pytest.mark.parametrize('xray, exception_function_fixture',
@@ -33,7 +34,8 @@ class ExceptionsTests:
         malware_name = exception_function_fixture.get('malware_name')
         event_id = exception_function_fixture.get("event_id")
 
-        management.admin_rest_api_client.exceptions.create_exception(event_id)
+        management.admin_rest_api_client.exceptions.create_exception(eventId=event_id,
+                                                                     organization=management.tenant.organization)
         ManagementUtils.create_excepted_event_and_check(management, collector, malware_name, expected_result=False)
 
     @pytest.mark.parametrize('xray, exception_function_fixture',
@@ -57,8 +59,12 @@ class ExceptionsTests:
         event_id = exception_function_fixture.get("event_id")
         group_name = exception_function_fixture.get("group_name")
 
-        management.admin_rest_api_client.exceptions.create_exception(event_id, groups=[group_name])
-        CollectorUtils.move_collector_and_assign_group_policies(management, collector, group_name)
+        management.admin_rest_api_client.exceptions.create_exception(eventId=event_id,
+                                                                     groups=[group_name],
+                                                                     organization=management.tenant.organization)
+        CollectorUtils.move_collector_and_assign_group_policies(management=management,
+                                                                collector=collector,
+                                                                group_name=group_name)
 
         ManagementUtils.create_excepted_event_and_check(management, collector, malware_name, expected_result=False)
 
@@ -80,7 +86,9 @@ class ExceptionsTests:
         event_id = exception_function_fixture.get("event_id")
         group_name = exception_function_fixture.get("group_name")
 
-        management.admin_rest_api_client.exceptions.create_exception(event_id, groups=[group_name])
+        management.admin_rest_api_client.exceptions.create_exception(eventId=event_id,
+                                                                     groups=[group_name],
+                                                                     organization=management.tenant.organization)
         ManagementUtils.create_excepted_event_and_check(management, collector, malware_name, expected_result=True)
 
     @pytest.mark.parametrize('xray, exception_function_fixture',
@@ -104,9 +112,19 @@ class ExceptionsTests:
         destination = exception_function_fixture.get("destination")
         malware_name = exception_function_fixture.get('malware_name')
 
-        management.admin_rest_api_client.exceptions.create_exception(event_id)
-        management.ui_client.exceptions.edit_exceptions(
-            {"groups": [group_name], "destinations": [destination], "eventID": event_id})
+        management.admin_rest_api_client.exceptions.create_exception(eventId=event_id,
+                                                                     organization=management.tenant.organization)
+        test_im_data = {
+            "groupName": [group_name],
+            "loginUser": management.tenant.user_name,
+            "loginPassword": management.tenant.user_password,
+            "loginOrganization": management.tenant.user_password,
+            "organization": management.tenant.organization,
+            "groups": [group_name],
+            "destinations": [destination],
+            "eventID": event_id
+        }
+        management.ui_client.exceptions.edit_exceptions(data=test_im_data)
         exception_id = ManagementUtils.validate_exception(management, process=malware_name, group=group_name,
                                                           destination=destination)
         assert exception_id, "exception validation failed,exception wasn't created"
@@ -131,11 +149,22 @@ class ExceptionsTests:
         destination = exception_function_fixture.get("destination")
         malware_name = exception_function_fixture.get('malware_name')
 
-        management.admin_rest_api_client.exceptions.create_exception(event_id, groups=[group_name])
+        management.admin_rest_api_client.exceptions.create_exception(eventId=event_id,
+                                                                     groups=[group_name],
+                                                                     organization=management.tenant.organization)
         exception_id = ManagementUtils.validate_exception(management, process=malware_name, group=group_name)
         assert exception_id, "exception validation failed,exception wasn't created"
 
-        management.ui_client.exceptions.edit_exceptions({"destinations": [destination], "eventID": event_id})
+        test_im_data = {
+            "groupName": [group_name],
+            "loginUser": management.tenant.user_name,
+            "loginPassword": management.tenant.user_password,
+            "loginOrganization": management.tenant.user_password,
+            "organization": management.tenant.organization,
+            "destinations": [destination],
+            "eventID": event_id
+        }
+        management.ui_client.exceptions.edit_exceptions(data=test_im_data)
         exception_id = ManagementUtils.validate_exception(management, process=malware_name, group=group_name,
                                                           destination=destination)
         assert exception_id, "exception validation failed,exception wasn't created"
@@ -156,11 +185,12 @@ class ExceptionsTests:
         malware_name = exception_function_fixture.get('malware_name')
         event_id = exception_function_fixture.get("event_id")
 
-        management.admin_rest_api_client.exceptions.create_exception(event_id)
+        management.admin_rest_api_client.exceptions.create_exception(eventId=event_id,
+                                                                     organization=management.tenant.organization)
         exception_id = ManagementUtils.validate_exception(management, process=malware_name, event_id=event_id)
         assert exception_id, "exception validation failed,exception wasn't created"
 
-        management.admin_rest_api_client.exceptions.delete_exception(exception_id)
+        management.tenant.rest_api_client.exceptions.delete_exception(exception_id)
         exception_id = ManagementUtils.validate_exception(management, process=malware_name, event_id=event_id)
         if exception_id:
             Assertion.invoke_assertion(expected=False, actual=exception_id,

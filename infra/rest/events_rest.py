@@ -39,7 +39,7 @@ class EventsRest(BaseRestFunctionality):
                 if not status:
                     error_message = f'Could not get response from the management. \n{response}'
 
-                events = loads(response.text)
+                events = json.loads(response.text)
                 if not len(events):
                     error_message = 'No event with the given parameters found.'
                     time.sleep(sleep_delay)

@@ -4,6 +4,7 @@ from typing import List
 import allure
 from ensilo.platform.rest.nslo_management_rest import NsloRest
 
+from infra.allure_report_handler.reporter import Reporter
 from infra.containers.management_api_body_containers import UserRestData, CreateUserRestData
 from infra.rest.base_rest_functionality import BaseRestFunctionality
 
@@ -81,3 +82,15 @@ class UsersRest(BaseRestFunctionality):
         self._validate_expected_status_code(expected_status_code=expected_status_code,
                                             actual_status_code=response.status_code,
                                             error_message=f"Reset user password - expected response code: {expected_status_code}, actual: {response.status_code}")
+
+    @allure.step("Is user with the name: {user_name} exist in the organization: {organization_name}")
+    def is_user_exist(self, user_name: str, organization_name: str) -> bool:
+        is_user_exist = False
+        users = self.get_users(organization=organization_name)
+        for user in users:
+            if user_name == user.get('username'):
+                Reporter.report("The user exist!")
+                return True
+
+        Reporter.report("The user does not exist")
+        return False
