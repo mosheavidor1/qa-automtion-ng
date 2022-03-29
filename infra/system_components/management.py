@@ -1,7 +1,11 @@
+from enum import Enum
+import functools
 from typing import List
 
 import allure
 
+from infra import common_utils
+from infra import enums
 from infra.allure_report_handler.reporter import Reporter
 from infra.containers.postgresql_over_ssh_details import PostgresqlOverSshDetails
 from infra.containers.ssh_details import SshDetails
@@ -21,13 +25,17 @@ from infra.system_components.collectors.windows_os.windows_collector import Wind
 from infra.system_components.collectors.linux_os.linux_collector import LinuxCollector
 from infra.test_im.management_ui_client import ManagementUiClient
 from infra.utils.utils import StringUtils
-from infra.system_components.collectors.collectors_common_utils import wait_for_running_collector_status_in_mgmt
 
 
 @Singleton
 class Management(FortiEdrLinuxStation):
-
     APPLICATION_PROPERTIES_FILE_PATH = '/opt/FortiEDR/webapp/application.properties'
+
+    _WAIT_MANAGEMENT_SERVICE_TIMEOUT = 120
+    _WAIT_MANAGEMENT_SERVICE_INTERVAL = 10
+    _DB_TBL_ADM_USERS = 'adm_users'
+    _DB_TBL_ADM_USERS_ROLES = 'adm_users_roles'
+    _DB_TBL_ADM_ROLES = 'adm_roles'
 
     def __init__(self):
 
@@ -45,7 +53,7 @@ class Management(FortiEdrLinuxStation):
         self._collectors: [Collector] = []
 
         self._postgresql_db: PostgresqlOverSshDb = self._get_postgresql_db_obj()
-        self.enable_rest_api_for_user_via_db(user_name='admin')
+        self.enable_rest_api_for_user_via_db(user_name=self._ui_admin_user_name)
 
         self._rest_api_client = RestCommands(self.host_ip,
                                              self._ui_admin_user_name,
@@ -139,13 +147,21 @@ class Management(FortiEdrLinuxStation):
         cmd = f'{self.APPLICATION_PROPERTIES_FILE_PATH} | grep spring.datasource'
         result = self.get_file_content(file_path=cmd)
 
-        postgresql_server_ip = StringUtils.get_txt_by_regex(text=result, regex='spring\.datasource\.url=jdbc:postgresql:\/\/(\w+)', group=1)
+        postgresql_server_ip = StringUtils.get_txt_by_regex(text=result,
+                                                            regex='spring\.datasource\.url=jdbc:postgresql:\/\/(\w+)',
+                                                            group=1)
         if postgresql_server_ip.lower() == 'localhost':
             postgresql_server_ip = '127.0.0.1'
 
-        postgresql_port = StringUtils.get_txt_by_regex(text=result, regex='spring\.datasource\.url=jdbc:postgresql:\/\/\w+:(\d+)', group=1)
-        postgresql_user_name = StringUtils.get_txt_by_regex(text=result, regex='spring\.datasource\.username=(\w+)', group=1)
-        postgresql_password = StringUtils.get_txt_by_regex(text=result, regex='spring\.datasource\.password=(\w+)', group=1)
+        postgresql_port = StringUtils.get_txt_by_regex(text=result,
+                                                       regex='spring\.datasource\.url=jdbc:postgresql:\/\/\w+:(\d+)',
+                                                       group=1)
+        postgresql_user_name = StringUtils.get_txt_by_regex(text=result,
+                                                            regex='spring\.datasource\.username=(\w+)',
+                                                            group=1)
+        postgresql_password = StringUtils.get_txt_by_regex(text=result,
+                                                           regex='spring\.datasource\.password=(\w+)',
+                                                           group=1)
 
         postgresql_details = PostgresqlOverSshDetails(db_name='ensilo',
                                                       user_name=postgresql_user_name,
@@ -169,7 +185,6 @@ class Management(FortiEdrLinuxStation):
     def init_aggregator_objects(self):
         aggregators = self._rest_api_client.get_aggregator_info()
         for single_aggr in aggregators:
-
             ip_addr, port = StringUtils.get_ip_port_as_tuple(single_aggr.get('ipAddress'))
 
             aggregator_details = AggregatorDetails(host_name=single_aggr.get('hostName'),
@@ -288,7 +303,8 @@ class Management(FortiEdrLinuxStation):
                 content = core.get_file_content(file_path='/opt/FortiEDR/core/Config/Core/CoreBootstrap.jsn')
                 deployment_mode = StringUtils.get_txt_by_regex(text=content, regex='"DeploymentMode":"(\w+)"', group=1)
                 if deployment_mode == 'OnPremise':
-                    core.execute_cmd("""sed -i 's/"DeploymentMode":"OnPremise"/"DeploymentMode":"Cloud"/g' /opt/FortiEDR/core/Config/Core/CoreBootstrap.jsn""")
+                    core.execute_cmd(
+                        """sed -i 's/"DeploymentMode":"OnPremise"/"DeploymentMode":"Cloud"/g' /opt/FortiEDR/core/Config/Core/CoreBootstrap.jsn""")
                     core.stop_service()
                     core.start_service()
 
@@ -302,23 +318,90 @@ class Management(FortiEdrLinuxStation):
 
     @allure.step("Add Rest-API role for {user_name}")
     def enable_rest_api_for_user_via_db(self, user_name='admin'):
+        """This functions is adds **Rest API** role to the **'user_name'** provided via SSH > SQL.
+        The way it used to set the role via SSH > SQL is to prevent other not stable methods, but, this way is requires
+        service restart due to caching mechanism which reads for changes by 2 ways:
+            * Service restarted
+            * UI Usage
+        The chaching mechanisem has its own timer when it checks for changes,
+        hard to know its timing, therefore, service restart preferred.
 
-        users_table_results = self._postgresql_db.execute_sql_command(sql_cmd=f"select id from adm_users where username = '{user_name}'")
-        user_id = users_table_results[0].get('id')
+        Used SQL tables
+        ----------
+        adm_users_roles : list of user_id and role_id
+            List of mapped user_id to a specific role_id
+        adm_users : list of users details, 
+            List of username details, to get the used_id
+        adm_roles : list of roles details, used the role name to get the role_id
+        
+        Parameters
+        ----------
+        user_name : str, optional
+            Which username will add the Rest API role, by default 'admin'        
+        """
+        user_id = self._get_user_id_by_username_from_db(user_name)
+        role_id = self._get_management_role_id_from_db(enums.ManagementUserRoles.ROLE_REST_API.value)
+        is_exist = self._user_id_exist_with_role_id_in_db(user_id, role_id)
 
-        users_roles_results = self._postgresql_db.execute_sql_command(sql_cmd="select id from adm_roles where authority = 'ROLE_REST_API'")
-        role_rest_api_id = users_roles_results[0].get('id')
+        if is_exist:
+            Reporter.report(f"Rest API enabled for user: {user_name}, Nothing to do")
+            return
+        else:
+            Reporter.report(f"Finished enabling {enums.ManagementUserRoles.ROLE_REST_API.value}")
+            self.add_role_id_with_user_id_db(user_id, role_id)
 
-        specific_user_roles = self._postgresql_db.execute_sql_command(sql_cmd=f"select role_id from adm_users_roles where user_id={user_id}")
+            Reporter.report(f"Restarting after setting role via database to user '{user_name}'")
+            self.restart_service()
 
-        for single_role in specific_user_roles:
-            if single_role.get('role_id') == role_rest_api_id:
-                Reporter.report(f"Rest API enabled for user: {user_name}, Nothing to do")
-                return
+            self.wait_till_service_up(timeout=self._WAIT_MANAGEMENT_SERVICE_TIMEOUT,
+                                      interval=self._WAIT_MANAGEMENT_SERVICE_INTERVAL)
 
-        # if we the api role is not set to the specific user we will add it to DB
-        query = f"insert into adm_users_roles (user_id, role_id) values ({user_id}, {role_rest_api_id})"
+    @allure.step("Wait till the service is up with timeout set to {timeout} sec.")
+    def wait_till_service_up(self, timeout: int = 60, interval: int = 5):
+        predict_condition_func = functools.partial(self.is_system_in_desired_state, SystemState.RUNNING)
+
+        common_utils.wait_for_predict_condition(
+            predict_condition_func=predict_condition_func,
+            timeout_sec=timeout,
+            interval_sec=interval
+        )
+
+    @allure.step("Adding user ID to role ID in the DB")
+    def add_role_id_with_user_id_db(self, user_id, role_id):
+        query = f"insert into {self._DB_TBL_ADM_USERS_ROLES} (user_id, role_id) values ({user_id}, {role_id})"
         self._postgresql_db.execute_sql_command(sql_cmd=query)
+
+        user_with_role_exist = self._user_id_exist_with_role_id_in_db(user_id, role_id)
+        assert user_with_role_exist, "User ID with role ID doesn't exists in the DB and unable to add one :("
+
+    @allure.step("Check if user id({user_id}) is already mapped with role id({expected_role_id})")
+    def _user_id_exist_with_role_id_in_db(self, user_id, expected_role_id) -> bool:
+        user_roles = self._postgresql_db.execute_sql_command(
+            sql_cmd=f"select role_id from {self._DB_TBL_ADM_USERS_ROLES} where user_id={user_id}")
+        for user_role in user_roles:
+            if user_role.get('role_id') == expected_role_id:
+                Reporter.report(f"Role ID is already enabled for user id: {user_id}, expected role ID: {expected_role_id}")
+                return True
+
+        return False
+
+    @allure.step("Get {user_name} user_id from db")
+    def _get_user_id_by_username_from_db(self, user_name) -> int:
+        users_table_results = self._postgresql_db.execute_sql_command(
+            sql_cmd=f"select id from {self._DB_TBL_ADM_USERS} where username ='{user_name}'")
+        assert len(users_table_results) == 1, f"Issue with finding user_id for the user '{user_name}'.({len(users_table_results)})"
+
+        user_id = users_table_results[0].get('id')
+        return user_id
+
+    @allure.step("Get {user_role} id from db")
+    def _get_management_role_id_from_db(self, user_role) -> int:
+        users_roles_results = self._postgresql_db.execute_sql_command(
+            sql_cmd=f"select id from {self._DB_TBL_ADM_ROLES} where authority = '{user_role}'")
+        assert len(users_roles_results) == 1, f"Issue with finding role_id for the role.({len(users_roles_results)})"
+
+        role_id = users_roles_results[0].get('id')
+        return role_id
 
     @allure.step("Get collector {collector_ip} state")
     def get_collector_status(self, collector_ip: str) -> SystemState:
