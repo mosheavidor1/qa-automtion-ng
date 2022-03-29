@@ -10,7 +10,6 @@ from infra.assertion.assertion import AssertTypeEnum, Assertion
 
 @allure.epic("Management")
 @allure.feature("Exception")
-@pytest.mark.exception_tests
 class ExceptionsTests:
 
     @pytest.mark.parametrize('xray, exception_function_fixture',
