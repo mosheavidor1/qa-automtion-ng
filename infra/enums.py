@@ -49,3 +49,8 @@ class HttpRequestMethods(Enum):
     OPTIONS = 'OPTIONS'
 
 
+class ManagementUserRoles(Enum):
+    ROLE_REST_API = 'ROLE_REST_API'
+    ROLE_USER = 'ROLE_USER'
+    ROLE_ADMIN = 'ROLE_ADMIN'
+    ROLE_HOSTER = 'ROLE_HOSTER'
