@@ -18,7 +18,8 @@ def setup_method(management):
     policies_names = [management.admin_rest_api_client.rest.NsloPolicies.NSLO_POLICY_EXECUTION_PREVENTION,
                       management.admin_rest_api_client.rest.NsloPolicies.NSLO_POLICY_EXFILTRATION_PREVENTION,
                       management.admin_rest_api_client.rest.NsloPolicies.NSLO_POLICY_RANSOMWARE_PREVENTION]
-    policies = management.admin_rest_api_client.policies.get_policy_info(organization=management.tenant.organization)
+    # policies = management.admin_rest_api_client.policies.get_policy_info(organization=management.tenant.organization)
+    policies = management.tenant.rest_api_client.policies.get_policy_info()
     operation_mode = sum([True if policy.get('name') in policies_names and
                                   policy.get('operationMode') == 'Prevention' else False for policy in policies])
     if operation_mode < len(policies_names):

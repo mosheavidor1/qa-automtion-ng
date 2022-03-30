@@ -11,14 +11,14 @@ class PoliciesRest(BaseRestFunctionality):
     def __init__(self, nslo_rest: NsloRest):
         super().__init__(nslo_rest=nslo_rest)
         
-    def get_policy_info(self, validation_data=None, output_parameters=None, organization=None):
+    def get_policy_info(self, validation_data=None, output_parameters=None):
         """
         :param validation_data: string, the data about the wanted policy.
         :param output_parameters: string or list, the parameters to get from the given policy.
                parameter options: 'name', 'operationMode', 'agentGroups', 'rules'.
         :return: list of dictionaries, the information for the given data.
         """
-        status, response = self._rest.policies.ListPolicies(organization=organization)
+        status, response = self._rest.policies.ListPolicies()
         return self._get_info(status, response, 'policy', validation_data, output_parameters)
 
     def set_policy_mode(self, name, mode, organization=None):
