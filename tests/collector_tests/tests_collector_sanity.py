@@ -23,7 +23,7 @@ def test_stop_start_collector(management, collector):
     2. Start collector and validate it started successfully.
     """
     with allure.step(f"Stop {collector} and validate"):
-        collector.stop_collector()
+        collector.stop_collector(password=management.tenant.registration_password)
         Reporter.report(f"Validate {collector} stopped successfully:")
         CollectorUtils.wait_for_service_down_status_in_cli(collector)
         wait_for_disconnected_collector_status_in_mgmt(management, collector)
