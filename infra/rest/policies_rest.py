@@ -18,10 +18,7 @@ class PoliciesRest(BaseRestFunctionality):
                parameter options: 'name', 'operationMode', 'agentGroups', 'rules'.
         :return: list of dictionaries, the information for the given data.
         """
-        if organization:
-            status, response = self._rest.policies.ListPolicies(organization=organization)
-        else:
-            status, response = self._rest.policies.ListPolicies()
+        status, response = self._rest.policies.ListPolicies(organization=organization)
         return self._get_info(status, response, 'policy', validation_data, output_parameters)
 
     def set_policy_mode(self, name, mode, organization=None):

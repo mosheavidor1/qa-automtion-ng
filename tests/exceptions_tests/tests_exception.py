@@ -19,6 +19,7 @@ class ExceptionsTests:
                              indirect=True)
     @pytest.mark.sanity
     @pytest.mark.management_sanity
+    @pytest.mark.exception
     def test_create_full_covered_exception(self, xray, exception_function_fixture):
         """
         test name: Full covered exception - event excepted
