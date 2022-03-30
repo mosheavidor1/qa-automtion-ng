@@ -56,7 +56,7 @@ class Management(FortiEdrLinuxStation):
         self._tenant: Tenant = Tenant(management_host_ip=self.host_ip,
                                       user_name=sut_details.collector_type,
                                       user_password=sut_details.collector_type,
-                                      registration_password='12345678',
+                                      registration_password=sut_details.collector_type,
                                       organization=sut_details.collector_type,
                                       collector=None)
 

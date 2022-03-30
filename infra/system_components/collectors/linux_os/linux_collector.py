@@ -215,13 +215,19 @@ class LinuxCollector(Collector):
         assert "FortiEDR Collector installed successfully" in result, f"{self} failed to install"
 
     @allure.step("{0} - Configure linux Collector")
-    def configure_collector(self, aggregator_ip, aggregator_port=None, registration_password=None):
+    def configure_collector(self, aggregator_ip, aggregator_port=None, registration_password=None, organization=None):
         """ Can't read the stdout of the configuration cmd,
         need to trigger the configuration -> close ssh transporter -> wait few sec """
         wait_after_configuration = 10  # Arbitrary
         aggregator_port = aggregator_port or DEFAULT_AGGREGATOR_PORT
         registration_password = registration_password or REGISTRATION_PASS
-        cmd = f"{COLLECTOR_CONFIG_PATH} {aggregator_ip}:{aggregator_port} {registration_password}"
+
+        if organization is None:
+            organization = ''
+        else:
+            organization = f'--organization {organization}'
+
+        cmd = f"{COLLECTOR_CONFIG_PATH} --aggregator {aggregator_ip}:{aggregator_port} --password {registration_password} {organization}"
         self.os_station.execute_cmd(cmd=cmd, fail_on_err=True, return_output=False, attach_output_to_report=False)
         time.sleep(wait_after_configuration)  # Wait few sec after triggering the configuration cmd
         wait_until_collector_pid_appears(self)
