@@ -319,6 +319,9 @@ class LinuxStation(OsStation):
     def remove_mounted_drive(self, local_mounted_drive: str = None):
         cmd = f"sudo sudo umount --force {local_mounted_drive}"
         self.execute_cmd(cmd=cmd, return_output=False, fail_on_err=True)
+        mounted_files_paths = self.get_list_of_files_in_folder(folder_path=local_mounted_drive)
+        assert mounted_files_paths is None, \
+            f"Failed to unmount {local_mounted_drive}, still contains these files: {mounted_files_paths}"
 
     def copy_files(self, source: str, target: str):
         cmd = f'scp -r {source} {target}'
@@ -369,17 +372,15 @@ class LinuxStation(OsStation):
                                             shared_drive=shared_drive_path_for_command,
                                             user_name=shared_drive_user_name,
                                             password=shared_drive_password)
-
+            mounted_successfully = True
             for single_file in files_to_copy:
                 self.copy_files(source=f'{mounted_dir_name}/{single_file}', target=target_folder)
 
             return target_folder
 
         finally:
-            # unmount
-            if mounted_successfully is True:
+            if mounted_successfully:
                 self.remove_mounted_drive(local_mounted_drive=mounted_dir_name)
-                # remove file
                 self.remove_folder(mounted_dir_name)
 
     def get_last_modified_file_name_in_folder(self, folder_path: str, file_suffix: str = None) -> str:

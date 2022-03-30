@@ -129,8 +129,9 @@ class FortiEdrLinuxStation(LinuxStation):
             Reporter.attach_str_as_file(file_name=file, file_content=content)
 
     @allure.step("Copy version files from shared folder to {0}")
-    def copy_version_files_from_shared_folder(self, version: str = None) -> List[str]:
-
+    def copy_files_from_shared_versions_folder(self, version: str = None, files_names=None) -> List[str]:
+        files_names = files_names or ['*']
+        assert len(files_names) > 0, "Should pass the names of desired files"
         if version is None:
             version = self.get_version()
 
@@ -138,7 +139,7 @@ class FortiEdrLinuxStation(LinuxStation):
         copied_files_dir = self.copy_files_from_shared_folder(
             target_path_in_local_machine=self._version_content_folder, shared_drive_path=shared_drive_path,
             shared_drive_user_name=third_party_details.USER_NAME, shared_drive_password=third_party_details.PASSWORD,
-            files_to_copy=['*'])
+            files_to_copy=files_names)
 
         return copied_files_dir
 
