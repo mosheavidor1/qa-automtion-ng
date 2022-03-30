@@ -1,4 +1,3 @@
-import functools
 import allure
 from datetime import datetime
 from infra.system_components.collector import Collector
@@ -12,12 +11,6 @@ MAX_WAIT_FOR_STATUS = 5 * 60
 class CollectorUtils:
 
     @staticmethod
-    @allure.step("{0} - Validate collector is currently running")
-    def validate_collector_is_currently_running(collector: Collector):
-        is_status_running = collector.is_status_running_in_cli()
-        assert is_status_running, f"{collector} status is not running"
-
-    @staticmethod
     @allure.step("Wait until status of {collector} in {management} is not running")
     def wait_for_not_running_collector_status_in_mgmt(management, collector, timeout=None):
         timeout = timeout or MAX_WAIT_FOR_STATUS
@@ -26,22 +19,6 @@ class CollectorUtils:
             is_not_running = not management.is_collector_status_running_in_mgmt(collector)
             return is_not_running
         TestUtils.wait_for_predict_condition(predict_condition_func=is_collector_status_not_running,
-                                             timeout_sec=timeout, interval_sec=COLLECTOR_KEEPALIVE_INTERVAL)
-
-    @staticmethod
-    @allure.step("Wait until status of {collector} in {management} is 'Disconnected'")
-    def wait_for_disconnected_collector_status_in_mgmt(management, collector, timeout=None):
-        timeout = timeout or MAX_WAIT_FOR_STATUS
-        predict_condition_func = functools.partial(management.is_collector_status_disconnected_in_mgmt, collector)
-        TestUtils.wait_for_predict_condition(predict_condition_func=predict_condition_func,
-                                             timeout_sec=timeout, interval_sec=COLLECTOR_KEEPALIVE_INTERVAL)
-
-    @staticmethod
-    @allure.step("Wait for a running status of {collector} in cli")
-    def wait_for_running_collector_status_in_cli(collector, timeout=None):
-        timeout = timeout or MAX_WAIT_FOR_STATUS
-        predict_condition_func = collector.is_status_running_in_cli
-        TestUtils.wait_for_predict_condition(predict_condition_func=predict_condition_func,
                                              timeout_sec=timeout, interval_sec=COLLECTOR_KEEPALIVE_INTERVAL)
 
     @staticmethod

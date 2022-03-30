@@ -10,6 +10,11 @@ from infra.allure_report_handler.reporter import Reporter
 from infra.decorators import retry
 from infra.os_stations.os_station_base import OsStation
 from infra.utils.utils import StringUtils
+from infra.common_utils import wait_for_predict_condition
+
+INTERVAL_STATION_KEEPALIVE = 5
+WAIT_FOR_STATION_UP_TIMEOUT = 5 * 60
+WAIT_FOR_STATION_DOWN_TIMEOUT = WAIT_FOR_STATION_UP_TIMEOUT
 
 
 class LinuxStation(OsStation):
@@ -39,6 +44,7 @@ class LinuxStation(OsStation):
     @allure.step("Disconnect from remote machine")
     def disconnect(self):
         self._remote_connection_session.close()
+        self._remote_connection_session = None
 
     def __escape_ansi(self, line):
         ansi_escape = re.compile(r'(?:\x1B[@-_]|[\x80-\x9F])[0-?]*[ -/]*[@-~]')
@@ -118,7 +124,48 @@ class LinuxStation(OsStation):
 
     @allure.step("Reboot")
     def reboot(self):
-        raise Exception("Not Implemented yet")
+        uptime_sec_before_reboot = self.get_machine_uptime_seconds()
+        cmd = 'reboot'
+        self.execute_cmd(cmd=cmd, fail_on_err=True, return_output=True, attach_output_to_report=True)
+        self.wait_until_machine_is_unreachable()
+        self.wait_until_machine_is_reachable()
+        uptime_sec_after_reboot = self.get_machine_uptime_seconds()
+        assert uptime_sec_after_reboot < uptime_sec_before_reboot, "Machine was not actually rebooted"
+
+    @allure.step("Get current linux machine uptime in seconds")
+    def get_machine_uptime_seconds(self):
+        cmd = "awk '{print $1}' /proc/uptime"
+        uptime_sec = self.execute_cmd(cmd=cmd, fail_on_err=True, return_output=True, attach_output_to_report=True)
+        Reporter.report(f"Uptime sec is {uptime_sec}")
+        return int(float(uptime_sec))
+
+    def is_reachable(self):
+        try:
+            self._remote_connection_session = paramiko.SSHClient()
+            self._remote_connection_session.set_missing_host_key_policy(policy=paramiko.AutoAddPolicy())
+            self._remote_connection_session.connect(hostname=self.host_ip, username=self.user_name,
+                                                    password=self.password)
+            return True
+        except:
+            return False
+
+    @allure.step("Wait until machine is unreachable")
+    def wait_until_machine_is_unreachable(self, timeout=None):
+        timeout = timeout or WAIT_FOR_STATION_DOWN_TIMEOUT
+
+        def predict():
+            result = not self.is_reachable()
+            return result
+
+        wait_for_predict_condition(predict_condition_func=predict,
+                                   timeout_sec=timeout, interval_sec=INTERVAL_STATION_KEEPALIVE)
+
+    @allure.step("Wait until machine is reachable")
+    def wait_until_machine_is_reachable(self, timeout=None):
+        timeout = timeout or WAIT_FOR_STATION_UP_TIMEOUT
+        predict_condition_func = self.is_reachable
+        wait_for_predict_condition(predict_condition_func=predict_condition_func,
+                                   timeout_sec=timeout, interval_sec=INTERVAL_STATION_KEEPALIVE)
 
     @allure.step("Get current linux machine date time")
     def get_current_machine_datetime(self, date_format="%d/%m/%Y %H:%M:%S"):
@@ -165,17 +212,16 @@ class LinuxStation(OsStation):
         lines = output.split('\n')
         return lines
 
-    @allure.step("Get list of files inside {folder_path} with the suffix {file_suffix}")
-    def get_list_of_files_in_folder(self,
-                                    folder_path: str,
-                                    file_suffix: str = None):
-
+    @allure.step("Get list of files paths inside {folder_path} with the suffix {file_suffix}")
+    def get_list_of_files_in_folder(self, folder_path: str, file_suffix: str = None):
         result = self.execute_cmd(f'ls {folder_path}')
-        files = result.split('\n')
+        if result is None:
+            return result
+        files_names = result.split('\n')
         if file_suffix is not None:
-            files = [f'{folder_path}/{x}' for x in files if file_suffix in x]
-
-        return files
+            files_names = [file_name for file_name in files_names if file_suffix in file_name]
+        files_paths = [f'{folder_path}/{file_name}' for file_name in files_names]
+        return files_paths
 
     @allure.step("Combine multiple text files into one file")
     def combine_text_file_into_single_file(self,

@@ -24,7 +24,7 @@ class ExceptionsTests:
         test name: Full covered exception - event excepted
         steps:
         1. create event DynamicCodeTests
-        2. crete exception for DynamicCodeTests
+        2. create exception for DynamicCodeTests
         3. create same event - event should not be created
         """
 
@@ -47,7 +47,7 @@ class ExceptionsTests:
         test name: Partially covered exception - event excepted
         steps:
         1. create event DynamicCodeTests
-        2. crete exception for DynamicCodeTests with empty group
+        2. create exception for DynamicCodeTests with empty group
         3. move collector to the empty group
         4. assign group to policies
         5. create same event - event should not be created
@@ -76,7 +76,7 @@ class ExceptionsTests:
         """
         steps:
         1. create event DynamicCodeTests
-        2. crete exception for DynamicCodeTests with empty group
+        2. create exception for DynamicCodeTests with empty group
         3. create same event - event should be created because collector not in the group
         """
         management: Management = exception_function_fixture.get('management')
@@ -101,7 +101,7 @@ class ExceptionsTests:
         EN-73885 - when fixed add event_id as input to validate_exception
         steps:
         1. create event DynamicCodeTests
-        2. crete exception for DynamicCodeTests
+        2. create exception for DynamicCodeTests
         3. edit exception - change group to empty group
         4. edit exception - change destination to specific destination
         """
@@ -111,6 +111,9 @@ class ExceptionsTests:
         destination = exception_function_fixture.get("destination")
         malware_name = exception_function_fixture.get('malware_name')
 
+        management.rest_api_client.create_exception(event_id)
+        management.ui_client.exceptions.edit_exceptions(
+            data={"groups": [group_name], "destinations": [destination], "eventID": event_id})
         management.admin_rest_api_client.exceptions.create_exception(eventId=event_id,
                                                                      organization=management.tenant.organization)
         test_im_data = {
@@ -126,7 +129,7 @@ class ExceptionsTests:
         management.ui_client.exceptions.edit_exceptions(data=test_im_data)
         exception_id = ManagementUtils.validate_exception(management, process=malware_name, group=group_name,
                                                           destination=destination)
-        assert exception_id, "exception validation failed,exception wasn't created"
+        assert exception_id, "exception validation failed,exception wasn't created properly"
 
     @pytest.mark.parametrize('xray, exception_function_fixture',
                              [('EN-68888', ExceptionTestType.EDIT_PARTIALLY_COVERED_EXCEPTION)],
@@ -139,7 +142,7 @@ class ExceptionsTests:
         EN-73885 - when fixed add event_id as input to validate_exception
         steps:
         1. create event DynamicCodeTests
-        2. crete exception for DynamicCodeTests with empty group
+        2. create exception for DynamicCodeTests with empty group
         3. edit exception - change destination to specific destination
         """
         management: Management = exception_function_fixture.get('management')
@@ -152,7 +155,7 @@ class ExceptionsTests:
                                                                      groups=[group_name],
                                                                      organization=management.tenant.organization)
         exception_id = ManagementUtils.validate_exception(management, process=malware_name, group=group_name)
-        assert exception_id, "exception validation failed,exception wasn't created"
+        assert exception_id, "exception validation failed,exception wasn't created properly"
 
         test_im_data = {
             "groupName": [group_name],
@@ -166,10 +169,10 @@ class ExceptionsTests:
         management.ui_client.exceptions.edit_exceptions(data=test_im_data)
         exception_id = ManagementUtils.validate_exception(management, process=malware_name, group=group_name,
                                                           destination=destination)
-        assert exception_id, "exception validation failed,exception wasn't created"
+        assert exception_id, "exception validation failed,exception wasn't created properly"
 
     @pytest.mark.parametrize('xray, exception_function_fixture',
-                             [('EN-68892', ExceptionTestType.DELETE_EXCEPTION)],
+                             [('EN-68892', ExceptionTestType.GENERAL)],
                              indirect=True)
     @pytest.mark.sanity
     @pytest.mark.management_sanity
@@ -177,7 +180,7 @@ class ExceptionsTests:
         """
         steps:
         1. create event DynamicCodeTests
-        2. crete exception for DynamicCodeTests
+        2. create exception for DynamicCodeTests
         3. remove Exception
         """
         management: Management = exception_function_fixture.get('management')
@@ -187,7 +190,7 @@ class ExceptionsTests:
         management.admin_rest_api_client.exceptions.create_exception(eventId=event_id,
                                                                      organization=management.tenant.organization)
         exception_id = ManagementUtils.validate_exception(management, process=malware_name, event_id=event_id)
-        assert exception_id, "exception validation failed,exception wasn't created"
+        assert exception_id, "exception validation failed,exception wasn't created properly"
 
         management.tenant.rest_api_client.exceptions.delete_exception(exception_id)
         exception_id = ManagementUtils.validate_exception(management, process=malware_name, event_id=event_id)
@@ -195,6 +198,75 @@ class ExceptionsTests:
             Assertion.invoke_assertion(expected=False, actual=exception_id,
                                        message=r"exception wasn't deleted as expected",
                                        assert_type=AssertTypeEnum.SOFT)
+
+    @pytest.mark.parametrize('xray, exception_function_fixture',
+                             [('EN-68992', ExceptionTestType.GENERAL)],
+                             indirect=True)
+    @pytest.mark.sanity
+    @pytest.mark.management_sanity
+    def test_edit_exception_comments(self, xray, exception_function_fixture):
+        """
+        steps:
+        1. create event DynamicCodeTests
+        2. create exception for DynamicCodeTests
+        3. edit exception - change group to empty group
+        4. edit exception - add comments
+        """
+        management: Management = exception_function_fixture.get('management')
+        event_id = exception_function_fixture.get("event_id")
+        group_name = exception_function_fixture.get("group_name")
+        malware_name = exception_function_fixture.get('malware_name')
+        comment = "test edit exception comments"
+
+        management.admin_rest_api_client.exceptions.create_exception(eventId=event_id,
+                                                                     organization=management.tenant.organization)
+
+        testim_data = {
+            "groupName": [group_name],
+            "loginUser": management.tenant.user_name,
+            "loginPassword": management.tenant.user_password,
+            "loginOrganization": management.tenant.user_password,
+            "organization": management.tenant.organization,
+            "groups": [group_name],
+            "eventID": event_id,
+            "comment": comment
+        }
+        management.ui_client.exceptions.edit_exceptions(data=testim_data)
+        exception_id = ManagementUtils.validate_exception(management, process=malware_name, group=group_name,
+                                                          comment=comment)
+        assert exception_id, "exception validation failed,exception wasn't created properly"
+
+    @pytest.mark.parametrize('xray, exception_function_fixture',
+                             [('EN-68989', ExceptionTestType.GENERAL)],
+                             indirect=True)
+    @pytest.mark.sanity
+    @pytest.mark.management_sanity
+    def test_multiple_exceptions(self, xray, exception_function_fixture):
+        """
+        steps:
+        1. create event DynamicCodeTests
+        2. create exception for DynamicCodeTests
+        3. edit exception - add another exception to the same event
+        """
+        management: Management = exception_function_fixture.get('management')
+        event_id = exception_function_fixture.get("event_id")
+        group_name = "Default Collector Group"
+
+        management.admin_rest_api_client.exceptions.create_exception(eventId=event_id,
+                                                                     groups=group_name,
+                                                                     organization=management.tenant.organization)
+        testim_data = {
+            "groupName": [group_name],
+            "loginUser": management.tenant.user_name,
+            "loginPassword": management.tenant.user_password,
+            "loginOrganization": management.tenant.user_password,
+            "organization": management.tenant.organization
+        }
+        management.ui_client.exceptions.add_another_exception(data=testim_data)
+        exception_id = ManagementUtils.validate_exception(management, event_id=event_id, group=group_name)
+        assert exception_id, "exception validation failed,exception wasn't created properly"
+        exception_id_2 = ManagementUtils.validate_exception(management, event_id=event_id)
+        assert exception_id_2, "exception validation failed,exception wasn't created properly"
 
     # @pytest.mark.xray('EN-73320')
     # # @pytest.mark.testim_sanity

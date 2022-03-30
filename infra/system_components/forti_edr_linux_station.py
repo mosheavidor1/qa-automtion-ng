@@ -39,6 +39,7 @@ class FortiEdrLinuxStation(LinuxStation):
     def get_status(self):
         cli_cmd = f'fortiedr {self.__component_type.value} status'
         result = self.execute_cmd(cmd=cli_cmd, fail_on_err=True, return_output=True, attach_output_to_report=True)
+        Reporter.report(f"Get status of {self.__component_type.value}")
         return result
 
     @allure.step("{0} Stop service")
@@ -53,10 +54,22 @@ class FortiEdrLinuxStation(LinuxStation):
         result = self.execute_cmd(cmd=cli_cmd, fail_on_err=True, return_output=True, attach_output_to_report=True)
         return result
 
+    @allure.step("{0} restart service")
+    def restart_service(self):
+        cli_cmd = f'fortiedr {self.__component_type.value} restart'
+        result = self.execute_cmd(cmd=cli_cmd, fail_on_err=True)
+        if result is not None and "OK" in result:
+            return result
+        else:
+            raise Exception(f"Unable to restart the '{self.__component_type.value}' service")
+
     @allure.step('Validate {0} service state is "{desired_state}"')
     def validate_system_component_is_in_desired_state(self,
                                                       desired_state: SystemState):
 
+        assert self.is_system_in_desired_state(desired_state), f"service is not {desired_state.name}"
+
+    def is_system_in_desired_state(self, desired_state: SystemState):
         status = self.get_status()
 
         expected_running_cmd = f'[+] {self.__component_type.value} is running'
@@ -68,12 +81,15 @@ class FortiEdrLinuxStation(LinuxStation):
 
         if desired_state == SystemState.RUNNING and expected_running_cmd in status:
             Reporter.report(f"service is up and running as expected")
+            return True
 
         elif desired_state == SystemState.NOT_RUNNING and expected_not_running_cmd in status:
             Reporter.report(f"service is not up and running as expected")
+            return True
 
         else:
-            assert False, f"service is not in the desired state, desired state: {desired_state.name}, actual: {status}"
+            Reporter.report(f"the status is {status}, not as expected")
+            return False
 
     @allure.step("Clear {0} logs")
     def clear_logs(self, file_suffix='.log'):

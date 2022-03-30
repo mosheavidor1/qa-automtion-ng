@@ -74,26 +74,6 @@ class ManagementUiClient:
                                           assert_type=assert_type,
                                           test_timeout=test_timeout)
 
-        def edit_group(self,
-                       data: dict = None,
-                       assert_type: AssertTypeEnum = AssertTypeEnum.HARD,
-                       test_timeout: int = 600):
-            self.parent.start_testim_flow(test_name="Edit group",
-                                          management_ui_ip=self.parent.management_ui_ip,
-                                          data=data,
-                                          assert_type=assert_type,
-                                          test_timeout=test_timeout)
-
-        def edit_destination(self,
-                             data: dict = None,
-                             assert_type: AssertTypeEnum = AssertTypeEnum.HARD,
-                             test_timeout: int = 600):
-            self.parent.start_testim_flow(test_name="Edit destination",
-                                          management_ui_ip=self.parent.management_ui_ip,
-                                          data=data,
-                                          assert_type=assert_type,
-                                          test_timeout=test_timeout)
-
     class FortiEdrOrganizations:
         def __init__(self, parent):
             self.parent = parent
@@ -155,6 +135,22 @@ class ManagementUiClient:
                                               data=data,
                                               assert_type=assert_type,
                                               test_timeout=test_timeout)
+            if "comment" in data.keys():
+                self.parent.start_testim_flow(test_name="Edit comment",
+                                              management_ui_ip=self.parent.management_ui_ip,
+                                              data=data,
+                                              assert_type=assert_type,
+                                              test_timeout=test_timeout)
+
+        def add_another_exception(self,
+                                  data: dict = None,
+                                  assert_type: AssertTypeEnum = AssertTypeEnum.HARD,
+                                  test_timeout: int = 600):
+            self.parent.start_testim_flow(test_name="Add another exception",
+                                          management_ui_ip=self.parent.management_ui_ip,
+                                          data=data,
+                                          assert_type=assert_type,
+                                          test_timeout=test_timeout)
 
     class FortiEdrSecurityEvents:
 

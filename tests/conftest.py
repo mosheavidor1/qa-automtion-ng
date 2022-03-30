@@ -3,7 +3,6 @@ from typing import List
 import allure
 
 import sut_details
-
 from infra.allure_report_handler.reporter import Reporter
 from infra.assertion.assertion import Assertion
 from infra.containers.management_api_body_containers import CreateOrganizationRestData, CreateUserRestData, \
@@ -17,7 +16,12 @@ from infra.system_components.forti_edr_linux_station import FortiEdrLinuxStation
 from infra.system_components.management import Management
 from infra.system_components.system_components_factory import SystemComponentsFactory
 from infra.utils.utils import StringUtils
-
+from infra.system_components.collectors.collectors_common_utils import (
+    wait_for_running_collector_status_in_cli,
+    wait_for_running_collector_status_in_mgmt,
+    wait_for_disconnected_collector_status_in_mgmt,
+    check_if_collectors_has_crashed
+)
 import json
 import os
 import re
@@ -366,25 +370,29 @@ def tenant(management, collector):
 @pytest.fixture(scope="function", autouse=True)
 def collector_health_check(management: Management, collector: Collector):
     assert management.is_collector_status_running_in_mgmt(collector), f"{collector} is not running in {management}"
-    # CollectorUtils.validate_collector_is_currently_running(collector)
+    assert collector.is_status_running_in_cli(), f"{collector} status is not running"
+
     yield collector
     assert management.is_collector_status_running_in_mgmt(collector), f"{collector} is not running in {management}"
-    # CollectorUtils.validate_collector_is_currently_running(collector)
+    assert collector.is_status_running_in_cli(), f"{collector} status is not running"
 
 
 @pytest.fixture(scope="session", autouse=sut_details.debug_mode)
 def create_snapshot_for_all_collectors_at_the_beginning_of_the_run(collector: Collector):
     """
-    The role of this method is to create snapshot before the tests start.
+    The role of this method is to create snapshot before the tests start, in static mode (paused).
     we do it because we revert to this (initial) snapshot before each test start in order to run on "clean"
-    collector environment
-
-    :param collector: Collector object
-    :return: None
+    collector environment.
+    Before taking the snapshot we validate that the env is clean (stop collector, no crashes)
     """
-    collector.remove_all_crash_dumps_files()
+    Reporter.report(f"Preparing {collector} for snapshot: stop it + remove old snaps + remove crashes")
+    collector.stop_collector()  # Stop because we want to take snapshot of a collector in a static mode
+    wait_for_disconnected_collector_status_in_mgmt(management, collector)
     collector.os_station.vm_operations.remove_all_snapshots()
-    collector.os_station.vm_operations.snapshot_create(snapshot_name=f'beginning_pytest_session_snapshot_{time.time()}')
+    collector.remove_all_crash_dumps_files()
+    snap_name = f'beginning_pytest_session_snapshot_{time.time()}'
+    collector.os_station.vm_operations.snapshot_create(snapshot_name=snap_name)
+    Reporter.report(f"Snapshot '{snap_name}' created")
 
 
 @pytest.fixture(scope="function", autouse=True)
@@ -537,7 +545,7 @@ def check_if_collector_has_crashed(collector: Collector):
 def get_collectors_machine_time(collectors: List[Collector]):
     new_dict = {}
     for single_collector in collectors:
-        date_time = single_collector.os_station.get_current_machine_datetime(date_format="-UFormat '%d/%m/%Y %T'")
+        date_time = single_collector.os_station.get_current_machine_datetime()
         new_dict[single_collector] = date_time
 
     return new_dict
@@ -555,26 +563,27 @@ def append_logs_from_collectors(collectors: List[Collector], initial_time_stamp_
 
 @allure.step("Revert all collectors to their snapshot that was taken at the beginning of the run")
 def revert_to_first_snapshot_for_all_collectors(collectors: List[Collector]):
-    for single_collector in collectors:
-        first_snapshot_name = single_collector.os_station.vm_operations.snapshot_list[0][0]
-        single_collector.os_station.vm_operations.snapshot_revert_by_name(snapshot_name=first_snapshot_name)
-        single_collector.update_process_id()
-
-
-@allure.step("Check if collectors has crashed")
-def check_if_collectors_has_crashed(collectors_list: List[Collector]):
-    crashed_collectors = []
-    if collectors_list is not None and len(collectors_list) > 0:
-        for single_collector in collectors_list:
-            has_crashed = single_collector.has_crash()
-            if has_crashed:
-                crashed_collectors.append(f'{single_collector}')
-
-        if len(crashed_collectors) > 0:
-            assert False, f"Crash was detected in the collectors: {str(crashed_collectors)}"
-
-    else:
-        assert False, "Didn't pass any collector"
+    """ We want to start each test on a clean env(=the first snapshot)
+    We also check that the revert operation didn't damage the collector (no crashes)
+    """
+    wait_after_revert = 10
+    for collector in collectors:
+        first_snapshot_name = collector.os_station.vm_operations.snapshot_list[0][0]
+        collector.os_station.vm_operations.snapshot_revert_by_name(snapshot_name=first_snapshot_name)
+        Reporter.report(f"{collector} vm reverted to:'{first_snapshot_name}'")
+        if 'linux' in collector.details.os_family.lower():  # To establish new connection after revert
+            time.sleep(wait_after_revert)
+            collector.os_station.disconnect()
+        Reporter.report("Wait until collector is offline in MGMT because it still might be online from previous test")
+        wait_for_disconnected_collector_status_in_mgmt(management, collector)
+        Reporter.report("Sometimes the revert action creates a crash files so we want to remove them")
+        collector.remove_all_crash_dumps_files()
+        Reporter.report("Start the collector so it will be ready for a new test")
+        collector.start_collector()
+        wait_for_running_collector_status_in_cli(collector)
+        wait_for_running_collector_status_in_mgmt(management, collector)
+        Reporter.report("Check that starting collector didn't create any crashes (for debugging)")
+        check_if_collectors_has_crashed([collector])
 
 
 @pytest.fixture()

@@ -58,7 +58,7 @@ class Collector:
         pass
 
     @abstractmethod
-    def stop_collector(self, password: str):
+    def stop_collector(self, password: str = None):
         pass
 
     @abstractmethod

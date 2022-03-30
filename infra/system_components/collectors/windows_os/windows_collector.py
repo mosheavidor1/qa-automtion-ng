@@ -248,6 +248,7 @@ class WindowsCollector(Collector):
     def remove_all_crash_dumps_files(self):
         files_to_remove = self.get_crash_dumps_files()
         if files_to_remove is not None and isinstance(files_to_remove, list) and len(files_to_remove) > 0:
+            Reporter.report(f"Remove crash files: {files_to_remove}")
             for file in files_to_remove:
                 self.os_station.remove_file(file_path=file)
 

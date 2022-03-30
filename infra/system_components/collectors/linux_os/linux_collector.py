@@ -1,15 +1,30 @@
 import allure
 import time
+from typing import List
 from infra.containers.system_component_containers import CollectorDetails
 from infra.enums import OsTypeEnum, SystemState
 from infra.system_components.collector import Collector
 from infra.utils.utils import StringUtils
 from infra.allure_report_handler.reporter import Reporter
+from infra.system_components.collectors.collectors_common_utils import (
+    wait_until_collector_pid_disappears,
+    wait_until_collector_pid_appears
+)
+from sut_details import management_registration_password
 
 SERVICE_NAME = "FortiEDRCollector"
-COLLECTOR_INSTALLATION_FOLDER_PATH = F"/opt/{SERVICE_NAME}"
+COLLECTOR_INSTALLER_FOLDER_PATH = "/home"
+COLLECTOR_INSTALLATION_FOLDER_PATH = f"/opt/{SERVICE_NAME}"
+COLLECTOR_SCRIPTS_FOLDER_PATH = f"{COLLECTOR_INSTALLATION_FOLDER_PATH}/scripts"
+COLLECTOR_CRASH_DUMPS_FOLDER_PATH = f"{COLLECTOR_INSTALLATION_FOLDER_PATH}/CrashDumps/Collector"
+
 COLLECTOR_CONTROL_PATH = f"{COLLECTOR_INSTALLATION_FOLDER_PATH}/control.sh"
+COLLECTOR_CONFIG_PATH = f"{COLLECTOR_SCRIPTS_FOLDER_PATH}/fortiedrconfig.sh"
 COLLECTOR_BIN_PATH = f"{COLLECTOR_INSTALLATION_FOLDER_PATH}/bin/{SERVICE_NAME}"
+CRASH_FOLDERS_PATHS = ["/var/crash", COLLECTOR_CRASH_DUMPS_FOLDER_PATH]
+
+REGISTRATION_PASS = management_registration_password
+DEFAULT_AGGREGATOR_PORT = 8081
 
 
 class LinuxCollector(Collector):
@@ -45,20 +60,35 @@ class LinuxCollector(Collector):
         self._process_id = self.get_current_process_id()
         Reporter.report(f"Collector process ID updated to: {self._process_id}")
 
+    @allure.step("{0} - Get collector version")
     def get_version(self):
-        pass
+        cmd = f"{COLLECTOR_CONTROL_PATH} --version"
+        result = self.os_station.execute_cmd(cmd=cmd,
+                                             return_output=True,
+                                             fail_on_err=True,
+                                             attach_output_to_report=True)
+        version = StringUtils.get_txt_by_regex(text=result, regex='FortiEDR\s+Collector\s+version\s+(\d+.\d+.\d+.\d+)', group=1)
+
+        return version
 
     def get_collector_info_from_os(self):
         pass
 
-    def get_os_architecture(self):
-        pass
+    @allure.step("{0} - Stop collector")
+    def stop_collector(self, password=None):
+        password = password or REGISTRATION_PASS
+        cmd = f"{COLLECTOR_CONTROL_PATH} --stop {password}"
+        result = self.os_station.execute_cmd(cmd=cmd, fail_on_err=True)
+        assert result.lower() == "stop operation succeeded"
+        wait_until_collector_pid_disappears(self)
+        self.update_process_id()
 
-    def stop_collector(self, password: str):
-        pass
-
+    @allure.step("{0} - Start collector")
     def start_collector(self):
-        pass
+        cmd = f"{COLLECTOR_CONTROL_PATH} --start"
+        self.os_station.execute_cmd(cmd=cmd, fail_on_err=True)
+        wait_until_collector_pid_appears(self)
+        self.update_process_id()
 
     def is_up(self):
         pass
@@ -95,8 +125,26 @@ class LinuxCollector(Collector):
         Reporter.report(f"Is {self} crashed: {has_crashed} ")
         return has_crashed
 
-    def has_crash_dumps(self, append_to_report: bool):
-        pass
+    @allure.step("{0} - Checking if crash dumps exists")
+    def has_crash_dumps(self, append_to_report: bool = False) -> bool:
+        """ The path of the crash dumps files will be attached to the report """
+        crash_dump_files_path = self.get_crash_dumps_files_paths()
+        if crash_dump_files_path is not None:
+            Reporter.attach_str_as_file(file_name='crash_dumps', file_content=str('\r\n'.join(crash_dump_files_path)))
+            return True
+        else:
+            Reporter.report(f"No crash dump file found in {self}")
+            return False
+
+    @allure.step("Get crash dump files paths")
+    def get_crash_dumps_files_paths(self) -> List[str]:
+        crash_dumps_paths = []
+        for folder_path in CRASH_FOLDERS_PATHS:
+            files_paths = self.os_station.get_list_of_files_in_folder(folder_path=folder_path)
+            if files_paths is not None and len(files_paths) > 0:
+                crash_dumps_paths += files_paths
+
+        return crash_dumps_paths if len(crash_dumps_paths) > 0 else None
 
     @allure.step("{0} - Get collector status via cli")
     def get_collector_status(self):
@@ -108,24 +156,76 @@ class LinuxCollector(Collector):
         system_state = SystemState.NOT_RUNNING
         if forti_edr_service_status == 'Up' and forti_edr_driver_status == 'Up' and forti_edr_status == 'Running':
             system_state = SystemState.RUNNING
-
+        elif forti_edr_service_status == 'Down' and forti_edr_driver_status == 'Down' and forti_edr_status == 'Stopped':
+            system_state = SystemState.DOWN
         return system_state
 
     def is_status_running_in_cli(self):
         return self.get_collector_status() == SystemState.RUNNING
 
+    def is_status_down_in_cli(self):
+        return self.get_collector_status() == SystemState.DOWN
+
     def start_health_mechanism(self):
         pass
 
+    @allure.step("Reboot linux Collector")
     def reboot(self):
-        pass
+        self.os_station.reboot()
+        wait_until_collector_pid_appears(self)
+        self.update_process_id()
 
-    def install_collector(self, version: str, aggregator_ip: str, organization: str = None, aggregator_port: int = 8081,
-                          registration_password: str = '12345678', append_log_to_report=True):
-        pass
+    @allure.step("Check if installation folder exists")
+    def is_installation_folder_exists(self):
+        result = self.os_station.is_path_exist(COLLECTOR_INSTALLATION_FOLDER_PATH)
+        return result
 
-    def uninstall_collector(self, registration_password: str = '12345678', append_log_to_report=True):
-        pass
+    @allure.step("{0} - Get the installed package name")
+    def get_installed_package_name(self):
+        cmd = f"rpm -qa | grep -i {SERVICE_NAME}"
+        full_name = self.os_station.execute_cmd(cmd=cmd, asynchronous=False)
+        if full_name is None:
+            return None
+        short_name = full_name.split("-")[0]
+        return short_name
+
+    @allure.step("{0} - Get the installer path")
+    def get_installer_rpm_path(self, version, installed_package_name):
+        arch = self.os_station.get_os_architecture()
+        path = f"{COLLECTOR_INSTALLER_FOLDER_PATH}/{installed_package_name}-{version}.{arch}.rpm"
+        return path
+
+    @allure.step("{0} - Uninstall linux Collector")
+    def uninstall_collector(self, registration_password=None, stop_collector=True):
+        """ Must stop collector before uninstallation """
+        package_name = self.get_installed_package_name()
+        assert package_name is not None, f"{self} is not installed"
+        if stop_collector:
+            self.stop_collector(registration_password)
+        cmd = f"rpm -e {package_name}"
+        result = self.os_station.execute_cmd(cmd=cmd, asynchronous=False)
+        wait_until_collector_pid_disappears(self)
+        self.update_process_id()
+        return result
+
+    @allure.step("{0} - Install linux Collector")
+    def install_collector(self, installer_path):
+        install_cmd = f"yum install -y {installer_path}"
+        result = self.os_station.execute_cmd(cmd=install_cmd, fail_on_err=False)
+        assert "FortiEDR Collector installed successfully" in result, f"{self} failed to install"
+
+    @allure.step("{0} - Configure linux Collector")
+    def configure_collector(self, aggregator_ip, aggregator_port=None, registration_password=None):
+        """ Can't read the stdout of the configuration cmd,
+        need to trigger the configuration -> close ssh transporter -> wait few sec """
+        wait_after_configuration = 10  # Arbitrary
+        aggregator_port = aggregator_port or DEFAULT_AGGREGATOR_PORT
+        registration_password = registration_password or REGISTRATION_PASS
+        cmd = f"{COLLECTOR_CONFIG_PATH} {aggregator_ip}:{aggregator_port} {registration_password}"
+        self.os_station.execute_cmd(cmd=cmd, fail_on_err=True, return_output=False, attach_output_to_report=False)
+        time.sleep(wait_after_configuration)  # Wait few sec after triggering the configuration cmd
+        wait_until_collector_pid_appears(self)
+        self.update_process_id()
 
     def copy_log_parser_to_machine(self):
         pass
@@ -136,5 +236,10 @@ class LinuxCollector(Collector):
     def clear_logs(self):
         pass
 
+    @allure.step("Remove crash dumps files")
     def remove_all_crash_dumps_files(self):
-        pass
+        files_paths = self.get_crash_dumps_files_paths()
+        if files_paths is not None and isinstance(files_paths, list) and len(files_paths) > 0:
+            Reporter.report(f"Remove crash files: {files_paths}")
+            for file_path in files_paths:
+                self.os_station.remove_file(file_path=file_path)
