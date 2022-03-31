@@ -384,7 +384,7 @@ def collector_health_check(management: Management, collector: Collector):
 
 
 @pytest.fixture(scope="session", autouse=sut_details.debug_mode)
-def create_snapshot_for_all_collectors_at_the_beginning_of_the_run(collector: Collector, tenant: Tenant):
+def create_snapshot_for_all_collectors_at_the_beginning_of_the_run(management: Management, collector: Collector):
     """
     The role of this method is to create snapshot before the tests start, in static mode (paused).
     we do it because we revert to this (initial) snapshot before each test start in order to run on "clean"
@@ -393,7 +393,7 @@ def create_snapshot_for_all_collectors_at_the_beginning_of_the_run(collector: Co
     """
     Reporter.report(f"Preparing {collector} for snapshot: stop it + remove old snaps + remove crashes")
     # Stop because we want to take snapshot of a collector in a static mode
-    collector.stop_collector(password=tenant.registration_password)
+    collector.stop_collector(password=management.tenant.registration_password)
     wait_for_disconnected_collector_status_in_mgmt(management, collector)
     collector.os_station.vm_operations.remove_all_snapshots()
     collector.remove_all_crash_dumps_files()
@@ -424,10 +424,9 @@ def validate_all_system_components_are_running(management: Management,
 
         sys_comp.validate_system_component_is_in_desired_state(desired_state=SystemState.RUNNING)
 
-    collectors_common_utils.wait_for_running_collector_status_in_mgmt(management=management,
-                                                                      collector=collector,
-                                                                      timeout=collector_status_timeout)
-    # CollectorUtils.validate_collector_is_currently_running(collector)
+    assert management.is_collector_status_running_in_mgmt(collector), f"{collector} is not running in {management}"
+    Reporter.report(f"Assert that {collector} status is running in CLI")
+    assert collector.is_status_running_in_cli(), f"{collector} status is not running"
 
 
 @pytest.fixture(scope="function", autouse=True)
