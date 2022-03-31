@@ -10,6 +10,7 @@ from infra.assertion.assertion import AssertTypeEnum, Assertion
 
 @allure.epic("Management")
 @allure.feature("Exception")
+@pytest.mark.exception
 class ExceptionsTests:
 
     @pytest.mark.parametrize('xray, exception_function_fixture',
@@ -263,7 +264,7 @@ class ExceptionsTests:
             "organization": management.tenant.organization
         }
         management.ui_client.exceptions.add_another_exception(data=testim_data)
-        exception_id = ManagementUtils.validate_exception(management, event_id=event_id, group=group_name)
+        exception_id = ManagementUtils.validate_exception(management, process=malware_name, event_id=event_id, group=group_name)
         assert exception_id, "exception validation failed,exception wasn't created properly"
         exception_id_2 = ManagementUtils.validate_exception(management,  process=malware_name, event_id=event_id)
         assert exception_id_2, "exception validation failed,exception wasn't created properly"

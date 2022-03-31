@@ -97,10 +97,16 @@ class EventsRest(BaseRestFunctionality):
         for single_event in as_list_of_dicts:
             event_id = single_event.get('eventId')
             event_ids.append(event_id)
+            Reporter.report(f"Going to sleep {timeout} seconds becuase this is the period of time that took for "
+                            f"deletion in the backend - non configurable conifguration")
 
         if len(event_ids) > 0:
             self._rest.events.DeleteEvents(eventIds=event_ids)
-            time.sleep(timeout)
 
         else:
             Reporter.report("No events, nothing to delete")
+            Reporter.report(f"Going to sleep {timeout} becuase the previous test could delete the events and we got to"
+                            f" this step within the {timeout} sec of deletion period, therefore we can not assume it "
+                            f"removed in the backend")
+
+        time.sleep(timeout)
