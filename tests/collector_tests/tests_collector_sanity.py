@@ -110,12 +110,11 @@ def test_uninstall_install_configure_linux_collector(management, collector):
         7. validate that pid exists + collector status in MGMT & CLI is running
         8. validate that the new installed version is same as before the uninstallation
     """
-    with allure.step(f"Before uninstalling {collector}, validate that the installer file exists:"):
+    with allure.step(f"Before uninstalling {collector}, prepare the installer file:"):
         version_before_uninstall = collector.get_version()
         package_name_before_uninstall = collector.get_installed_package_name()
-        installer_path = collector.get_installer_rpm_path(version=version_before_uninstall,
-                                                          installed_package_name=package_name_before_uninstall)
-        assert collector.os_station.is_path_exist(installer_path), f"Installer file does not exist in {installer_path}"
+        installer_path = collector.prepare_version_installer_file(version=version_before_uninstall,
+                                                                  package_name=package_name_before_uninstall)
 
     with allure.step(f"Uninstall {collector} and validate:"):
         uninstall_output = collector.uninstall_collector()

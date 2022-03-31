@@ -356,7 +356,7 @@ class LinuxStation(OsStation):
         :param files_to_copy: list of file names to copy, if you want to copy all files in folder, pass ['*']
         :return: folder path of the copied files
         """
-
+        assert len(files_to_copy) > 0, "Must pass the names of the files"
         curr_time = datetime.now().strftime('%Y_%m_%d_%H_%M_%S_%f')
         mounted_dir_name = f'/mnt/{curr_time}'
         mounted_successfully = False
@@ -373,9 +373,15 @@ class LinuxStation(OsStation):
                                             user_name=shared_drive_user_name,
                                             password=shared_drive_password)
             mounted_successfully = True
-            for single_file in files_to_copy:
-                self.copy_files(source=f'{mounted_dir_name}/{single_file}', target=target_folder)
-
+            files_in_mounting_point = self.get_list_of_files_in_folder(folder_path=mounted_dir_name)
+            for file_name_to_copy in files_to_copy:
+                mounted_file_path_to_copy = f'{mounted_dir_name}/{file_name_to_copy}'
+                assert mounted_file_path_to_copy in files_in_mounting_point, \
+                    f"'{file_name_to_copy}' does not exist in mounting point '{mounted_dir_name}'"
+                self.copy_files(source=mounted_file_path_to_copy, target=target_folder)
+                copied_file_path = f'{target_folder}/{file_name_to_copy}'
+                assert copied_file_path in self.get_list_of_files_in_folder(folder_path=target_folder), \
+                    f"'{file_name_to_copy}' was not copied to '{target_folder}'"
             return target_folder
 
         finally:
