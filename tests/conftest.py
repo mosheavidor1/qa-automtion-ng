@@ -8,10 +8,8 @@ from infra.assertion.assertion import Assertion
 from infra.containers.management_api_body_containers import CreateOrganizationRestData, CreateUserRestData, \
     OrganizationRestData
 from infra.enums import CollectorTypes, SystemState, UserRoles
-from infra.multi_tenancy.tenant import Tenant
 from infra.system_components.aggregator import Aggregator
 from infra.system_components.collector import Collector
-from infra.system_components.collectors import collectors_common_utils
 from infra.system_components.core import Core
 from infra.system_components.forti_edr_linux_station import FortiEdrLinuxStation
 from infra.system_components.management import Management
@@ -374,15 +372,6 @@ def tenant(management, collector):
     yield management.tenant
 
 
-@pytest.fixture(scope="function", autouse=True)
-def collector_health_check(management: Management, collector: Collector):
-    assert management.is_collector_status_running_in_mgmt(collector), f"{collector} is not running in {management}"
-    assert collector.is_status_running_in_cli(), f"{collector} status is not running"
-    yield collector
-    assert management.is_collector_status_running_in_mgmt(collector), f"{collector} is not running in {management}"
-    assert collector.is_status_running_in_cli(), f"{collector} status is not running"
-
-
 @pytest.fixture(scope="session", autouse=sut_details.debug_mode)
 def create_snapshot_for_all_collectors_at_the_beginning_of_the_run(management: Management, collector: Collector):
     """
@@ -392,7 +381,7 @@ def create_snapshot_for_all_collectors_at_the_beginning_of_the_run(management: M
     Before taking the snapshot we validate that the env is clean (stop collector, no crashes)
     """
     Reporter.report(f"Preparing {collector} for snapshot: stop it + remove old snaps + remove crashes")
-    # Stop because we want to take snapshot of a collector in a static mode
+    Reporter.report("Stop because we want to take snapshot of a collector in a static mode")
     collector.stop_collector(password=management.tenant.registration_password)
     wait_for_disconnected_collector_status_in_mgmt(management, collector)
     collector.os_station.vm_operations.remove_all_snapshots()
@@ -400,6 +389,28 @@ def create_snapshot_for_all_collectors_at_the_beginning_of_the_run(management: M
     snap_name = f'beginning_pytest_session_snapshot_{time.time()}'
     collector.os_station.vm_operations.snapshot_create(snapshot_name=snap_name)
     Reporter.report(f"Snapshot '{snap_name}' created")
+
+
+@pytest.fixture(scope="function", autouse=sut_details.debug_mode)
+def revert_to_snapshot(management, collector):
+    revert_to_first_snapshot_for_all_collectors(management=management, collectors=[collector])
+    yield
+
+
+@pytest.fixture(scope="function", autouse=True)
+def collector_health_check(management: Management, collector: Collector):
+
+    if not sut_details.debug_mode:
+        # check if collector is up only in case the debug mode = False to validate that the system starts with
+        # "healthy collecor
+        # else (debug mode = True) - we are checking that
+        # collector is up in CLI and management in revert_to_snapshot fixture
+        assert management.is_collector_status_running_in_mgmt(collector), f"{collector} is not running in {management}"
+        assert collector.is_status_running_in_cli(), f"{collector} status is not running"
+
+    yield collector
+    assert management.is_collector_status_running_in_mgmt(collector), f"{collector} is not running in {management}"
+    assert collector.is_status_running_in_cli(), f"{collector} status is not running"
 
 
 @pytest.fixture(scope="function", autouse=True)
@@ -434,12 +445,6 @@ def check_if_soft_asserts_were_collected():
     Reporter.report("Nothing to show ath the beginning of the run")
     yield
     Assertion.assert_all()
-
-
-@pytest.fixture(scope="function", autouse=sut_details.debug_mode)
-def revert_to_snapshot(collector):
-    revert_to_first_snapshot_for_all_collectors(collectors=[collector])
-    yield
 
 
 @allure.step("Get machines current time stamps")
@@ -568,7 +573,7 @@ def append_logs_from_collectors(collectors: List[Collector], initial_time_stamp_
 
 
 @allure.step("Revert all collectors to their snapshot that was taken at the beginning of the run")
-def revert_to_first_snapshot_for_all_collectors(collectors: List[Collector]):
+def revert_to_first_snapshot_for_all_collectors(management: Management, collectors: List[Collector]):
     """ We want to start each test on a clean env(=the first snapshot)
     We also check that the revert operation didn't damage the collector (no crashes)
     """

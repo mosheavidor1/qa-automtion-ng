@@ -23,7 +23,7 @@ pipeline {
                description: 'choose suite to run suite\\s of tests or keyword to run all tests including the keyword')
 
         choice(name: 'collector_type',
-               choices: ['WINDOWS_10_64', 'WINDOWS_10_32', 'WINDOWS_11_64', 'WINDOWS_8_64'],
+               choices: ['WINDOWS_11_64', 'WINDOWS_10_64', 'WINDOWS_10_32', 'WINDOWS_8_64', 'CENTOS_6', 'CENTOS_7', 'CENTOS_8', 'CENTOS_8_1'],
                description: 'choose collector type to run the tests on')
 
         string( name: 'tests',
