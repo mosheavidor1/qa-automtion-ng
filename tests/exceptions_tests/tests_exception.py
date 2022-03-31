@@ -111,9 +111,6 @@ class ExceptionsTests:
         destination = exception_function_fixture.get("destination")
         malware_name = exception_function_fixture.get('malware_name')
 
-        management.rest_api_client.create_exception(event_id)
-        management.ui_client.exceptions.edit_exceptions(
-            data={"groups": [group_name], "destinations": [destination], "eventID": event_id})
         management.admin_rest_api_client.exceptions.create_exception(eventId=event_id,
                                                                      organization=management.tenant.organization)
         test_im_data = {
@@ -127,7 +124,9 @@ class ExceptionsTests:
             "eventID": event_id
         }
         management.ui_client.exceptions.edit_exceptions(data=test_im_data)
-        exception_id = ManagementUtils.validate_exception(management, process=malware_name, group=group_name,
+        exception_id = ManagementUtils.validate_exception(management,
+                                                          process=malware_name,
+                                                          group=group_name,
                                                           destination=destination)
         assert exception_id, "exception validation failed,exception wasn't created properly"
 
