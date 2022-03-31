@@ -39,7 +39,7 @@ class SystemInventoryRest(BaseRestFunctionality):
                 Reporter.report('group ' + name + ' already exist')
                 return True
 
-        status, response = self._rest.inventory.CreateCollectorGroup(name, organization)
+        status, response = self._rest.inventory.CreateCollectorGroup(group=name)
 
         group_status, group_response = self._rest.inventory.ListCollectorGroups(organization=organization)
         groups_list = self._get_info(group_status, group_response)
