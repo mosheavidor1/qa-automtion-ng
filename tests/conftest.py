@@ -8,6 +8,7 @@ from infra.assertion.assertion import Assertion
 from infra.containers.management_api_body_containers import CreateOrganizationRestData, CreateUserRestData, \
     OrganizationRestData
 from infra.enums import CollectorTypes, SystemState, UserRoles
+from infra.multi_tenancy.tenant import Tenant
 from infra.system_components.aggregator import Aggregator
 from infra.system_components.collector import Collector
 from infra.system_components.collectors import collectors_common_utils
@@ -278,9 +279,6 @@ def collector(management):
     if len(collectors) == 0:
         assert False, "There is no registered core in management, can not create Core object"
 
-    # if len(collectors) > 1:
-    #     assert False, "Automation does not support more than 1 core for functional testing"
-
     desired_collector = None
     for collector in collectors:
 
@@ -304,8 +302,9 @@ def collector(management):
 
 
 @pytest.fixture(scope="session", autouse=True)
-# move this entire logic to management object
 def tenant(management, collector):
+    license_capacity = 100
+
     # assign collector instance to tenant object
     management.tenant.collector = collector
 
@@ -321,9 +320,9 @@ def tenant(management, collector):
                                                   organization_name=default_org_data.get('name'),
                                                   forensics_and_EDR=default_org_data.get('forensicsAndEDR'),
                                                   vulnerability_and_IoT=default_org_data.get('vulnerabilityAndIoT'),
-                                                  servers_allocated=100,
-                                                  workstations_allocated=100,
-                                                  iot_allocated=100)
+                                                  servers_allocated=license_capacity,
+                                                  workstations_allocated=license_capacity,
+                                                  iot_allocated=license_capacity)
         management.admin_rest_api_client.organizations.update_organization(organization_data=default_org_update,
                                                                            expected_status_code=200)
 
@@ -331,9 +330,9 @@ def tenant(management, collector):
                                                   organization_name=management.tenant.organization,
                                                   password=management.tenant.registration_password,
                                                   password_confirmation=management.tenant.registration_password,
-                                                  servers_allocated=100,
-                                                  workstations_allocated=100,
-                                                  iot_allocated=100,
+                                                  servers_allocated=license_capacity,
+                                                  workstations_allocated=license_capacity,
+                                                  iot_allocated=license_capacity,
                                                   forensics_and_EDR=True,
                                                   vulnerability_and_IoT=True)
         management.admin_rest_api_client.organizations.create_organization(organization_data=new_org_data,
@@ -355,6 +354,8 @@ def tenant(management, collector):
                                        confirm_password=f'{management.tenant.user_password}_1',
                                        organization=management.tenant.organization)
         management.admin_rest_api_client.users_rest.create_user(user_data=user_data, expected_status_code=200)
+
+        # reset password in order to avoid "change" password page\logic
         management.admin_rest_api_client.users_rest.reset_user_password(user_name=management.tenant.user_name,
                                                                         new_password=management.tenant.user_password,
                                                                         organization=management.tenant.organization)
@@ -370,19 +371,20 @@ def tenant(management, collector):
             current_collectors_organization="Default",
             target_organization=management.tenant.organization)
 
+    yield management.tenant
+
 
 @pytest.fixture(scope="function", autouse=True)
 def collector_health_check(management: Management, collector: Collector):
-    # assert management.is_collector_status_running_in_mgmt(collector), f"{collector} is not running in {management}"
-    # assert collector.is_status_running_in_cli(), f"{collector} status is not running"
-
+    assert management.is_collector_status_running_in_mgmt(collector), f"{collector} is not running in {management}"
+    assert collector.is_status_running_in_cli(), f"{collector} status is not running"
     yield collector
-    # assert management.is_collector_status_running_in_mgmt(collector), f"{collector} is not running in {management}"
-    # assert collector.is_status_running_in_cli(), f"{collector} status is not running"
+    assert management.is_collector_status_running_in_mgmt(collector), f"{collector} is not running in {management}"
+    assert collector.is_status_running_in_cli(), f"{collector} status is not running"
 
 
 @pytest.fixture(scope="session", autouse=sut_details.debug_mode)
-def create_snapshot_for_all_collectors_at_the_beginning_of_the_run(collector: Collector):
+def create_snapshot_for_all_collectors_at_the_beginning_of_the_run(collector: Collector, tenant: Tenant):
     """
     The role of this method is to create snapshot before the tests start, in static mode (paused).
     we do it because we revert to this (initial) snapshot before each test start in order to run on "clean"
@@ -390,7 +392,8 @@ def create_snapshot_for_all_collectors_at_the_beginning_of_the_run(collector: Co
     Before taking the snapshot we validate that the env is clean (stop collector, no crashes)
     """
     Reporter.report(f"Preparing {collector} for snapshot: stop it + remove old snaps + remove crashes")
-    collector.stop_collector()  # Stop because we want to take snapshot of a collector in a static mode
+    # Stop because we want to take snapshot of a collector in a static mode
+    collector.stop_collector(password=tenant.registration_password)
     wait_for_disconnected_collector_status_in_mgmt(management, collector)
     collector.os_station.vm_operations.remove_all_snapshots()
     collector.remove_all_crash_dumps_files()
