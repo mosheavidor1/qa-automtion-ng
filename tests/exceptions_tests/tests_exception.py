@@ -19,7 +19,6 @@ class ExceptionsTests:
                              indirect=True)
     @pytest.mark.sanity
     @pytest.mark.management_sanity
-    @pytest.mark.exception
     def test_create_full_covered_exception(self, xray, exception_function_fixture):
         """
         test name: Full covered exception - event excepted
@@ -252,6 +251,7 @@ class ExceptionsTests:
         management: Management = exception_function_fixture.get('management')
         event_id = exception_function_fixture.get("event_id")
         group_name = "Default Collector Group"
+        malware_name = exception_function_fixture.get('malware_name')
 
         management.admin_rest_api_client.exceptions.create_exception(eventId=event_id,
                                                                      groups=group_name,
@@ -266,7 +266,7 @@ class ExceptionsTests:
         management.ui_client.exceptions.add_another_exception(data=testim_data)
         exception_id = ManagementUtils.validate_exception(management, event_id=event_id, group=group_name)
         assert exception_id, "exception validation failed,exception wasn't created properly"
-        exception_id_2 = ManagementUtils.validate_exception(management, event_id=event_id)
+        exception_id_2 = ManagementUtils.validate_exception(management,  process=malware_name, event_id=event_id)
         assert exception_id_2, "exception validation failed,exception wasn't created properly"
 
     # @pytest.mark.xray('EN-73320')

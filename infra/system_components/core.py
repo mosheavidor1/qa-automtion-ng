@@ -44,9 +44,10 @@ class Core(FortiEdrLinuxStation):
         parser_full_path = f'{self._version_content_folder}/{log_parser_name}'
         is_parser_exist_on_machine = self.is_path_exist(path=parser_full_path)
         if not is_parser_exist_on_machine:
-            copied_files_dir = self.copy_version_files_from_shared_folder(version=version)
-            files_in_dir = self.get_list_of_files_in_folder(copied_files_dir)
-            if log_parser_name in files_in_dir:
+            copied_files_dir = self.copy_files_from_shared_versions_folder(version=version,
+                                                                           files_names=[log_parser_name])
+            files_paths = self.get_list_of_files_in_folder(copied_files_dir)
+            if parser_full_path in files_paths:
                 return True
 
             return False
