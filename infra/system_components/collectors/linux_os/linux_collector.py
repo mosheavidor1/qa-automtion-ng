@@ -1,6 +1,7 @@
 import allure
 import time
 from typing import List
+import third_party_details
 from infra.containers.system_component_containers import CollectorDetails
 from infra.enums import OsTypeEnum, SystemState
 from infra.system_components.collector import Collector
@@ -13,7 +14,7 @@ from infra.system_components.collectors.collectors_common_utils import (
 from sut_details import management_registration_password
 
 SERVICE_NAME = "FortiEDRCollector"
-COLLECTOR_INSTALLER_FOLDER_PATH = "/home"
+COLLECTOR_INSTALLER_FOLDER_PATH = "/tmp/version_files"
 COLLECTOR_INSTALLATION_FOLDER_PATH = f"/opt/{SERVICE_NAME}"
 COLLECTOR_SCRIPTS_FOLDER_PATH = f"{COLLECTOR_INSTALLATION_FOLDER_PATH}/scripts"
 COLLECTOR_CRASH_DUMPS_FOLDER_PATH = f"{COLLECTOR_INSTALLATION_FOLDER_PATH}/CrashDumps/Collector"
@@ -189,12 +190,6 @@ class LinuxCollector(Collector):
         short_name = full_name.split("-")[0]
         return short_name
 
-    @allure.step("{0} - Get the installer path")
-    def get_installer_rpm_path(self, version, installed_package_name):
-        arch = self.os_station.get_os_architecture()
-        path = f"{COLLECTOR_INSTALLER_FOLDER_PATH}/{installed_package_name}-{version}.{arch}.rpm"
-        return path
-
     @allure.step("{0} - Uninstall linux Collector")
     def uninstall_collector(self, registration_password=None, stop_collector=True):
         """ Must stop collector before uninstallation """
@@ -249,3 +244,22 @@ class LinuxCollector(Collector):
             Reporter.report(f"Remove crash files: {files_paths}")
             for file_path in files_paths:
                 self.os_station.remove_file(file_path=file_path)
+
+    @allure.step("Prepare linux collector version installer")
+    def prepare_version_installer_file(self, version, package_name):
+        """ If the collector installer file does not exist on local machine, we will copy it from the shared drive """
+        arch = self.os_station.get_os_architecture()
+        installer_name = f"{package_name}-{version}.{arch}.rpm"
+        installer_local_path = f"{COLLECTOR_INSTALLER_FOLDER_PATH}/{installer_name}"
+        is_installer_exist_on_machine = self.os_station.is_path_exist(path=installer_local_path)
+        if not is_installer_exist_on_machine:
+            Reporter.report(f"'{installer_local_path}' does not exist, copy it from shared folder")
+            shared_drive_path = fr'{third_party_details.SHARED_DRIVE_LINUX_VERSIONS_PATH}\{version}'
+            self.os_station.copy_files_from_shared_folder(
+                target_path_in_local_machine=COLLECTOR_INSTALLER_FOLDER_PATH, shared_drive_path=shared_drive_path,
+                shared_drive_user_name=third_party_details.USER_NAME,
+                shared_drive_password=third_party_details.PASSWORD,
+                files_to_copy=[installer_name])
+            assert self.os_station.is_path_exist(path=installer_local_path), \
+                f"Installer file '{installer_local_path}' was not copied"
+        return installer_local_path
