@@ -22,14 +22,14 @@ pipeline {
                choices: ['suite', 'keyword'],
                description: 'choose suite to run suite\\s of tests or keyword to run all tests including the keyword')
 
+        string( name: 'tests',
+                defaultValue: 'sanity',
+                description: 'suites or tests to run according to given keyword')
+
         choice(name: 'collector_type',
                choices: ['WINDOWS_11_64', 'WINDOWS_10_64', 'WINDOWS_10_32', 'WINDOWS_8_64',
                'LINUX_CENTOS_6', 'LINUX_CENTOS_7', 'LINUX_CENTOS_8', 'LINUX_CENTOS_8_1'],
                description: 'choose collector type to run the tests on')
-
-        string( name: 'tests',
-                defaultValue: 'sanity',
-                description: 'suites or tests to run according to given keyword')
 
         booleanParam(name: 'report_results_to_jira',
                     defaultValue: false,
