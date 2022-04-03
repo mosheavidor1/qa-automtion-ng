@@ -184,7 +184,7 @@ class LinuxCollector(Collector):
     @allure.step("{0} - Get the installed package name")
     def get_installed_package_name(self):
         cmd = f"rpm -qa | grep -i {SERVICE_NAME}"
-        full_name = self.os_station.execute_cmd(cmd=cmd, asynchronous=False)
+        full_name = self.os_station.execute_cmd(cmd=cmd, asynchronous=False, fail_on_err=True)
         if full_name is None:
             return None
         short_name = full_name.split("-")[0]

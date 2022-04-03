@@ -34,18 +34,6 @@ from infra.jira_handler.jira_xray_handler import JiraXrayHandler, TestStatusEnum
 tests_results = dict()
 
 
-# consider uncomment it - remove all log file at the beginning of automation run
-# @pytest.fixture(scope="session", autouse=True)
-# @allure.step("Clear all logs from cores and collectors at the beginning of the run")
-# def clear_all_logs_from_cores_and_collectors():
-#     management = Management.instance()
-#     for single_core in management.cores:
-#         single_core.clear_logs()
-#
-#     for single_collector in management.collectors:
-#         single_collector.clear_logs()
-
-
 @pytest.fixture(scope="session", autouse=True)
 @allure.step("Create environment properties file for allure report")
 def create_environment_properties_file_for_allure_report(management: Management,
