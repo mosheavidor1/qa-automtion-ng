@@ -69,8 +69,6 @@ class SystemComponentsFactory:
         if management.admin_rest_api_client.organizations.is_organization_exist(management.tenant.organization):
             collectors += management.admin_rest_api_client.system_inventory.get_collector_info(organization=management.tenant.organization)
 
-        # TODO - think how to improve it so we don't need to create instance of each collector with OS station
-        # connection it can take too much time at the init level
         for single_collector in collectors:
             collector_details = CollectorDetails(system_id=single_collector.get('id'),
                                                  name=single_collector.get('name'),
@@ -97,8 +95,8 @@ class SystemComponentsFactory:
                 match collector_type:
 
                     case collector_type.WINDOWS_11_64:
-                        # TODO - no logic yet - skipping create collector instance
-                        continue
+                        if 'windows 11' not in collector_details.operating_system.lower():
+                            continue
 
                     case collector_type.WINDOWS_10_64 | collector_type.WINDOWS_10_32:
                         if 'windows 10' not in collector_details.operating_system.lower():
@@ -107,10 +105,12 @@ class SystemComponentsFactory:
                     case collector_type.WINDOWS_8_64:
                         # TODO - no logic yet - skipping create collector instance
                         continue
+
                     case collector_type.WINDOWS_7_64 | collector_type.WINDOWS_7_32:
                         encrypted_connection = False
-                        # TODO - no logic yet - skipping create collector instance
-                        continue
+                        if 'windows 7' not in collector_details.operating_system.lower():
+                            continue
+
                     case collector_type.WIN_SERVER_2019 | collector_type.WIN_SERVER_2016:
                         # TODO - no logic yet - skipping create collector instance
                         continue
@@ -133,10 +133,6 @@ class SystemComponentsFactory:
 
                 match collector_type:
 
-                    case collector_type.LINUX_CENTOS_8_1:
-                        # TODO - no logic yet - skipping create collector instance
-                        continue
-
                     case collector_type.LINUX_CENTOS_8:
                         if 'centos 8' not in collector_details.operating_system.lower():
                             continue
@@ -144,9 +140,11 @@ class SystemComponentsFactory:
                     case collector_type.LINUX_CENTOS_7:
                         if 'centos 7' not in collector_details.operating_system.lower():
                             continue
+
                     case collector_type.LINUX_CENTOS_6:
-                        # TODO - no logic yet - skipping create collector instance
-                        continue
+                        if 'centos 7' not in collector_details.operating_system.lower():
+                            continue
+
                     case collector_type.LINUX_UBUNTU_20:
                         # TODO - no logic yet - skipping create collector instance
                         continue
