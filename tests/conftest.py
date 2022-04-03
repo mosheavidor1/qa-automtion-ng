@@ -263,28 +263,12 @@ def collector(management):
                                                         collector_type=collector_type_as_enum)
 
     if len(collectors) == 0:
-        assert False, "There is no registered core in management, can not create Core object"
+        assert False, f"There are no registered collectors of the type {collector_type_as_enum} in management"
 
-    desired_collector = None
-    for collector in collectors:
-
-        if 'windows 10' in collector.os_station.os_name.lower():
-
-            if collector.os_station.os_architecture == '64-bit' and collector_type_as_enum == CollectorTypes.WINDOWS_10_64:
-                desired_collector = collector
-                break
-
-            if collector.os_station.os_architecture == '32-bit' and collector_type_as_enum == CollectorTypes.WINDOWS_10_32:
-                desired_collector = collector
-                break
-
-        if 'centos' in collector.os_station.os_name.lower():
-
-            if collector_type_as_enum == CollectorTypes.CENTOS_7 and "centos linux 7" in collector.os_station.os_name.lower():
-                desired_collector = collector
-                break
-
-    yield desired_collector
+    # collector holds the list of collectors of the specific desired type (i.e. WINDOWS_10_64) so we can use any of the
+    # elements in the collectors list
+    # according to the assert above, if we got to this row, there is at least 1 element in the collectors list.
+    yield collectors[0]
 
 
 @pytest.fixture(scope="session", autouse=True)

@@ -87,16 +87,33 @@ class SystemComponentsFactory:
                                                  version=single_collector.get('version'),
                                                  logged_users=single_collector.get('loggedUsers'),
                                                  system_information=single_collector.get('systemInformation'))
-            os_type = OsTypeEnum.LINUX
-            collector = None
-            if 'win' in collector_details.os_family.lower():
+
+            if 'windows' in collector_type.name.lower() and 'windows' in collector_details.os_family.lower():
 
                 user_name = sut_details.win_user_name
                 password = sut_details.win_password
-
                 encrypted_connection = True
-                if "windows 7" in collector_details.operating_system.lower():
-                    encrypted_connection = False
+
+                match collector_type:
+
+                    case collector_type.WINDOWS_11_64:
+                        # TODO - no logic yet - skipping create collector instance
+                        continue
+
+                    case collector_type.WINDOWS_10_64 | collector_type.WINDOWS_10_32:
+                        if 'windows 10' not in collector_details.operating_system.lower():
+                            continue
+
+                    case collector_type.WINDOWS_8_64:
+                        # TODO - no logic yet - skipping create collector instance
+                        continue
+                    case collector_type.WINDOWS_7_64 | collector_type.WINDOWS_7_32:
+                        encrypted_connection = False
+                        # TODO - no logic yet - skipping create collector instance
+                        continue
+                    case collector_type.WIN_SERVER_2019 | collector_type.WIN_SERVER_2016:
+                        # TODO - no logic yet - skipping create collector instance
+                        continue
 
                 collector = WindowsCollector(host_ip=collector_details.ip_address,
                                              user_name=user_name,
@@ -104,23 +121,45 @@ class SystemComponentsFactory:
                                              collector_details=collector_details,
                                              encrypted_connection=encrypted_connection)
 
-                collector.os_station.user_name = user_name
-                collector.os_station.password = password
+                if '64' in collector_type.name and '64' not in collector.os_station.os_architecture:
+                    continue
+
+                if '32' in collector_type.name and '32' not in collector.os_station.os_architecture:
+                    continue
+
                 collector_list.append(collector)
 
-            elif 'linux' in collector_details.os_family.lower():
+            elif 'linux' in collector_type.name.lower() and 'linux' in collector_details.os_family.lower():
+
+                match collector_type:
+
+                    case collector_type.LINUX_CENTOS_8_1:
+                        # TODO - no logic yet - skipping create collector instance
+                        continue
+
+                    case collector_type.LINUX_CENTOS_8:
+                        if 'centos 8' not in collector_details.operating_system.lower():
+                            continue
+
+                    case collector_type.LINUX_CENTOS_7:
+                        if 'centos 7' not in collector_details.operating_system.lower():
+                            continue
+                    case collector_type.LINUX_CENTOS_6:
+                        # TODO - no logic yet - skipping create collector instance
+                        continue
+                    case collector_type.LINUX_UBUNTU_20:
+                        # TODO - no logic yet - skipping create collector instance
+                        continue
+                    case collector_type.LINUX_UBUNTU_18:
+                        # TODO - no logic yet - skipping create collector instance
+                        continue
+                    case collector_type.LINUX_UBUNTU_16:
+                        # TODO - no logic yet - skipping create collector instance
+                        continue
+
                 collector = LinuxCollector(host_ip=collector_details.ip_address, user_name=sut_details.linux_user_name,
                                            password=sut_details.linux_password, collector_details=collector_details)
-                collector_list.append(collector)
 
-            # elif 'osx' in collector_details.os_family.lower():
-            #     collector = OsXCollector(host_ip=collector_details.ip_address,
-            #                              user_name='root',
-            #                              password='enSilo$$',
-            #                              collector_details=collector_details)
-            #
-            # else:
-            #     raise Exception(
-            #         f"Can not create an collector object since collector from the {collector_details.os_family} family is not known by the automation'")
+                collector_list.append(collector)
 
         return collector_list
