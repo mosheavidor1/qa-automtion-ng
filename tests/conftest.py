@@ -308,9 +308,6 @@ def tenant(management, collector):
         management.admin_rest_api_client.organizations.create_organization(organization_data=new_org_data,
                                                                            expected_status_code=200)
 
-        management.admin_rest_api_client.policies.turn_on_prevention_mode()
-        management.tenant.rest_api_client.policies.turn_on_prevention_mode()
-
     # admin - check if user exist in organization, else create it
     is_user_exist = management.admin_rest_api_client.users_rest.is_user_exist(user_name=management.tenant.user_name,
                                                                               organization_name=management.tenant.organization)
@@ -331,6 +328,8 @@ def tenant(management, collector):
         management.admin_rest_api_client.users_rest.reset_user_password(user_name=management.tenant.user_name,
                                                                         new_password=management.tenant.user_password,
                                                                         organization=management.tenant.organization)
+
+    management.tenant.rest_api_client.policies.turn_on_prevention_mode()
 
     # user - search if desired collector found in organization, else move it from default organization to desired one
     is_collector_in_org = management.admin_rest_api_client.system_inventory.is_collector_in_organization(
