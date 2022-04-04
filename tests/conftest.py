@@ -329,7 +329,7 @@ def tenant(management, collector):
                                                                         new_password=management.tenant.user_password,
                                                                         organization=management.tenant.organization)
 
-    management.tenant.rest_api_client.policies.turn_on_prevention_mode()
+        management.tenant.rest_api_client.policies.turn_on_prevention_mode()
 
     # user - search if desired collector found in organization, else move it from default organization to desired one
     is_collector_in_org = management.admin_rest_api_client.system_inventory.is_collector_in_organization(
