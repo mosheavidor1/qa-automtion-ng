@@ -347,7 +347,7 @@ def tenant(management, collector):
 
 
 @pytest.fixture(scope="session", autouse=sut_details.debug_mode)
-def create_snapshot_for_all_collectors_at_the_beginning_of_the_run(management: Management, collector: Collector):
+def create_snapshot_for_all_collectors_at_the_beginning_of_the_run(management: Management, collector: Collector, tenant):
     """
     The role of this method is to create snapshot before the tests start, in static mode (paused).
     we do it because we revert to this (initial) snapshot before each test start in order to run on "clean"

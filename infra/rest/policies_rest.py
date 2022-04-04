@@ -54,8 +54,8 @@ class PoliciesRest(BaseRestFunctionality):
         self.set_policy_mode(name=self._rest.policies.NSLO_POLICY_EXECUTION_PREVENTION,
                              mode=self._rest.NSLO_PREVENTION_MODE)
 
-        self.set_policy_mode(name=self._rest.policies.NsloPolicies.NSLO_POLICY_EXFILTRATION_PREVENTION,
+        self.set_policy_mode(name=self._rest.policies.NSLO_POLICY_EXFILTRATION_PREVENTION,
                              mode=self._rest.NSLO_PREVENTION_MODE)
 
-        self.set_policy_mode(name=self._rest.policies.NsloPolicies.NSLO_POLICY_RANSOMWARE_PREVENTION,
+        self.set_policy_mode(name=self._rest.policies.NSLO_POLICY_RANSOMWARE_PREVENTION,
                              mode=self._rest.NSLO_PREVENTION_MODE)
