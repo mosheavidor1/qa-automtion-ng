@@ -27,8 +27,7 @@ pipeline {
                 description: 'suites or tests to run according to given keyword')
 
         choice(name: 'collector_type',
-               choices: ['WINDOWS_11_64', 'WINDOWS_10_64', 'WINDOWS_10_32', 'WINDOWS_7_64', 'WINDOWS_7_32',
-               'LINUX_CENTOS_6', 'LINUX_CENTOS_7', 'LINUX_CENTOS_8'],
+               choices: ['WINDOWS_11_64', 'WINDOWS_10_64', 'WINDOWS_10_32', 'LINUX_CENTOS_7'],
                description: 'choose collector type to run the tests on')
 
         booleanParam(name: 'report_results_to_jira',

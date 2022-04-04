@@ -269,16 +269,3 @@ class Management(FortiEdrLinuxStation):
     def is_collector_status_disconnected_in_mgmt(self, collector):
         collector_ip = collector.os_station.host_ip
         return self.get_collector_status(collector_ip) == SystemState.DISCONNECTED
-
-    def turn_on_prevention_mode(self, organization=None):
-        self.admin_rest_api_client.policies.set_policy_mode(
-            self.admin_rest_api_client.rest.NsloPolicies.NSLO_POLICY_EXECUTION_PREVENTION,
-            self.admin_rest_api_client.rest.NSLO_PREVENTION_MODE, organization)
-
-        self.admin_rest_api_client.policies.set_policy_mode(
-            self.admin_rest_api_client.rest.NsloPolicies.NSLO_POLICY_EXFILTRATION_PREVENTION,
-            self.admin_rest_api_client.rest.NSLO_PREVENTION_MODE, organization)
-        self.admin_rest_api_client.policies.set_policy_mode(
-
-            self.admin_rest_api_client.rest.NsloPolicies.NSLO_POLICY_RANSOMWARE_PREVENTION,
-            self.admin_rest_api_client.rest.NSLO_PREVENTION_MODE, organization)

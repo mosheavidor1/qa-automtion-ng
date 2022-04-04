@@ -22,7 +22,7 @@ def setup_method(management):
     operation_mode = sum([True if policy.get('name') in policies_names and
                                   policy.get('operationMode') == 'Prevention' else False for policy in policies])
     if operation_mode < len(policies_names):
-        management.turn_on_prevention_mode()
+        management.tenant.rest_api_client.policies.turn_on_prevention_mode()
 
 
 @pytest.fixture(scope="function")

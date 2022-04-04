@@ -93,9 +93,14 @@ class SystemInventoryRest(BaseRestFunctionality):
         if target_organization != "Default":
             organization = 'All organizations'
 
-        status, response = self._rest.inventory.MoveCollectors(collectors=collectors_to_move,
-                                                               group=target_collector_group,
-                                                               organization=organization)
+        params = {
+            'collectors': collectors_to_move,
+            'targetCollectorGroup': target_collector_group,
+            'organization': organization
+        }
+        status, response = self._rest.passthrough.ExecuteRequest(url='/inventory/move-collectors',
+                                                                 mode='put',
+                                                                 inputParams=params)
 
         self._validate_expected_status_code(expected_status_code=expected_status_code,
                                             actual_status_code=response.status_code,

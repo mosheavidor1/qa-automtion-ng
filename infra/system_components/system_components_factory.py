@@ -2,7 +2,7 @@ from typing import List
 
 import sut_details
 from infra.containers.system_component_containers import AggregatorDetails, CoreDetails, CollectorDetails
-from infra.enums import OsTypeEnum, CollectorTypes
+from infra.enums import CollectorTypes
 from infra.system_components.aggregator import Aggregator
 from infra.system_components.collector import Collector
 from infra.system_components.collectors.linux_os.linux_collector import LinuxCollector

@@ -307,7 +307,9 @@ def tenant(management, collector):
                                                   vulnerability_and_IoT=True)
         management.admin_rest_api_client.organizations.create_organization(organization_data=new_org_data,
                                                                            expected_status_code=200)
-        management.turn_on_prevention_mode(organization=management.tenant.organization)
+        
+        management.admin_rest_api_client.policies.turn_on_prevention_mode()
+        management.tenant.rest_api_client.policies.turn_on_prevention_mode()
 
     # admin - check if user exist in organization, else create it
     is_user_exist = management.admin_rest_api_client.users_rest.is_user_exist(user_name=management.tenant.user_name,

@@ -87,7 +87,7 @@ class LinuxStation(OsStation):
                         Reporter.report(f"command output: {output}")
 
                 if fail_on_err and stderr_err_output != '':
-                    assert False, "Failing because stderr was returned"
+                    assert False, f"Failing because stderr was returned, error is: {stderr_err_output}"
 
                 if return_output:
                     return output
