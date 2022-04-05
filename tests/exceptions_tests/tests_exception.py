@@ -118,7 +118,7 @@ class ExceptionsTests:
             "groupName": [group_name],
             "loginUser": management.tenant.user_name,
             "loginPassword": management.tenant.user_password,
-            "loginOrganization": management.tenant.user_password,
+            "loginOrganization": management.tenant.organization,
             "organization": management.tenant.organization,
             "groups": [group_name],
             "destinations": [destination],
@@ -161,7 +161,7 @@ class ExceptionsTests:
             "groupName": [group_name],
             "loginUser": management.tenant.user_name,
             "loginPassword": management.tenant.user_password,
-            "loginOrganization": management.tenant.user_password,
+            "loginOrganization": management.tenant.organization,
             "organization": management.tenant.organization,
             "destinations": [destination],
             "eventID": event_id
@@ -225,7 +225,7 @@ class ExceptionsTests:
             "groupName": [group_name],
             "loginUser": management.tenant.user_name,
             "loginPassword": management.tenant.user_password,
-            "loginOrganization": management.tenant.user_password,
+            "loginOrganization": management.tenant.organization,
             "organization": management.tenant.organization,
             "groups": [group_name],
             "eventID": event_id,
@@ -260,7 +260,7 @@ class ExceptionsTests:
             "groupName": [group_name],
             "loginUser": management.tenant.user_name,
             "loginPassword": management.tenant.user_password,
-            "loginOrganization": management.tenant.user_password,
+            "loginOrganization": management.tenant.organization,
             "organization": management.tenant.organization
         }
         management.ui_client.exceptions.add_another_exception(data=testim_data)

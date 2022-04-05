@@ -17,4 +17,4 @@ def integration_test_function_fixture(management, collector):
     }
     yield test_resources
 
-    management.admin_rest_api_client.events.delete_event_by_name(malware_name)
+    management.tenant.rest_api_client.events.delete_event_by_name(malware_name)

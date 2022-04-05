@@ -13,8 +13,8 @@ def dynamic_content_function_fixture(management, collector):
                       "secUserRules": ["Rest API", "Admin", "Local Admin"],
                       "eventName": malware_name}
 
-    management.admin_rest_api_client.events.delete_events()
-    management.admin_rest_api_client.events.delete_all_exceptions()
+    management.tenant.rest_api_client.events.delete_all_events()
+    management.tenant.rest_api_client.exceptions.delete_all_exceptions()
 
     test_resources = {
         'management': management,

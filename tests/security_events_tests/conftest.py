@@ -7,7 +7,7 @@ def security_events_function_fixture(management, collector):
     test_im_params = {"eventName": malware_name}
 
     collector.create_event(malware_name=malware_name)
-    management.admin_rest_api_client.events.get_security_events({"process": malware_name})
+    management.tenant.rest_api_client.events.get_security_events({"process": malware_name})
 
     test_resources = {
         'management': management,
@@ -15,4 +15,4 @@ def security_events_function_fixture(management, collector):
     }
     yield test_resources
 
-    management.admin_rest_api_client.events.delete_event_by_name(malware_name)
+    management.tenant.rest_api_client.events.delete_event_by_name(malware_name)
