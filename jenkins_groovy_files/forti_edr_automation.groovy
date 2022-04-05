@@ -13,18 +13,27 @@ pipeline {
         string( name: 'branchName',
                 defaultValue: 'main',
                 description: 'Branch to build')	
+
         string( name: 'management_host_ip',
                 defaultValue: '',
                 description: 'Management Host IP')
+
         choice(name: 'tests_discover_type',
                choices: ['suite', 'keyword'],
                description: 'choose suite to run suite\\s of tests or keyword to run all tests including the keyword')
+
         string( name: 'tests',
                 defaultValue: 'sanity',
                 description: 'suites or tests to run according to given keyword')
+
+        choice(name: 'collector_type',
+               choices: ['WINDOWS_11_64', 'WINDOWS_10_64', 'WINDOWS_10_32', 'LINUX_CENTOS_7'],
+               description: 'choose collector type to run the tests on')
+
         booleanParam(name: 'report_results_to_jira',
                     defaultValue: false,
                     description: 'create test execution in jira and report tests results')
+
         string( name: 'email_list',
                 defaultValue: '',
                 description: 'Email List, comma delimiter')	   
