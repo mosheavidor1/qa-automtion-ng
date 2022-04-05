@@ -32,6 +32,7 @@ import pytest
 from infra.jira_handler.jira_xray_handler import JiraXrayHandler, TestStatusEnum
 
 tests_results = dict()
+jira_xray_handler = JiraXrayHandler()
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -64,7 +65,7 @@ def pytest_configure(config):
         return
     global jira_xray_handler
     mark = pytest_config.getoption('-m')
-    jira_xray_handler = JiraXrayHandler(mark=mark, management=Management.instance())
+    jira_xray_handler.mark = mark
 
 
 def pytest_addoption(parser):
@@ -269,6 +270,17 @@ def collector(management):
     # elements in the collectors list
     # according to the assert above, if we got to this row, there is at least 1 element in the collectors list.
     yield collectors[0]
+
+
+@pytest.fixture(scope="session", autouse=True)
+def init_jira_xray_object(management, aggregator, core, collector):
+    global jira_xray_handler
+
+    jira_xray_handler.management = management
+    jira_xray_handler.aggregator = aggregator
+    jira_xray_handler.core = core
+    jira_xray_handler.collector = collector
+
 
 
 @pytest.fixture(scope="session", autouse=True)
