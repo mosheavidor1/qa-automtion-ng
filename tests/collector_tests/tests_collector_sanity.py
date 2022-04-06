@@ -23,7 +23,7 @@ def test_stop_start_collector(management, collector):
     2. Start collector and validate it started successfully.
     """
     with allure.step(f"Stop {collector} and validate"):
-        collector.stop_collector()
+        collector.stop_collector(password=management.tenant.registration_password)
         Reporter.report(f"Validate {collector} stopped successfully:")
         CollectorUtils.wait_for_service_down_status_in_cli(collector)
         wait_for_disconnected_collector_status_in_mgmt(management, collector)
@@ -33,45 +33,6 @@ def test_stop_start_collector(management, collector):
         Reporter.report(f"Validate {collector} started successfully:")
         wait_for_running_collector_status_in_cli(collector)
         wait_for_running_collector_status_in_mgmt(management, collector)
-
-
-@allure.epic("Collectors")
-@allure.feature("Basic Functionality")
-@pytest.mark.sanity
-@pytest.mark.collector_sanity
-@pytest.mark.xray('EN-70422')
-def test_uninstall_install_windows_collector(management, collector):
-    """
-        This test is going to uninstall and install collector (same version)
-        Test steps:
-        1. uninstall collector
-        2. validate that installation folder is empty
-        3. validate no pid for collector + collector status in MGMT is disconnected
-        4. install collector with the same version
-        5. validate that pid exists + collector status in MGMT & CLI is running
-        6. validate that the new installed version is same as before the uninstallation
-    """
-
-    with allure.step(f"Uninstall {collector} and validate"):
-        version_before_uninstall = collector.get_version()
-        uninstallation_log_path = CollectorUtils.create_logs_path(collector, "uninstall_logs")
-        with TestUtils.append_log_to_report_on_failure_context(collector, uninstallation_log_path):
-            collector.uninstall_collector(uninstallation_log_path)
-            Reporter.report(f"Validate {collector} uninstalled successfully:")
-            assert collector.is_installation_folder_empty(), f"Installation folder contains files, should be empty"
-            wait_for_disconnected_collector_status_in_mgmt(management, collector)
-
-    with allure.step(f"Install {collector} and validate"):
-        installation_log_path = CollectorUtils.create_logs_path(collector, "install_logs")
-        with TestUtils.append_log_to_report_on_failure_context(collector, installation_log_path):
-            collector.install_collector(version=collector.details.version,
-                                        aggregator_ip=management.aggregators[0].host_ip,
-                                        logs_path=installation_log_path)
-            Reporter.report(f"Validate {collector} installed successfully:")
-            wait_for_running_collector_status_in_mgmt(management, collector)
-            wait_for_running_collector_status_in_cli(collector)
-            assert collector.get_version() == version_before_uninstall, \
-                f"{collector} version is {collector.get_version()} instead of {version_before_uninstall}"
 
 
 @allure.epic("Collectors")
@@ -95,9 +56,50 @@ def test_reboot_collector(management, collector):
 
 @allure.epic("Collectors")
 @allure.feature("Basic Functionality")
+@pytest.mark.sanity
+@pytest.mark.collector_sanity
+@pytest.mark.xray('EN-70422')
+def test_uninstall_install_windows_collector(management, aggregator, collector):
+    """
+        This test is going to uninstall and install collector (same version)
+        Test steps:
+        1. uninstall collector
+        2. validate that installation folder is empty
+        3. validate no pid for collector + collector status in MGMT is disconnected
+        4. install collector with the same version
+        5. validate that pid exists + collector status in MGMT & CLI is running
+        6. validate that the new installed version is same as before the uninstallation
+    """
+
+    with allure.step(f"Uninstall {collector} and validate"):
+        version_before_uninstall = collector.get_version()
+        uninstallation_log_path = CollectorUtils.create_logs_path(collector, "uninstall_logs")
+        with TestUtils.append_log_to_report_on_failure_context(collector, uninstallation_log_path):
+            collector.uninstall_collector(registration_password=management.tenant.registration_password, logs_path=uninstallation_log_path)
+            Reporter.report(f"Validate {collector} uninstalled successfully:")
+            assert collector.is_installation_folder_empty(), f"Installation folder contains files, should be empty"
+            wait_for_disconnected_collector_status_in_mgmt(management, collector)
+
+    with allure.step(f"Install {collector} and validate"):
+        installation_log_path = CollectorUtils.create_logs_path(collector, "install_logs")
+        with TestUtils.append_log_to_report_on_failure_context(collector, installation_log_path):
+            collector.install_collector(version=collector.details.version,
+                                        aggregator_ip=aggregator.host_ip,
+                                        organization=management.tenant.organization,
+                                        registration_password=management.tenant.registration_password,
+                                        logs_path=installation_log_path)
+            Reporter.report(f"Validate {collector} installed successfully:")
+            wait_for_running_collector_status_in_mgmt(management, collector)
+            wait_for_running_collector_status_in_cli(collector)
+            assert collector.get_version() == version_before_uninstall, \
+                f"{collector} version is {collector.get_version()} instead of {version_before_uninstall}"
+
+
+@allure.epic("Collectors")
+@allure.feature("Basic Functionality")
 @pytest.mark.collector_linux_sanity
 @pytest.mark.xray('EN-69548')
-def test_uninstall_install_configure_linux_collector(management, collector):
+def test_uninstall_install_configure_linux_collector(management, aggregator, collector):
     """
     http://confluence.ensilo.local/display/ER/Linux+Collector+v5.1
         This test is going to uninstall & install & configure a linux collector.
@@ -117,7 +119,7 @@ def test_uninstall_install_configure_linux_collector(management, collector):
                                                                   package_name=package_name_before_uninstall)
 
     with allure.step(f"Uninstall {collector} and validate:"):
-        uninstall_output = collector.uninstall_collector()
+        uninstall_output = collector.uninstall_collector(registration_password=management.tenant.registration_password)
         Reporter.report(f"Validate {collector} uninstalled successfully:")
         LinuxCollectorUtils.validate_uninstallation_cmd_output(uninstall_output)
         Reporter.report(f"Validate that {collector} installation folder & installed package removed:")
@@ -129,7 +131,9 @@ def test_uninstall_install_configure_linux_collector(management, collector):
 
     with allure.step(f"Install {collector} & Configure"):
         collector.install_collector(installer_path)
-        collector.configure_collector(aggregator_ip=management.aggregators[0].host_ip)
+        collector.configure_collector(aggregator_ip=aggregator.host_ip,
+                                      registration_password=management.tenant.registration_password,
+                                      organization=management.tenant.organization)
 
     with allure.step(f"Validate {collector} installed and configured successfully:"):
         Reporter.report(f"Validate {collector} installation folder & installed package name:")

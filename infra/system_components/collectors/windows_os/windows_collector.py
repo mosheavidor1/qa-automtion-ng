@@ -279,13 +279,19 @@ class WindowsCollector(Collector):
 
     @allure.step("{0} - Install FortiEDR Collector")
     def install_collector(self, version: str, aggregator_ip: str, logs_path: str,
-                          aggregator_port: int = None, registration_pass: str = None):
+                          aggregator_port: int = None, registration_password: str = None,
+                          organization: str = None):
 
         aggregator_port = aggregator_port or DEFAULT_AGGREGATOR_PORT
-        registration_pass = registration_pass or REGISTRATION_PASS
+        registration_pass = registration_password or REGISTRATION_PASS
         version = version or self.get_version()
         installer_path = get_installer_path(self, version)
-        cmd = generate_installation_cmd(installer_path, aggregator_ip, aggregator_port, registration_pass, logs_path)
+        cmd = generate_installation_cmd(installer_path=installer_path,
+                                        agg_ip=aggregator_ip,
+                                        agg_port=aggregator_port,
+                                        registration_pass=registration_pass,
+                                        logs_path=logs_path,
+                                        organization=organization)
         self.os_station.execute_cmd(cmd=cmd, fail_on_err=True)
         wait_until_collector_pid_appears(self)
         self.update_process_id()

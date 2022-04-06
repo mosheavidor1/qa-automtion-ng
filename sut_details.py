@@ -1,5 +1,7 @@
 import os
 
+# set windows 10 64 as default
+collector_type = os.getenv("collector_type") if os.getenv("collector_type") is not None else 'WINDOWS_10_64'
 
 # MANAGEMENT DETAILS
 management_host = os.getenv("management_host_ip") if os.getenv("management_host_ip") is not None else None

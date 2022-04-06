@@ -58,7 +58,7 @@ class Collector:
         pass
 
     @abstractmethod
-    def stop_collector(self, password: str):
+    def stop_collector(self, password: str = None):
         pass
 
     @abstractmethod
@@ -121,7 +121,7 @@ class Collector:
                           organization: str = None,
                           aggregator_port: int = 8081,
                           registration_password: str = '12345678',
-                          append_log_to_report=True):
+                          append_log_to_report: bool = True):
         pass
 
     @abstractmethod

@@ -12,10 +12,10 @@ class ManagementUtils:
         """
         create event with existing exception and check if created
         """
-        management.rest_api_client.delete_all_events()
+        management.tenant.rest_api_client.events.delete_all_events()
         collector.create_event(malware_name=malware_name)
-        events = management.rest_api_client.get_security_events(validation_data={"process": malware_name},
-                                                                timeout=10, fail_on_no_events=False)
+        events = management.tenant.rest_api_client.events.get_security_events(validation_data={"process": malware_name},
+                                                                              timeout=10, fail_on_no_events=False)
         is_event_created = True if len(events) > 0 else False
         Assertion.invoke_assertion(expected=expected_result, actual=is_event_created,
                                    message=r"event was\wasn't created as expected",
@@ -23,9 +23,9 @@ class ManagementUtils:
 
     @staticmethod
     @allure.step("validate exception exists with given parameters")
-    def validate_exception(management, process, event_id=None, group='All Collector Groups',
+    def validate_exception(management: Management, process: str, event_id=None, group='All Collector Groups',
                            destination='All Destinations', user='All Users', comment=None):
-        exceptions = management.rest_api_client.get_exceptions(event_id)
+        exceptions = management.tenant.rest_api_client.exceptions.get_exceptions(event_id)
         for exception in exceptions:
             if process in str(exception) and \
                     group in exception['selectedCollectorGroups'] and \

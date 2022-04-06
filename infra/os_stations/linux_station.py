@@ -87,7 +87,7 @@ class LinuxStation(OsStation):
                         Reporter.report(f"command output: {output}")
 
                 if fail_on_err and stderr_err_output != '':
-                    assert False, "Failing because stderr was returned"
+                    assert False, f"Failing because stderr was returned, error is: {stderr_err_output}"
 
                 if return_output:
                     return output
@@ -317,7 +317,7 @@ class LinuxStation(OsStation):
 
     @allure.step("Unmount shared drive {local_mounted_drive}")
     def remove_mounted_drive(self, local_mounted_drive: str = None):
-        cmd = f"sudo sudo umount --force {local_mounted_drive}"
+        cmd = f"sudo umount --force {local_mounted_drive}"
         self.execute_cmd(cmd=cmd, return_output=False, fail_on_err=True)
         mounted_files_paths = self.get_list_of_files_in_folder(folder_path=local_mounted_drive)
         assert mounted_files_paths is None, \

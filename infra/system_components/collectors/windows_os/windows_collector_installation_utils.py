@@ -68,7 +68,11 @@ def _generate_installer_file_name(collector, version):
     return installer_file_name
 
 
-def generate_installation_cmd(installer_path, agg_ip, agg_port, registration_pass, logs_path):
-    cmd = rf'msiexec /i "{installer_path}" /qn AGG={agg_ip}:{agg_port} PWD={registration_pass} /LIME {logs_path}'
+def generate_installation_cmd(installer_path, agg_ip, agg_port, registration_pass, logs_path, organization=None):
+    if organization is None:
+        organization = ''
+    else:
+        organization = f'ORG={organization}'
+    cmd = rf'msiexec /i "{installer_path}" /qn AGG={agg_ip}:{agg_port} PWD={registration_pass} {organization} /LIME {logs_path}'
     Reporter.report(f"cmd for installation: {cmd}")
     return cmd

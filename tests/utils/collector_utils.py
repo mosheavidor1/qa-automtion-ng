@@ -52,11 +52,13 @@ class CollectorUtils:
 
     @staticmethod
     @allure.step("move collector to new group and assign group to policies")
-    def move_collector_and_assign_group_policies(management, collector: Collector, group_name):
-        management.rest_api_client.move_collector({'ipAddress': collector.os_station.host_ip}, group_name)
-        management.rest_api_client.assign_policy('Exfiltration Prevention', group_name, timeout=1)
-        management.rest_api_client.assign_policy('Execution Prevention', group_name, timeout=1)
-        management.rest_api_client.assign_policy('Ransomware Prevention', group_name)
+    def move_collector_and_assign_group_policies(management, collector: Collector, group_name: str):
+        management.tenant.rest_api_client.system_inventory.move_collector(
+            validation_data={'ipAddress': collector.os_station.host_ip},
+            group_name=group_name)
+        management.tenant.rest_api_client.policies.assign_policy('Exfiltration Prevention', group_name, timeout=1)
+        management.tenant.rest_api_client.policies.assign_policy('Execution Prevention', group_name, timeout=1)
+        management.tenant.rest_api_client.policies.assign_policy('Ransomware Prevention', group_name)
 
     @staticmethod
     def create_logs_path(collector: Collector, prefix):

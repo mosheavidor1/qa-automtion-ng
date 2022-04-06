@@ -2,17 +2,15 @@ import pytest
 
 
 @pytest.fixture(scope="function")
-def fcs_tests_function_fixture(management):
+def fcs_tests_function_fixture(management, collector):
     malware_name = "DynamicCodeTests.exe"
     test_im_params = {"eventName": malware_name}
 
-    collector = management.collectors[0]
-
-    management.rest_api_client.delete_events()
-    management.rest_api_client.delete_all_exceptions()
+    management.tenant.rest_api_client.events.delete_all_events()
+    management.tenant.rest_api_client.exceptions.delete_all_exceptions()
 
     collector.create_event(malware_name=malware_name)
-    management.rest_api_client.get_security_events({"process": malware_name})
+    management.tenant.rest_api_client.events.get_security_events({"process": malware_name})
 
     test_resources = {
         'management': management,
@@ -21,4 +19,4 @@ def fcs_tests_function_fixture(management):
 
     yield test_resources
 
-    management.rest_api_client.delete_event_by_name(malware_name)
+    management.tenant.rest_api_client.events.delete_event_by_name(malware_name)
