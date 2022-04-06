@@ -109,9 +109,9 @@ class JiraXrayHandler:
     def create_test_execution(self):
         summary = 'Created by automation'
 
-        collector_os_architecture = self.management.collectors[0].os_station.os_architecture.replace(' ', '-')
-        collector_os_version = self.management.collectors[0].os_station.os_version.replace(' ', '-')
-        collector_os_name = self.management.collectors[0].os_station.os_name.replace(' ', '-')
+        collector_os_architecture = self.collector.os_station.os_architecture.replace(' ', '-')
+        collector_os_version = self.collector.os_station.os_version.replace(' ', '-')
+        collector_os_name = self.collector.os_station.os_name.replace(' ', '-')
 
         management_version = None
         core_version = None
