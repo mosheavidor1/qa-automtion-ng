@@ -134,26 +134,27 @@ class SystemComponentsFactory:
                 match collector_type:
 
                     case collector_type.LINUX_CENTOS_8:
-                        if 'centos 8' not in collector_details.operating_system.lower():
+                        if 'centos linux 8' not in collector_details.operating_system.lower():
                             continue
 
                     case collector_type.LINUX_CENTOS_7:
-                        if 'centos 7' not in collector_details.operating_system.lower():
+                        if 'centos linux 7' not in collector_details.operating_system.lower():
                             continue
 
                     case collector_type.LINUX_CENTOS_6:
-                        if 'centos 7' not in collector_details.operating_system.lower():
+                        if 'centos linux 6' not in collector_details.operating_system.lower():
                             continue
 
                     case collector_type.LINUX_UBUNTU_20:
-                        # TODO - no logic yet - skipping create collector instance
-                        continue
+                        if 'ubuntu 20' not in collector_details.operating_system.lower():
+                            continue
+
                     case collector_type.LINUX_UBUNTU_18:
-                        # TODO - no logic yet - skipping create collector instance
-                        continue
+                        if 'ubuntu 18' not in collector_details.operating_system.lower():
+                            continue
                     case collector_type.LINUX_UBUNTU_16:
-                        # TODO - no logic yet - skipping create collector instance
-                        continue
+                        if 'ubuntu 16' not in collector_details.operating_system.lower():
+                            continue
 
                 collector = LinuxCollector(host_ip=collector_details.ip_address, user_name=sut_details.linux_user_name,
                                            password=sut_details.linux_password, collector_details=collector_details)
