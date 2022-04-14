@@ -36,4 +36,3 @@ class VsphereUtils:
                 return vm_ops
 
         return None
-

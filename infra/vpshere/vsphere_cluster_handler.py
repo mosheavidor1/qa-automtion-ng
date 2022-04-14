@@ -1,4 +1,5 @@
 import atexit
+import time
 from enum import Enum
 
 import allure
@@ -7,6 +8,7 @@ from pyVmomi import vim
 
 from infra.allure_report_handler.reporter import Reporter
 from infra.vpshere.vsphere_cluster_details import ClusterDetails
+from infra.enums import CollectorTemplateNames
 from infra.vpshere.vsphere_vm_operations import VsphereMachineOperations
 from third_party_details import USER_NAME_DOMAIN, PASSWORD
 
@@ -24,6 +26,7 @@ class VsphereClusterHandler(object):
     def __init__(self, cluster_details: ClusterDetails):
         self._cluster_details = cluster_details
         self._service_instance = None
+        self._container_view = None
 
     @property
     def cluster_details(self):
@@ -31,23 +34,62 @@ class VsphereClusterHandler(object):
 
     @property
     def service_instance(self):
-        return self._service_instance
+        if self._service_instance is not None:
+            return self._service_instance
+        else:
+            raise Exception("Service instance not initiated.")
 
-    @property
-    def datacenter_object(self) -> object:
-        return [vim.Datacenter]
+    def _get_resource_pool_object(self) -> object:
+        resourse_pool = self._get_all_resource_pools_objects()
 
-    @property
-    def resource_pool_object(self) -> object:
-        return [vim.ResourcePool]
+        if self.cluster_details.cluster_resources_pool[0] in resourse_pool:
+            return resourse_pool[self.cluster_details.cluster_resources_pool[0]]
+        else:
+            return None
 
-    @property
-    def datastore_object(self) -> object:
-        return [vim.Datastore]
+    def _get_all_folders_objects(self) -> dict:
+        folders_dict = {}
 
-    @property
-    def folder_object(self) -> object:
-        return [vim.Folder]
+        folders = self._get_vsphere_objects(
+                content=self.service_instance.content,
+                vim_type=[vim.Folder]
+            )
+        for folder in folders:
+            folders_dict[folder.name] = folder
+
+        return folders_dict
+
+    def _get_all_resource_pools_objects(self) -> dict:
+        resource_pools_dict = {}
+
+        resource_pools = self._get_vsphere_objects(
+                content=self.service_instance.content,
+                vim_type=[vim.ResourcePool]
+            )
+        for resource_pool in resource_pools:
+            resource_pools_dict[resource_pool.name] = resource_pool
+
+        return resource_pools_dict
+
+    def create_vm(self, vm_template: CollectorTemplateNames, desired_vm_name: str):
+
+        vm_to_clone_from_obj = self.get_specific_vm_from_cluster(vm_search_type=VmSearchTypeEnum.VM_NAME, txt_to_search=vm_template.value)
+        resource_pool = self._get_resource_pool_object()
+        folders_dict = self._get_all_folders_objects()
+
+        if vm_to_clone_from_obj is not None:
+            desired_vm_name = f"{desired_vm_name}_{int(time.time())}"
+
+            created_vm_obj = vm_to_clone_from_obj.clone_vm_by_name(
+                vm_template_object=vm_to_clone_from_obj.vm_obj,
+                resource_pool_object=resource_pool,
+                folder_object=folders_dict['vm'],
+                power_on=True,
+                new_vm_name=desired_vm_name
+            )
+            return created_vm_obj
+        else:
+            raise Exception(f"Machine\Template with the name: {desired_vm_name} does not exist, can not clone")
 
     @allure.step("Connect to vsphere")
     def connect_to_vsphere(self, user_name: str = USER_NAME_DOMAIN, password: str = PASSWORD):
@@ -57,6 +99,8 @@ class VsphereClusterHandler(object):
                 user=user_name,
                 pwd=password
             )
+            if self._service_instance is not None:
+                self._container_view = self.service_instance.content.viewManager.CreateContainerView
             atexit.register(Disconnect, self._service_instance)
 
         except IOError as io_error:
@@ -138,13 +182,75 @@ class VsphereClusterHandler(object):
 
         return vsphere_operations
 
+    def _get_vsphere_objects(self, content, vim_type, folder=None, recurse=True):
+        """
+            Search the managed object for the name and type specified.
+
+            Sample Usage:
+                get_obj(content, [vim.Datastore], "Datastore Name")
+        """
+        if not folder:
+            folder = content.rootFolder
+
+        obj = {}
+        container = content.viewManager.CreateContainerView(folder, vim_type, recurse)
+
+        for managed_object_ref in container.view:
+            obj[managed_object_ref] = managed_object_ref.name
+
+        container.Destroy()
+        return obj
+
+    def _get_obj(self, content, vim_type, name, folder=None, recurse=True):
+        """
+        Retrieves the managed object for the name and type specified
+        Throws an exception if of not found.
+
+        Sample Usage:
+            get_obj(content, [vim.Datastore], "Datastore Name")
+        """
+        obj = self._search_for_obj(content, vim_type, name, folder, recurse)
+        if not obj:
+            raise RuntimeError("Managed Object " + name + " not found.")
+        return obj
+
+    def _search_for_obj(self,content, vim_type, name, folder=None, recurse=True):
+        """
+        Search the managed object for the name and type specified
+
+        Sample Usage:
+            get_obj(content, [vim.Datastore], "Datastore Name")
+        """
+        if folder is None:
+            folder = content.rootFolder
+
+        obj = None
+        container = content.viewManager.CreateContainerView(folder, vim_type, recurse)
+
+        for managed_object_ref in container.view:
+            if managed_object_ref.name == name:
+                obj = managed_object_ref
+                break
+        container.Destroy()
+        return obj
+
 
 if __name__ == '__main__':
-    cluster_details = ClusterDetails(vhost="10.51.100.120", name="Ensilo_vcsa20", resource_pools=["QA22", "QA23"],
-                                     datastore_name="loc-vt22-r10-d1")
+    from infra.vpshere import vsphere_cluster_details, vsphere_utils
+
+    cluster_details = vsphere_cluster_details.ENSILO_VCSA_40
     vsphere_cluster_handler = VsphereClusterHandler(cluster_details=cluster_details)
-    vm_ops = vsphere_cluster_handler.get_specific_vm_from_cluster(vm_search_type=VmSearchTypeEnum.VM_NAME,
-                                                                  txt_to_search='dima_colletor10x64')
+
+    # vsphere_cluster_handler.get_specific_vm_from_cluster(vm_search_type=VmSearchTypeEnum.VM_NAME,
+    #                                                      txt_to_search=CollectorTemplateNames.WIN10_X64.value
+    #                                                      )
+
+    created_vm = vsphere_cluster_handler.create_vm(
+        vm_template=CollectorTemplateNames.WIN10_X64,
+        desired_vm_name="dima_colletor10x64"
+    )
+
+    created_vm_ip = created_vm.guest.ipAddress
 
     # vm_ops.power_off()
     # vm_ops.snapshot_rename(vm_ops.vm_obj.snapshot.currentSnapshot, 'dima test new name')
