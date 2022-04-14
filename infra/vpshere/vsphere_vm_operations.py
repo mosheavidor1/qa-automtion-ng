@@ -10,6 +10,7 @@ import time
 
 import allure
 from pyVim.task import WaitForTask
+from pyVmomi import vim
 from infra.allure_report_handler.reporter import Reporter
 
 __author__ = "Dmitry Banny"
@@ -223,3 +224,35 @@ class VsphereMachineOperations:
         task = self._vm_obj.Suspend()
         WaitForTask(task, self._service_instance)
         # Reporter.report(f"Machine suspend: {task.info.state}")
+
+    @allure.step("Create VM from template")
+    def clone_vm_by_name(self,
+                         vm_template_object,
+                         resource_pool_object,
+                         folder_object,
+                         new_vm_name,
+                         power_on=True):
+
+        Reporter.report("Cloning specifications of the template")
+        spec_clone = self._create_clone_spec(
+            resource_pool_object=resource_pool_object, power_on=power_on
+        )
+
+        Reporter.report("Start VM cloning and wait for task finished")
+        task = vm_template_object.Clone(
+            folder=folder_object, name=new_vm_name, spec=spec_clone
+        )
+        WaitForTask(task, self._service_instance)
+        assert task.info.state == 'success', f"VM clone state: {task.info.state}"
+
+        return task.info.result
+
+    def _create_clone_spec(self, resource_pool_object, power_on=True):
+        clone_spec = vim.vm.CloneSpec()
+
+        relocatespec = vim.vm.RelocateSpec()
+        relocatespec.pool = resource_pool_object
+        clone_spec.location = relocatespec
+        clone_spec.powerOn = power_on
+
+        return clone_spec
