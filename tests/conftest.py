@@ -2,12 +2,15 @@ from typing import List
 
 import allure
 
+import desired_env_details
 import sut_details
 from infra.allure_report_handler.reporter import Reporter
 from infra.assertion.assertion import Assertion
+from infra.containers.environment_creation_containers import MachineType, EnvironmentSystemComponent
 from infra.containers.management_api_body_containers import CreateOrganizationRestData, CreateUserRestData, \
     OrganizationRestData
-from infra.enums import CollectorTypes, SystemState, UserRoles
+from infra.enums import CollectorTypes, SystemState, UserRoles, ComponentType
+from infra.environment_creation.environment_creation_handler import EnvironmentCreationHandler
 from infra.system_components.aggregator import Aggregator
 from infra.system_components.collector import Collector
 from infra.system_components.core import Core
@@ -219,7 +222,7 @@ def create_results_json(session, tests_results: dict):
 
 
 @pytest.fixture(scope="session")
-def management():
+def management(setup_environment):
     management: Management = Management.instance()
     yield management
 
@@ -282,7 +285,6 @@ def init_jira_xray_object(management, aggregator, core, collector):
     jira_xray_handler.collector = collector
 
 
-
 @pytest.fixture(scope="session", autouse=True)
 def tenant(management, collector):
     license_capacity = 100
@@ -291,7 +293,8 @@ def tenant(management, collector):
     management.tenant.collector = collector
 
     # admin - check if organization exist, else create it
-    is_org_exist = management.admin_rest_api_client.organizations.is_organization_exist(organization_name=management.tenant.organization)
+    is_org_exist = management.admin_rest_api_client.organizations.is_organization_exist(
+        organization_name=management.tenant.organization)
 
     if not is_org_exist:
         default_org_data = management.admin_rest_api_client.organizations.get_specific_organization_data("Default")
@@ -358,7 +361,8 @@ def tenant(management, collector):
 
 
 @pytest.fixture(scope="session", autouse=sut_details.debug_mode)
-def create_snapshot_for_all_collectors_at_the_beginning_of_the_run(management: Management, collector: Collector, tenant):
+def create_snapshot_for_all_collectors_at_the_beginning_of_the_run(management: Management, collector: Collector,
+                                                                   tenant):
     """
     The role of this method is to create snapshot before the tests start, in static mode (paused).
     we do it because we revert to this (initial) snapshot before each test start in order to run on "clean"
@@ -384,7 +388,6 @@ def revert_to_snapshot(management, collector):
 
 @pytest.fixture(scope="function", autouse=True)
 def collector_health_check(management: Management, collector: Collector):
-
     if not sut_details.debug_mode:
         # check if collector is up only in case the debug mode = False to validate that the system starts with
         # "healthy collecor

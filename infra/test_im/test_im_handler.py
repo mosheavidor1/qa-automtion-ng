@@ -164,7 +164,7 @@ class TestImHandler:
         }
 
         Reporter.report("Going to start TEST IM - through proxy windows machine")
-        url = f'http://{third_party_details.TEST_IM_PROXY_IP}:{third_party_details.TEST_IM_PROXY_PORT}/startTestim'
+        url = f'http://{third_party_details.AUTOMATION_SERVICES_UTILS_MACHINE_IP}:{third_party_details.TEST_IM_PROXY_PORT}/startTestim'
         Reporter.attach_str_as_file(file_name=url, file_content=json.dumps(data, indent=4))
 
         response = requests.post(url=url, json=data, timeout=test_timeout)

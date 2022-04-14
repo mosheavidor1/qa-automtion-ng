@@ -6,7 +6,7 @@ import requests
 from functools import singledispatch
 
 from infra.allure_report_handler.reporter import Reporter
-from infra.enums import HttpRequestMethods
+from infra.enums import HttpRequestMethodsEnum
 
 
 @singledispatch
@@ -89,7 +89,7 @@ class HttpRequesterUtils:
 
     @staticmethod
     @allure.step("Going to send an HTTP request")
-    def send_request(request_method: HttpRequestMethods,
+    def send_request(request_method: HttpRequestMethodsEnum,
                      url: str,
                      auth: tuple = None,
                      headers: dict = None,
@@ -98,30 +98,34 @@ class HttpRequesterUtils:
 
         Reporter.attach_str_as_file(file_name='request_method', file_content=request_method.name)
         Reporter.attach_str_as_file(file_name='url', file_content=url)
-        Reporter.attach_str_as_file(file_name='headers', file_content=json.dumps(headers, indent=4))
-        Reporter.attach_str_as_file(file_name='body', file_content=json.dumps(headers, indent=4))
+
+        if headers is not None:
+            Reporter.attach_str_as_file(file_name='headers', file_content=json.dumps(headers, indent=4))
+
+        if body is not None:
+            Reporter.attach_str_as_file(file_name='body', file_content=json.dumps(body, indent=4))
 
         response = None
         match request_method:
 
-            case HttpRequestMethods.GET:
+            case HttpRequestMethodsEnum.GET:
                 response = requests.get(url=url, auth=auth, headers=headers)
 
-            case HttpRequestMethods.POST:
+            case HttpRequestMethodsEnum.POST:
                 body = json.dumps(body) if body is not None else body
                 response = requests.post(url=url, auth=auth, headers=headers, data=body)
 
-            case HttpRequestMethods.PUT:
+            case HttpRequestMethodsEnum.PUT:
                 body = json.dumps(body) if body is not None else body
                 response = requests.put(url=url, auth=auth, headers=headers, data=body)
 
-            case HttpRequestMethods.DELETE:
+            case HttpRequestMethodsEnum.DELETE:
                 response = requests.delete(url=url, auth=auth, headers=headers)
 
-            case HttpRequestMethods.CONNECT | \
-                 HttpRequestMethods.HEAD | \
-                 HttpRequestMethods.OPTIONS | \
-                 HttpRequestMethods.TRACE:
+            case HttpRequestMethodsEnum.CONNECT | \
+                 HttpRequestMethodsEnum.HEAD | \
+                 HttpRequestMethodsEnum.OPTIONS | \
+                 HttpRequestMethodsEnum.TRACE:
                 raise Exception(f"There is not implementation for {request_method.name}, sorry :(")
 
         Reporter.attach_str_as_file(file_name='response status code', file_content=str(response.status_code))
