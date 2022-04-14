@@ -2,7 +2,7 @@
 """
 import allure
 from infra.allure_report_handler.reporter import Reporter
-from infra.enums import HttpRequestMethods
+from infra.enums import HttpRequestMethodsEnum
 from infra.utils.utils import HttpRequesterUtils
 
 
@@ -32,7 +32,7 @@ class VsphereMachineRestApiOperations:
         """Creation of a session ID is must to run a commands via Rest-API."""
         path = "/rest/com/vmware/cis/session"
 
-        response = HttpRequesterUtils.send_request(request_method=HttpRequestMethods.POST,
+        response = HttpRequesterUtils.send_request(request_method=HttpRequestMethodsEnum.POST,
                                                    url=f"{self._vhost}{path}",
                                                    auth=self._auth)
         try:
@@ -50,7 +50,7 @@ class VsphereMachineRestApiOperations:
 
         if self._vm_info:
             path = f"/rest/vcenter/vm/{self._vm_info['vm']}"
-            response = HttpRequesterUtils.send_request(request_method=HttpRequestMethods.GET,
+            response = HttpRequesterUtils.send_request(request_method=HttpRequestMethodsEnum.GET,
                                                        url=f"{self._vhost}{path}",
                                                        auth=self._auth,
                                                        headers=self._headers)
@@ -60,7 +60,7 @@ class VsphereMachineRestApiOperations:
         """This function finds a VM information by the name."""
         path = "/rest/vcenter/vm"
 
-        all_vms = HttpRequesterUtils.send_request(request_method=HttpRequestMethods.GET,
+        all_vms = HttpRequesterUtils.send_request(request_method=HttpRequestMethodsEnum.GET,
                                                   url=f"{self._vhost}{path}",
                                                   auth=self._auth,
                                                   headers=self._headers)
@@ -76,7 +76,7 @@ class VsphereMachineRestApiOperations:
         path = f"/rest/vcenter/vm/{self._vm_info['vm']}/power/reset"
 
         Reporter.report(f"Resetting VM: '{self._vm_info['vm']}'")
-        HttpRequesterUtils.send_request(request_method=HttpRequestMethods.POST,
+        HttpRequesterUtils.send_request(request_method=HttpRequestMethodsEnum.POST,
                                         url=f"{self._vhost}{path}",
                                         headers=self._headers,
                                         auth=self._auth)
@@ -86,7 +86,7 @@ class VsphereMachineRestApiOperations:
         path = f"/rest/vcenter/vm/{self._vm_info['vm']}/power/stop"
 
         Reporter.report(f"Stopping VM: '{self._vm_info['vm']}'")
-        HttpRequesterUtils.send_request(request_method=HttpRequestMethods.POST,
+        HttpRequesterUtils.send_request(request_method=HttpRequestMethodsEnum.POST,
                                         url=f"{self._vhost}{path}",
                                         headers=self._headers,
                                         auth=self._auth)
@@ -96,7 +96,7 @@ class VsphereMachineRestApiOperations:
         path = f"/rest/vcenter/vm/{self._vm_info['vm']}/power/suspend"
 
         Reporter.report(f"Suspending VM: '{self._vm_info['vm']}'")
-        HttpRequesterUtils.send_request(request_method=HttpRequestMethods.POST,
+        HttpRequesterUtils.send_request(request_method=HttpRequestMethodsEnum.POST,
                                         url=f"{self._vhost}{path}",
                                         headers=self._headers,
                                         auth=self._auth)
@@ -106,7 +106,7 @@ class VsphereMachineRestApiOperations:
         path = f"/rest/vcenter/vm/{self._vm_info['vm']}/power/start"
 
         Reporter.report(f"Starting VM: '{self._vm_info['vm']}'")
-        HttpRequesterUtils.send_request(request_method=HttpRequestMethods.POST,
+        HttpRequesterUtils.send_request(request_method=HttpRequestMethodsEnum.POST,
                                         url=f"{self._vhost}{path}",
                                         headers=self._headers,
                                         auth=self._auth)

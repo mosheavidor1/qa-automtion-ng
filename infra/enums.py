@@ -17,6 +17,7 @@ class SystemState(Enum):
 
 class ComponentType(Enum):
     MANAGEMENT = 'manager'
+    BOTH = 'both'
     AGGREGATOR = 'aggregator'
     CORE = 'core'
 
@@ -44,7 +45,7 @@ class CollectorTypes(Enum):
     LINUX_UBUNTU_20 = 'LINUX_UBUNTU_20'
 
 
-class HttpRequestMethods(Enum):
+class HttpRequestMethodsEnum(Enum):
     GET = 'GET'
     HEAD = 'HEAD'
     POST = 'POST'
