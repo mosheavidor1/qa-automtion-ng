@@ -34,13 +34,8 @@ class WindowsServiceStartTypeEnum(Enum):
 
 class WindowsStation(OsStation):
 
-    def __init__(self,
-                 host_ip,
-                 user_name,
-                 password,
-                 encrypted_connection: bool = True):
+    def __init__(self, host_ip, user_name, password, encrypted_connection: bool = True):
         self.__encrypted_connection = encrypted_connection
-
         super().__init__(host_ip=host_ip,
                          user_name=user_name,
                          password=password)

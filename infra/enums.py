@@ -95,3 +95,7 @@ class ManagementUserRoles(Enum):
     ROLE_ADMIN = 'ROLE_ADMIN'
     ROLE_HOSTER = 'ROLE_HOSTER'
 
+
+class LinuxDistroTypes(Enum):
+    UBUNTU = 'UBUNTU'
+    CENTOS = 'CENTOS'

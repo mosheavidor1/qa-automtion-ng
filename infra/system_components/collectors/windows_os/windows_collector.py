@@ -5,6 +5,7 @@ from typing import List
 import allure
 
 import third_party_details
+from infra.os_stations.windows_station import WindowsStation
 from infra.system_components.collectors.collectors_common_utils import (
     wait_until_collector_pid_disappears,
     wait_until_collector_pid_appears
@@ -30,18 +31,12 @@ SERVICE_NAME = "FortiEDRCollectorService."
 
 class WindowsCollector(Collector):
 
-    def __init__(self,
-                 host_ip: str,
-                 user_name: str,
-                 password: str,
-                 collector_details: CollectorDetails,
+    def __init__(self, host_ip: str, user_name: str, password: str, collector_details: CollectorDetails,
                  encrypted_connection: bool = True):
-        super().__init__(host_ip=host_ip,
-                         user_name=user_name,
-                         password=password,
-                         collector_details=collector_details,
-                         os_type=OsTypeEnum.WINDOWS,
-                         encrypted_connection=encrypted_connection)
+        super().__init__(host_ip=host_ip)
+        self._os_station = WindowsStation(host_ip=host_ip, user_name=user_name, password=password,
+                                         encrypted_connection=encrypted_connection)
+        self._details = collector_details
         self._process_id = self.get_current_process_id()
         self.__collector_installation_path: str = r"C:\Program Files\Fortinet\FortiEDR"
         self.__collector_service_exe: str = f"{self.__collector_installation_path}\FortiEDRCollectorService.exe"
@@ -55,6 +50,14 @@ class WindowsCollector(Collector):
         self.__collector_logs_folder: str = f"{self.__program_data}\Logs"
         self.__qa_files_path: str = "C:\\qa"
         self._kill_all_undesired_processes()
+
+    @property
+    def os_station(self) -> WindowsStation:
+        return self._os_station
+
+    @property
+    def details(self) -> CollectorDetails:
+        return self._details
 
     @allure.step("Kill all undesired process that running on windows collector")
     def _kill_all_undesired_processes(self):
@@ -101,9 +104,6 @@ class WindowsCollector(Collector):
     def get_qa_files_path(self):
         return self.__qa_files_path
 
-    def get_collector_info_from_os(self):
-        pass
-
     def _get_crash_folders(self) -> List[str]:
         """
         :return: the directories that crash files written to
@@ -142,18 +142,6 @@ class WindowsCollector(Collector):
         Reporter.report(f"Cached process ID is: {self._process_id}")
         self._process_id = self.get_current_process_id()
         Reporter.report(f"Collector process ID updated to: {self._process_id}")
-
-    def is_up(self):
-        pass
-
-    def upgrade(self):
-        pass
-
-    def is_installed(self):
-        pass
-
-    def is_enabled(self):
-        pass
 
     def is_status_running_in_cli(self):
         return self.get_collector_status() == SystemState.RUNNING

@@ -14,10 +14,7 @@ from infra.vpshere.vsphere_vm_operations import VsphereMachineOperations
 
 class OsStation(metaclass=ABCMeta):
 
-    def __init__(self,
-                 host_ip: str,
-                 user_name: str,
-                 password: str):
+    def __init__(self, host_ip: str, user_name: str, password: str):
         self._host_ip = host_ip
         self._user_name = user_name
         self._password = password
@@ -25,7 +22,6 @@ class OsStation(metaclass=ABCMeta):
         self._os_architecture = None
         self._os_version = None
         self._os_name = None
-
         self._init_os_details()
         self._vm_operations: VsphereMachineOperations = VsphereUtils.get_specific_vm_from_vsphere(
             vm_search_type=VmSearchTypeEnum.VM_IP_V4,
