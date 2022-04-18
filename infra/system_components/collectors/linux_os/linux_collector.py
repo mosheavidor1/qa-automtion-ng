@@ -2,8 +2,9 @@ import allure
 import time
 from typing import List
 import third_party_details
+from infra.os_stations.linux_station import LinuxStation
 from infra.containers.system_component_containers import CollectorDetails
-from infra.enums import OsTypeEnum, SystemState
+from infra.enums import SystemState, LinuxDistroTypes
 from infra.system_components.collector import Collector
 from infra.utils.utils import StringUtils
 from infra.allure_report_handler.reporter import Reporter
@@ -13,6 +14,7 @@ from infra.system_components.collectors.collectors_common_utils import (
 )
 from sut_details import management_registration_password
 
+PREFIX_INSTALLER_FILE_NAME = "FortiEDRCollectorInstaller"
 SERVICE_NAME = "FortiEDRCollector"
 COLLECTOR_INSTALLER_FOLDER_PATH = "/tmp/version_files"
 COLLECTOR_INSTALLATION_FOLDER_PATH = f"/opt/{SERVICE_NAME}"
@@ -29,24 +31,25 @@ DEFAULT_AGGREGATOR_PORT = 8081
 
 
 class LinuxCollector(Collector):
-
-    def __init__(self,
-                 host_ip: str,
-                 user_name: str,
-                 password: str,
-                 collector_details: CollectorDetails):
-        super().__init__(host_ip=host_ip,
-                         user_name=user_name,
-                         password=password,
-                         collector_details=collector_details,
-                         os_type=OsTypeEnum.LINUX)
-
+    def __init__(self, host_ip: str, user_name: str, password: str, collector_details: CollectorDetails):
+        super().__init__(host_ip=host_ip)
+        self._os_station = LinuxStation(host_ip=host_ip, user_name=user_name, password=password)
+        self._details = collector_details
+        self.distro_type = self.os_station.distro_type
         self._process_id = self.get_current_process_id()
 
     @property
     def cached_process_id(self) -> int:
         """ Caching the current process id in order later validate if it changed """
         return self._process_id
+
+    @property
+    def os_station(self) -> LinuxStation:
+        return self._os_station
+
+    @property
+    def details(self) -> CollectorDetails:
+        return self._details
 
     @allure.step("Get current collector process ID")
     def get_current_process_id(self):
@@ -72,15 +75,12 @@ class LinuxCollector(Collector):
 
         return version
 
-    def get_collector_info_from_os(self):
-        pass
-
     @allure.step("{0} - Stop collector")
     def stop_collector(self, password=None):
         password = password or REGISTRATION_PASS
         cmd = f"{COLLECTOR_CONTROL_PATH} --stop {password}"
         result = self.os_station.execute_cmd(cmd=cmd, fail_on_err=True)
-        assert result.lower() == "stop operation succeeded"
+        assert "stop operation succeeded" in result.lower(), f"Wrong output when stopping collector got: {result}"
         wait_until_collector_pid_disappears(self)
         self.update_process_id()
 
@@ -90,18 +90,6 @@ class LinuxCollector(Collector):
         self.os_station.execute_cmd(cmd=cmd, fail_on_err=True)
         wait_until_collector_pid_appears(self)
         self.update_process_id()
-
-    def is_up(self):
-        pass
-
-    def upgrade(self):
-        pass
-
-    def is_installed(self):
-        pass
-
-    def is_enabled(self):
-        pass
 
     @allure.step("{0} - Checking if collector has crash")
     def has_crash(self):
@@ -167,9 +155,6 @@ class LinuxCollector(Collector):
     def is_status_down_in_cli(self):
         return self.get_collector_status() == SystemState.DOWN
 
-    def start_health_mechanism(self):
-        pass
-
     @allure.step("Reboot linux Collector")
     def reboot(self):
         self.os_station.reboot()
@@ -181,23 +166,19 @@ class LinuxCollector(Collector):
         result = self.os_station.is_path_exist(COLLECTOR_INSTALLATION_FOLDER_PATH)
         return result
 
-    @allure.step("{0} - Get the installed package name")
-    def get_installed_package_name(self):
-        cmd = f"rpm -qa | grep -i {SERVICE_NAME}"
-        full_name = self.os_station.execute_cmd(cmd=cmd, asynchronous=False, fail_on_err=True)
-        if full_name is None:
-            return None
-        short_name = full_name.split("-")[0]
-        return short_name
+    @allure.step("{0} - Get the collector's installed package name")
+    def get_package_name(self):
+        """ The package name is different in each linux distro"""
+        package_name = self.os_station.get_installed_package_name(SERVICE_NAME)
+        return package_name
 
     @allure.step("{0} - Uninstall linux Collector")
     def uninstall_collector(self, registration_password=None, stop_collector=True):
         """ Must stop collector before uninstallation """
-        package_name = self.get_installed_package_name()
-        assert package_name is not None, f"{self} is not installed"
+        package_to_uninstall = self._get_package_name_to_uninstall()
         if stop_collector:
             self.stop_collector(registration_password)
-        cmd = f"rpm -e {package_name}"
+        cmd = f"{self.os_station.distro_data.commands.uninstall} {package_to_uninstall}"
         result = self.os_station.execute_cmd(cmd=cmd, asynchronous=False)
         wait_until_collector_pid_disappears(self)
         self.update_process_id()
@@ -205,7 +186,7 @@ class LinuxCollector(Collector):
 
     @allure.step("{0} - Install linux Collector")
     def install_collector(self, installer_path):
-        install_cmd = f"yum install -y {installer_path}"
+        install_cmd = f"{self.os_station.distro_data.commands.install} {installer_path}"
         result = self.os_station.execute_cmd(cmd=install_cmd, fail_on_err=False)
         assert "FortiEDR Collector installed successfully" in result, f"{self} failed to install"
 
@@ -245,21 +226,33 @@ class LinuxCollector(Collector):
             for file_path in files_paths:
                 self.os_station.remove_file(file_path=file_path)
 
-    @allure.step("Prepare linux collector version installer")
-    def prepare_version_installer_file(self, version, package_name):
+    @allure.step("Prepare linux collector installer file")
+    def prepare_version_installer_file(self, collector_version):
         """ If the collector installer file does not exist on local machine, we will copy it from the shared drive """
-        arch = self.os_station.get_os_architecture()
-        installer_name = f"{package_name}-{version}.{arch}.rpm"
-        installer_local_path = f"{COLLECTOR_INSTALLER_FOLDER_PATH}/{installer_name}"
+        distro_version = self.os_station.distro_data.version_name
+        suffix_type = self.os_station.distro_data.packages_suffix
+        installer_file_name = f'{PREFIX_INSTALLER_FILE_NAME}_{distro_version}-{collector_version}.{suffix_type}'
+        installer_local_path = f"{COLLECTOR_INSTALLER_FOLDER_PATH}/{installer_file_name}"
         is_installer_exist_on_machine = self.os_station.is_path_exist(path=installer_local_path)
         if not is_installer_exist_on_machine:
             Reporter.report(f"'{installer_local_path}' does not exist, copy it from shared folder")
-            shared_drive_path = fr'{third_party_details.SHARED_DRIVE_LINUX_VERSIONS_PATH}\{version}'
+            shared_drive_path = fr'{third_party_details.SHARED_DRIVE_LINUX_VERSIONS_PATH}\{collector_version}'
             self.os_station.copy_files_from_shared_folder(
                 target_path_in_local_machine=COLLECTOR_INSTALLER_FOLDER_PATH, shared_drive_path=shared_drive_path,
                 shared_drive_user_name=third_party_details.USER_NAME,
                 shared_drive_password=third_party_details.PASSWORD,
-                files_to_copy=[installer_name])
+                files_to_copy=[installer_file_name])
             assert self.os_station.is_path_exist(path=installer_local_path), \
                 f"Installer file '{installer_local_path}' was not copied"
         return installer_local_path
+
+    def _get_package_name_to_uninstall(self):
+        """ Each linux distribution has its own collector package name for uninstallation """
+        if self.os_station.distro_type == LinuxDistroTypes.UBUNTU:
+            package_name_to_uninstall = PREFIX_INSTALLER_FILE_NAME.lower()
+        elif self.os_station.distro_type == LinuxDistroTypes.CENTOS:
+            package_name_to_uninstall = f"{PREFIX_INSTALLER_FILE_NAME}_{self.os_station.distro_data.version_name}"
+        else:
+            raise Exception(f"{self.os_station.distro_type} is not supported yet")
+
+        return package_name_to_uninstall

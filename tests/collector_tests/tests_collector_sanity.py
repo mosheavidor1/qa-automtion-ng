@@ -114,17 +114,16 @@ def test_uninstall_install_configure_linux_collector(management, aggregator, col
     """
     with allure.step(f"Before uninstalling {collector}, prepare the installer file:"):
         version_before_uninstall = collector.get_version()
-        package_name_before_uninstall = collector.get_installed_package_name()
-        installer_path = collector.prepare_version_installer_file(version=version_before_uninstall,
-                                                                  package_name=package_name_before_uninstall)
+        package_name_before_uninstall = collector.get_package_name()
+        installer_path = collector.prepare_version_installer_file(collector_version=version_before_uninstall)
 
     with allure.step(f"Uninstall {collector} and validate:"):
         uninstall_output = collector.uninstall_collector(registration_password=management.tenant.registration_password)
         Reporter.report(f"Validate {collector} uninstalled successfully:")
-        LinuxCollectorUtils.validate_uninstallation_cmd_output(uninstall_output)
+        LinuxCollectorUtils.validate_uninstallation_cmd_output(uninstall_output, collector)
         Reporter.report(f"Validate that {collector} installation folder & installed package removed:")
         assert not collector.is_installation_folder_exists(), f"Installation folder was not deleted"
-        package_name_after_uninstall = collector.get_installed_package_name()
+        package_name_after_uninstall = collector.get_package_name()
         assert package_name_after_uninstall is None, \
             f"Collector package was not deleted from OS, name: '{package_name_after_uninstall}'"
         wait_for_disconnected_collector_status_in_mgmt(management, collector)
@@ -138,7 +137,7 @@ def test_uninstall_install_configure_linux_collector(management, aggregator, col
     with allure.step(f"Validate {collector} installed and configured successfully:"):
         Reporter.report(f"Validate {collector} installation folder & installed package name:")
         assert collector.is_installation_folder_exists(), f"Installation folder was not created"
-        installed_package_name = collector.get_installed_package_name()
+        installed_package_name = collector.get_package_name()
         assert installed_package_name == package_name_before_uninstall, \
             f"{collector} Package name is '{installed_package_name}' instead of '{package_name_before_uninstall}'"
         Reporter.report(f"Validate {collector} version:")

@@ -1,6 +1,7 @@
 import re
 from datetime import datetime
 from typing import List
+from infra.enums import LinuxDistroTypes
 
 import allure
 import paramiko
@@ -11,22 +12,19 @@ from infra.decorators import retry
 from infra.os_stations.os_station_base import OsStation
 from infra.utils.utils import StringUtils
 from infra.common_utils import wait_for_predict_condition
+from .linux_distros import LinuxDistroDetails
 
 INTERVAL_STATION_KEEPALIVE = 5
-WAIT_FOR_STATION_UP_TIMEOUT = 5 * 60
-WAIT_FOR_STATION_DOWN_TIMEOUT = WAIT_FOR_STATION_UP_TIMEOUT
+WAIT_FOR_STATION_UP_TIMEOUT = 4 * 60
+WAIT_FOR_STATION_DOWN_TIMEOUT = 2 * 60
 
 
 class LinuxStation(OsStation):
 
-    def __init__(self,
-                 host_ip: str,
-                 user_name: str,
-                 password: str):
-        OsStation.__init__(self,
-                           host_ip=host_ip,
-                           user_name=user_name,
-                           password=password)
+    def __init__(self, host_ip: str, user_name: str, password: str):
+        OsStation.__init__(self, host_ip=host_ip, user_name=user_name, password=password)
+        self.distro_type = self.get_distro_type()
+        self.distro_data = LinuxDistroDetails(self.distro_type)
 
     @retry
     def connect(self):
@@ -103,6 +101,12 @@ class LinuxStation(OsStation):
 
     def get_hostname(self):
         raise Exception("Not Implemented yet")
+
+    def get_installed_package_name(self, program_name):
+        """ Return the desired program name as installed in the linux distro """
+        cmd = f"{self.distro_data.commands.installed_packages} | grep -i {program_name}"
+        package_installed_name = self.execute_cmd(cmd=cmd)
+        return package_installed_name
 
     def get_os_version(self):
         cmd = 'hostnamectl | grep -i "Kernel"'
@@ -414,3 +418,10 @@ class LinuxStation(OsStation):
         cmd = f'date -r {file_path} +"{date_format}"'
         output = self.execute_cmd(cmd=cmd, return_output=True, fail_on_err=True)
         return output
+
+    def get_distro_type(self):
+        os_name = self.os_name.lower()
+        if "ubuntu" in os_name:
+            return LinuxDistroTypes.UBUNTU
+        elif "centos" in os_name:
+            return LinuxDistroTypes.CENTOS

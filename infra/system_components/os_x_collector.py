@@ -32,8 +32,6 @@ class OsXCollector(Collector):
     def get_version(self):
         pass
 
-    def get_collector_info_from_os(self):
-        pass
 
     def reboot(self):
         pass
@@ -42,18 +40,6 @@ class OsXCollector(Collector):
         pass
 
     def start_collector(self):
-        pass
-
-    def is_up(self):
-        pass
-
-    def upgrade(self):
-        pass
-
-    def is_installed(self):
-        pass
-
-    def is_enabled(self):
         pass
 
     def has_crash(self):
@@ -69,9 +55,6 @@ class OsXCollector(Collector):
         pass
 
     def is_status_running_in_cli(self):
-        pass
-
-    def start_health_mechanism(self):
         pass
 
     def install_collector(self, version: str, aggregator_ip: str, organization: str = None, aggregator_port: int = 8081,
