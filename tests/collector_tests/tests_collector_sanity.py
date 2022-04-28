@@ -3,7 +3,7 @@ import pytest
 from tests.utils.collector_utils import CollectorUtils
 from tests.utils.linux_collector_utils import LinuxCollectorUtils
 from tests.utils.test_utils import TestUtils
-from infra.allure_report_handler.reporter import Reporter
+from infra.allure_report_handler.reporter import Reporter, TEST_STEP, INFO
 from infra.system_components.collectors.collectors_common_utils import (
     wait_for_running_collector_status_in_mgmt,
     wait_for_disconnected_collector_status_in_mgmt,
@@ -22,15 +22,15 @@ def test_stop_start_collector(management, collector):
     1. Stop a running collector and validate it stopped.
     2. Start collector and validate it started successfully.
     """
-    with allure.step(f"Stop {collector} and validate"):
+    with TEST_STEP(f"Stop {collector} and validate"):
         collector.stop_collector(password=management.tenant.registration_password)
-        Reporter.report(f"Validate {collector} stopped successfully:")
+        Reporter.report(f"Validate {collector} stopped successfully:", INFO)
         CollectorUtils.wait_for_service_down_status_in_cli(collector)
         wait_for_disconnected_collector_status_in_mgmt(management, collector)
 
-    with allure.step(f"Start {collector} and validate"):
+    with TEST_STEP(f"Start {collector} and validate"):
         collector.start_collector()
-        Reporter.report(f"Validate {collector} started successfully:")
+        Reporter.report(f"Validate {collector} started successfully:", INFO)
         wait_for_running_collector_status_in_cli(collector)
         wait_for_running_collector_status_in_mgmt(management, collector)
 

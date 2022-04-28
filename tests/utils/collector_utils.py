@@ -1,7 +1,10 @@
 import allure
+import logging
 from datetime import datetime
 from infra.system_components.collector import Collector
 from .test_utils import TestUtils
+
+logger = logging.getLogger(__name__)
 
 INSTALL_UNINSTALL_LOGS_FOLDER_PATH = "C:\\InstallUninstallLogs"
 COLLECTOR_KEEPALIVE_INTERVAL = 5
@@ -35,6 +38,7 @@ class CollectorUtils:
     @staticmethod
     @allure.step("Wait until status of {collector} in cli is 'down")
     def wait_for_service_down_status_in_cli(collector, timeout=None):
+        logger.info(f"Wait until {collector} in status down via CLI")
         timeout = timeout or MAX_WAIT_FOR_STATUS
         predict_condition_func = collector.is_status_down_in_cli
         TestUtils.wait_for_predict_condition(predict_condition_func=predict_condition_func,

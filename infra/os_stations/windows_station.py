@@ -1,10 +1,9 @@
 import random
 import re
+import logging
 from enum import Enum
 from typing import List
-
 import allure
-
 from pypsexec.client import Client
 from pypsexec.exceptions import SCMRException
 from smbprotocol.exceptions import PipeBroken
@@ -17,6 +16,8 @@ from infra.common_utils import wait_for_predict_condition
 from infra.os_stations.os_station_base import OsStation
 from infra.os_stations.ps_py_exec_client_wrapper import PsPyExecClientWrapper
 from infra.utils.utils import StringUtils
+
+logger = logging.getLogger(__name__)
 
 INTERVAL_STATION_KEEPALIVE = 5
 WAIT_FOR_STATION_UP_TIMEOUT = 5 * 60
@@ -70,6 +71,7 @@ class WindowsStation(OsStation):
             self._remote_connection_session.create_service()
 
         except Exception as e:
+            logger.debug(f"Failed to connect to windows machine, original exception: {e}")
             Reporter.report(f"Failed to connect to windows machine, original exception: {e}")
             raise e
 
@@ -84,6 +86,7 @@ class WindowsStation(OsStation):
                 self.connect()
 
             cmd = cmd.replace('\\\\', r'\\')
+            logger.debug(f"Executing command: {cmd}")
             stdout_output, stderr_err_output, status_code = self._remote_connection_session.run_executable("cmd.exe",
                                                                                                            arguments=f'/c {cmd}',
                                                                                                            timeout_seconds=timeout,
@@ -97,10 +100,8 @@ class WindowsStation(OsStation):
                 stderr_err_output = stderr_err_output.decode('utf-8')
 
                 output = stdout_output if stdout_output != '' else stderr_err_output if stderr_err_output != '' else None
-
                 if attach_output_to_report:
                     if output is not None and len(output) > 1000:
-
                         if len(output) < 2000000:
                             Reporter.attach_str_as_file(file_name=cmd, file_content=output)
                         else:
@@ -114,6 +115,7 @@ class WindowsStation(OsStation):
                 if return_output:
                     if output is not None:
                         output = output.strip()
+                    logger.debug(f"Finall Output is: {output}")
                     return output
 
         except SCMRException as e:

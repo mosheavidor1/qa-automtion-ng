@@ -1,10 +1,30 @@
+import logging
+
 import allure
+
+
+_logger = logging.getLogger('TEST_STEP')
+
+
+def _step(message):
+    """
+    1. Logs test case (allure step) msg to debug log and to Allure report.
+    2. Triggering Allure step context.
+    """
+    _logger.info(message)
+    return allure.step(message)
+
+
+INFO = _logger.info
+TEST_STEP = _step
 
 
 class Reporter:
 
     @staticmethod
-    def report(message: str):
+    def report(message: str, logger_func=None):
+        if logger_func is not None:
+            logger_func(message)
         with allure.step(message):
             pass
 
