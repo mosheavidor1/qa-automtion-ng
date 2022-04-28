@@ -1,7 +1,10 @@
 import functools
 from contextlib import contextmanager
 import allure
+import logging
 from infra.common_utils import wait_for_predict_condition
+
+logger = logging.getLogger(__name__)
 
 MAX_WAIT_FOR_PID = 10
 PID_INTERVAL = 1
@@ -21,6 +24,8 @@ def wait_until_collector_pid_disappears(collector, timeout=None):
 
 def _wait_for_process_id(collector, is_alive, timeout=None):
     """ If collector is alive so pid should not be None """
+    log_msg = "appear" if is_alive else "disappear"
+    logger.info(f"Wait for collector pid to {log_msg}")
     timeout = timeout or MAX_WAIT_FOR_PID
 
     def is_expected_pid():
@@ -37,6 +42,7 @@ def _wait_for_process_id(collector, is_alive, timeout=None):
 
 @allure.step("Wait until status of {collector} in {management} is running")
 def wait_for_running_collector_status_in_mgmt(management, collector, timeout=None):
+    logger.info(f"Wait until status of {collector} in {management} is running")
     timeout = timeout or MAX_WAIT_FOR_STATUS
     predict_condition_func = functools.partial(management.is_collector_status_running_in_mgmt, collector)
     wait_for_predict_condition(predict_condition_func=predict_condition_func, timeout_sec=timeout,
@@ -45,6 +51,7 @@ def wait_for_running_collector_status_in_mgmt(management, collector, timeout=Non
 
 @allure.step("Wait until status of {collector} in {management} is 'Disconnected'")
 def wait_for_disconnected_collector_status_in_mgmt(management, collector, timeout=None):
+    logger.info(f"Wait until status of {collector} in {management} is 'Disconnected'")
     timeout = timeout or MAX_WAIT_FOR_STATUS
     predict_condition_func = functools.partial(management.is_collector_status_disconnected_in_mgmt, collector)
     wait_for_predict_condition(predict_condition_func=predict_condition_func,
@@ -53,6 +60,7 @@ def wait_for_disconnected_collector_status_in_mgmt(management, collector, timeou
 
 @allure.step("Wait for a running status of {collector} in cli")
 def wait_for_running_collector_status_in_cli(collector, timeout=None):
+    logger.info(f"Wait for a running status of {collector} in cli")
     timeout = timeout or MAX_WAIT_FOR_STATUS
     predict_condition_func = collector.is_status_running_in_cli
     wait_for_predict_condition(predict_condition_func=predict_condition_func,
@@ -74,6 +82,7 @@ def collector_safe_operations_context(collector, is_running=True):
 
 @allure.step("Check if collectors has crashed")
 def check_if_collectors_has_crashed(collectors_list):
+    logger.debug("Check if collectors has crashed")
     crashed_collectors = []
     if collectors_list is not None and len(collectors_list) > 0:
         for collector in collectors_list:

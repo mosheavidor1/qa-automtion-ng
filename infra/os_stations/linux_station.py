@@ -5,7 +5,6 @@ from infra.enums import LinuxDistroTypes
 
 import allure
 import paramiko
-
 import third_party_details
 from infra.allure_report_handler.reporter import Reporter
 from infra.decorators import retry

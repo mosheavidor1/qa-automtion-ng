@@ -1,5 +1,5 @@
 from typing import List
-
+import logging
 import allure
 
 import desired_env_details
@@ -34,6 +34,7 @@ import pytest
 
 from infra.jira_handler.jira_xray_handler import JiraXrayHandler, TestStatusEnum
 
+logger = logging.getLogger(__name__)
 tests_results = dict()
 jira_xray_handler = JiraXrayHandler()
 
@@ -44,6 +45,7 @@ def create_environment_properties_file_for_allure_report(management: Management,
                                                          aggregator: Aggregator,
                                                          core: Core,
                                                          collector: Collector):
+    logger.info("Create environment properties file for allure report")
     alluredir = pytest_config.getoption('--alluredir')
     if alluredir is None:
         return
@@ -223,6 +225,7 @@ def create_results_json(session, tests_results: dict):
 
 @pytest.fixture(scope="session")
 def management(setup_environment):
+    logger.info("Create MGMT instance")
     management: Management = Management.instance()
     yield management
 
@@ -265,13 +268,13 @@ def collector(management):
 
     collectors = SystemComponentsFactory.get_collectors(management=management,
                                                         collector_type=collector_type_as_enum)
-
     if len(collectors) == 0:
         assert False, f"There are no registered collectors of the type {collector_type_as_enum} in management"
 
     # collector holds the list of collectors of the specific desired type (i.e. WINDOWS_10_64) so we can use any of the
     # elements in the collectors list
     # according to the assert above, if we got to this row, there is at least 1 element in the collectors list.
+    logger.info(f"Chosen this collector for the test: {collectors[0]}")
     yield collectors[0]
 
 
@@ -369,7 +372,8 @@ def create_snapshot_for_all_collectors_at_the_beginning_of_the_run(management: M
     collector environment.
     Before taking the snapshot we validate that the env is clean (stop collector, no crashes)
     """
-    Reporter.report(f"Preparing {collector} for snapshot: stop it + remove old snaps + remove crashes")
+    Reporter.report(f"Preparing {collector} for snapshot: stop it + remove old snaps + remove crashes",
+                    logger.info)
     Reporter.report("Stop because we want to take snapshot of a collector in a static mode")
     collector.stop_collector(password=management.tenant.registration_password)
     wait_for_disconnected_collector_status_in_mgmt(management, collector)
@@ -552,6 +556,7 @@ def get_collectors_machine_time(collectors: List[Collector]):
 
 @allure.step("Append logs from collectors")
 def append_logs_from_collectors(collectors: List[Collector], initial_time_stamp_dict: dict):
+    logger.info("Append logs from collectors")
     for single_collector in collectors:
         try:
             time_stamp = initial_time_stamp_dict.get(single_collector)
@@ -569,19 +574,21 @@ def revert_to_first_snapshot_for_all_collectors(management: Management, collecto
     for collector in collectors:
         first_snapshot_name = collector.os_station.vm_operations.snapshot_list[0][0]
         collector.os_station.vm_operations.snapshot_revert_by_name(snapshot_name=first_snapshot_name)
-        Reporter.report(f"{collector} vm reverted to:'{first_snapshot_name}'")
+        Reporter.report(f"{collector} vm reverted to:'{first_snapshot_name}'", logger.info)
         if 'linux' in collector.details.os_family.lower():  # To establish new connection after revert
             time.sleep(wait_after_revert)
             collector.os_station.disconnect()
-        Reporter.report("Wait until collector is offline in MGMT because it still might be online from previous test")
+        Reporter.report("Wait until collector is offline in MGMT because it still might be online from previous test",
+                        logger.info)
         wait_for_disconnected_collector_status_in_mgmt(management, collector)
-        Reporter.report("Sometimes the revert action creates a crash files so we want to remove them")
+        Reporter.report("Sometimes the revert action creates a crash files so we want to remove them",
+                        logger.info)
         collector.remove_all_crash_dumps_files()
-        Reporter.report("Start the collector so it will be ready for a new test")
+        Reporter.report("Start the collector so it will be ready for a new test", logger.info)
         collector.start_collector()
         wait_for_running_collector_status_in_cli(collector)
         wait_for_running_collector_status_in_mgmt(management, collector)
-        Reporter.report("Check that starting collector didn't create any crashes (for debugging)")
+        Reporter.report("Check that starting collector didn't create any crashes (for debugging)", logger.info)
         check_if_collectors_has_crashed([collector])
 
 

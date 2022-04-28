@@ -28,4 +28,3 @@ class TestUtils:
             is_condition = predict_condition_func()
         assert is_condition, f"Predict {predict_condition_func} still false after waiting {timeout_sec} seconds"
         Reporter.report(f"Got the expected condition: {predict_condition_func}")
-

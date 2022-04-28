@@ -1,5 +1,5 @@
 import json
-
+import warnings
 import allure
 from sshtunnel import SSHTunnelForwarder
 from sqlalchemy.orm import sessionmaker
@@ -58,15 +58,15 @@ class PostgresqlOverSshDb:
         :param sql_cmd: sql query as string
         :return: list of dict with key as column_name, and value as data
         """
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore')
+            if self._session is None:
+                self.connect()
 
-        if self._session is None:
-            self.connect()
+            if 'select' in sql_cmd.lower():
+                results = self._session.execute(sql_cmd).fetchall()
+                results_as_list_of_dicts = [{**row} for row in results]
+                Reporter.attach_str_as_file(file_name='result', file_content=json.dumps(results_as_list_of_dicts, indent=4))
+                return results_as_list_of_dicts
 
-        if 'select' in sql_cmd.lower():
-            results = self._session.execute(sql_cmd).fetchall()
-            results_as_list_of_dicts = [{**row} for row in results]
-            Reporter.attach_str_as_file(file_name='result', file_content=json.dumps(results_as_list_of_dicts, indent=4))
-            return results_as_list_of_dicts
-
-        self._session.execute(sql_cmd)
-
+            self._session.execute(sql_cmd)

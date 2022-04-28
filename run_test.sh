@@ -14,7 +14,7 @@ export PATH=$PATH:./.local/bin
 
 # pytest -v -m "${tests}" --alluredir="./allure-results" --jira-xray
 
-pytest_cmd="pytest -v "
+pytest_cmd="pytest -vs "
 
 if [ "$tests_discover_type" = "suite" ]; then
     pytest_cmd="${pytest_cmd} -m "

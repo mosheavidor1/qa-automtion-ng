@@ -1,7 +1,7 @@
 import time
 from datetime import datetime
 from typing import List
-
+import logging
 import allure
 
 import third_party_details
@@ -21,6 +21,8 @@ from infra.system_components.collectors.windows_os.windows_collector_installatio
     get_installer_path,
     generate_installation_cmd
 )
+
+logger = logging.getLogger(__name__)
 
 INTERVAL_WAIT_FOR_SERVICE = 5
 MAX_WAIT_FOR_SERVICE = 60
@@ -124,6 +126,7 @@ class WindowsCollector(Collector):
 
     @allure.step("{0} - Stop collector")
     def stop_collector(self, password=None):
+        logger.info(f"Stop {self}")
         password = password or REGISTRATION_PASS
         cmd = f'"{self.__collector_service_exe}" --stop -rp:{password}'
         self.os_station.execute_cmd(cmd=cmd, fail_on_err=True)
@@ -132,6 +135,7 @@ class WindowsCollector(Collector):
 
     @allure.step("{0} - Start collector")
     def start_collector(self):
+        logger.info(f"Start {self}")
         cmd = f'"{self.__collector_service_exe}" --start'
         self.os_station.execute_cmd(cmd=cmd, fail_on_err=True)
         wait_until_collector_pid_appears(self)
@@ -139,9 +143,9 @@ class WindowsCollector(Collector):
 
     @allure.step("Update process ID")
     def update_process_id(self):
-        Reporter.report(f"Cached process ID is: {self._process_id}")
+        Reporter.report(f"Cached process ID is: {self._process_id}", logger.debug)
         self._process_id = self.get_current_process_id()
-        Reporter.report(f"Collector process ID updated to: {self._process_id}")
+        Reporter.report(f"Collector process ID updated to: {self._process_id}", logger.debug)
 
     def is_status_running_in_cli(self):
         return self.get_collector_status() == SystemState.RUNNING
