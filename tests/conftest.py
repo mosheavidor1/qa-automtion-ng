@@ -2,15 +2,13 @@ from typing import List
 import logging
 import allure
 
-import desired_env_details
+
 import sut_details
 from infra.allure_report_handler.reporter import Reporter
 from infra.assertion.assertion import Assertion
-from infra.containers.environment_creation_containers import MachineType, EnvironmentSystemComponent
 from infra.containers.management_api_body_containers import CreateOrganizationRestData, CreateUserRestData, \
     OrganizationRestData
-from infra.enums import CollectorTypes, SystemState, UserRoles, ComponentType
-from infra.environment_creation.environment_creation_handler import EnvironmentCreationHandler
+from infra.enums import CollectorTypes, SystemState, UserRoles
 from infra.system_components.aggregator import Aggregator
 from infra.system_components.collector import Collector
 from infra.system_components.core import Core
@@ -224,7 +222,7 @@ def create_results_json(session, tests_results: dict):
 
 
 @pytest.fixture(scope="session")
-def management(setup_environment):
+def management():
     logger.info("Create MGMT instance")
     management: Management = Management.instance()
     yield management
@@ -256,7 +254,7 @@ def core(management):
 
 
 @pytest.fixture(scope="session")
-def collector(management):
+def collector(management, aggregator):
     collector_type = sut_details.collector_type
 
     if collector_type not in CollectorTypes.__members__:
@@ -268,6 +266,7 @@ def collector(management):
 
     collectors = SystemComponentsFactory.get_collectors(management=management,
                                                         collector_type=collector_type_as_enum)
+
     if len(collectors) == 0:
         assert False, f"There are no registered collectors of the type {collector_type_as_enum} in management"
 

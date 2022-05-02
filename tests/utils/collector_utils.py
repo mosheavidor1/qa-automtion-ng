@@ -6,7 +6,6 @@ from .test_utils import TestUtils
 
 logger = logging.getLogger(__name__)
 
-INSTALL_UNINSTALL_LOGS_FOLDER_PATH = "C:\\InstallUninstallLogs"
 COLLECTOR_KEEPALIVE_INTERVAL = 5
 MAX_WAIT_FOR_STATUS = 5 * 60
 
@@ -63,10 +62,3 @@ class CollectorUtils:
         management.tenant.rest_api_client.policies.assign_policy('Exfiltration Prevention', group_name, timeout=1)
         management.tenant.rest_api_client.policies.assign_policy('Execution Prevention', group_name, timeout=1)
         management.tenant.rest_api_client.policies.assign_policy('Ransomware Prevention', group_name)
-
-    @staticmethod
-    def create_logs_path(collector: Collector, prefix):
-        logs_file_name = f"{prefix}_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.txt"
-        logs_folder = collector.os_station.create_new_folder(fr'{INSTALL_UNINSTALL_LOGS_FOLDER_PATH}')
-        logs_path = fr"{logs_folder}\{logs_file_name}"
-        return logs_path

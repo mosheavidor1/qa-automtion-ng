@@ -29,6 +29,7 @@ MAX_WAIT_FOR_SERVICE = 60
 REGISTRATION_PASS = management_registration_password
 DEFAULT_AGGREGATOR_PORT = 8081
 SERVICE_NAME = "FortiEDRCollectorService."
+INSTALL_UNINSTALL_LOGS_FOLDER_PATH = "C:\\InstallUninstallLogs"
 
 
 class WindowsCollector(Collector):
@@ -270,14 +271,21 @@ class WindowsCollector(Collector):
             assert False, "Failed to start collector service, check what happens in logs"
 
     @allure.step("{0} - Install FortiEDR Collector")
-    def install_collector(self, version: str, aggregator_ip: str, logs_path: str,
-                          aggregator_port: int = None, registration_password: str = None,
+    def install_collector(self,
+                          version: str,
+                          aggregator_ip: str,
+                          aggregator_port: int = None,
+                          registration_password: str = None,
                           organization: str = None):
 
         aggregator_port = aggregator_port or DEFAULT_AGGREGATOR_PORT
         registration_pass = registration_password or REGISTRATION_PASS
         version = version or self.get_version()
         installer_path = get_installer_path(self, version)
+
+        logs_path = self._get_logs_path(collector=self, prefix="Installation_logs")
+        Reporter.report(f"Installation logs can be found here: {logs_path}")
+
         cmd = generate_installation_cmd(installer_path=installer_path,
                                         agg_ip=aggregator_ip,
                                         agg_port=aggregator_port,
@@ -289,16 +297,26 @@ class WindowsCollector(Collector):
         self.update_process_id()
 
     @allure.step("{0} - Uninstall FortiEDR Collector")
-    def uninstall_collector(self, logs_path, registration_password=None):
+    def uninstall_collector(self, registration_password: str = None, stop_collector: bool = False):
         registration_password = registration_password or REGISTRATION_PASS
+
+        logs_path = self._get_logs_path(collector=self, prefix="Uninstallation_logs")
+        Reporter.report(f"Installation logs can be found here: {logs_path}")
+
         uninstall_script_path = create_uninstallation_script(self, registration_password, logs_path)
         self.os_station.execute_cmd(cmd=uninstall_script_path, asynchronous=False)
         wait_until_collector_pid_disappears(self)
         self.update_process_id()
 
-    def is_installation_folder_empty(self):
+    @allure.step("Check if collector files exist")
+    def is_collector_files_exist(self) -> bool:
         files = self.os_station.get_list_of_files_in_folder(folder_path=self.__collector_installation_path)
-        return files is None or len(files) == 0
+        if files is None or len(files) == 0:
+            Reporter.report("Collector files does not exist, probably not installed anymore")
+            return False
+
+        Reporter.report("Collector files exist, probably still installed")
+        return True
 
     @allure.step("{0} - Copy log parser to machine")
     def copy_log_parser_to_machine(self):
@@ -466,3 +484,9 @@ class WindowsCollector(Collector):
                 self.os_station.kill_process_by_id(pid=single_pid)
 
         self.os_station.execute_cmd(f'{target_folder}\\{malware_name}', asynchronous=True)
+
+    def _get_logs_path(self, collector: Collector, prefix):
+        logs_file_name = f"{prefix}_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.txt"
+        logs_folder = collector.os_station.create_new_folder(fr'{INSTALL_UNINSTALL_LOGS_FOLDER_PATH}')
+        logs_path = fr"{logs_folder}\{logs_file_name}"
+        return logs_path

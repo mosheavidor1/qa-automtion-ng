@@ -68,15 +68,19 @@ class Collector:
     def get_current_process_id(self):
         pass
 
-    @abstractmethod
-    def install_collector(self):
-        pass
-
     def copy_log_parser_to_machine(self):
         pass
 
     @abstractmethod
-    def uninstall_collector(self):
+    def install_collector(self, version: str, aggregator_ip: str, organization: str, registration_password: str):
+        pass
+
+    @abstractmethod
+    def uninstall_collector(self, registration_password: str, stop_collector: bool = False):
+        pass
+
+    @abstractmethod
+    def is_collector_files_exist(self) -> bool:
         pass
 
     def clear_logs(self):

@@ -1,5 +1,7 @@
 import json
+import random
 import re
+import string
 
 import allure
 import requests
@@ -26,6 +28,12 @@ def _process_list(ob):
 
 
 class StringUtils:
+
+    @staticmethod
+    def generate_random_string(length: int):
+        characters = string.ascii_letters + string.digits#+ string.punctuation
+        rand_str = ''.join(random.choice(characters) for i in range(length))
+        return rand_str
 
     @staticmethod
     def is_digit_in_string(text):

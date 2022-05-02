@@ -7,6 +7,7 @@ from pyVim.connect import SmartConnectNoSSL, Disconnect
 from pyVmomi import vim
 
 from infra.allure_report_handler.reporter import Reporter
+from infra.utils.utils import StringUtils
 from infra.vpshere.vsphere_cluster_details import ClusterDetails
 from infra.enums import CollectorTemplateNames
 from infra.vpshere.vsphere_vm_operations import VsphereMachineOperations
@@ -71,15 +72,26 @@ class VsphereClusterHandler(object):
 
         return resource_pools_dict
 
-    def create_vm(self, vm_template: CollectorTemplateNames, desired_vm_name: str):
+    def _wait_until_machine_get_ip(self, vm_obj, timeout=5*60):
+        curr_time = time.time()
+        is_ip = True if vm_obj.guest.ipAddress is not None else False
+
+        while not is_ip and time.time() - curr_time < timeout:
+            time.sleep(10)
+            is_ip = True if vm_obj.guest.ipAddress is not None else False
+
+        assert is_ip, f"The new machine {vm_obj.guest.hostName} did not get IP address within {timeout}"
+
+    def create_vm(self,
+                  vm_template: CollectorTemplateNames,
+                  desired_vm_name: str,
+                  wait_until_machine_get_ip: bool = True):
 
         vm_to_clone_from_obj = self.get_specific_vm_from_cluster(vm_search_type=VmSearchTypeEnum.VM_NAME, txt_to_search=vm_template.value)
         resource_pool = self._get_resource_pool_object()
         folders_dict = self._get_all_folders_objects()
 
         if vm_to_clone_from_obj is not None:
-            desired_vm_name = f"{desired_vm_name}_{int(time.time())}"
-
             created_vm_obj = vm_to_clone_from_obj.clone_vm_by_name(
                 vm_template_object=vm_to_clone_from_obj.vm_obj,
                 resource_pool_object=resource_pool,
@@ -87,6 +99,10 @@ class VsphereClusterHandler(object):
                 power_on=True,
                 new_vm_name=desired_vm_name
             )
+
+            if wait_until_machine_get_ip:
+                self._wait_until_machine_get_ip(vm_obj=created_vm_obj, timeout=5*60)
+
             return created_vm_obj
         else:
             raise Exception(f"Machine\Template with the name: {desired_vm_name} does not exist, can not clone")
