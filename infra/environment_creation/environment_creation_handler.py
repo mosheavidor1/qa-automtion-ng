@@ -4,11 +4,15 @@ from typing import List
 
 import allure
 
+import sut_details
 import third_party_details
 from infra.allure_report_handler.reporter import Reporter
 from infra.containers.environment_creation_containers import EnvironmentSystemComponent, DeployedEnvInfo
-from infra.enums import HttpRequestMethodsEnum
+from infra.enums import HttpRequestMethodsEnum, CollectorTemplateNames
+from infra.system_components.collectors.linux_os.linux_collector import LinuxCollector
+from infra.system_components.collectors.windows_os.windows_collector import WindowsCollector
 from infra.utils.utils import JsonUtils, HttpRequesterUtils
+from infra.vpshere.vsphere_cluster_handler import VsphereClusterHandler
 
 
 class EnvironmentCreationHandler:
@@ -114,3 +118,60 @@ class EnvironmentCreationHandler:
                                                         url=url,
                                                         expected_status_code=200)
         return versions_dict
+
+    @staticmethod
+    @allure.step('Deploy machine with collector')
+    def deploy_vm_with_collector(vsphere_cluster_handler: VsphereClusterHandler,
+                                 aggregator_ip: str,
+                                 registration_password: str,
+                                 machine_name: str,
+                                 version: str,
+                                 collector_template_name: CollectorTemplateNames,
+                                 raise_exception_on_failure: bool = True):
+
+        new_vm = None
+        collector = None
+
+        try:
+            new_vm = vsphere_cluster_handler.create_vm(
+                vm_template=collector_template_name,
+                desired_vm_name=machine_name,
+                wait_until_machine_get_ip=True)
+        except Exception as e:
+            if raise_exception_on_failure:
+                raise e
+
+            else:
+                return f"Failed to create VM with the name: {machine_name} from the template: {collector_template_name.value}\n original exception is: {e}"
+
+
+        try:
+            if 'win' in collector_template_name.name.lower():
+                encrypted_connection = True
+                if 'win7' in collector_template_name.name.lower():
+                    encrypted_connection = False
+
+                collector = WindowsCollector(host_ip=new_vm.guest.ipAddress,
+                                             user_name=sut_details.win_user_name,
+                                             password=sut_details.win_password,
+                                             collector_details=None,
+                                             encrypted_connection=encrypted_connection)
+
+            elif 'linux' in collector_template_name.name.lower():
+
+                collector = LinuxCollector(host_ip=new_vm.guest.ipAddress,
+                                           user_name=sut_details.linux_user_name,
+                                           password=sut_details.linux_password,
+                                           collector_details=None)
+
+            collector.install_collector(version=version,
+                                        aggregator_ip=aggregator_ip,
+                                        registration_password=registration_password,
+                                        organization=None)
+        except Exception as e:
+            if raise_exception_on_failure:
+                raise e
+            else:
+                return f"Failed to install version: {version} on {machine_name} with the IP: {new_vm.guest.ipAddress} \n original exception is: {e}"
+
+        return new_vm

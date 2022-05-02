@@ -67,4 +67,4 @@ ENSILO_VCSA_20 = ClusterDetails(vhost="10.51.100.120", name="Ensilo_vcsa20", res
 
 ENSILO_VCSA_30 = ClusterDetails(vhost="10.51.100.130", name="Ensilo_vcsa30", resource_pools=["QA", "QA41"], datastore_name="loc-vt31-r10-d1")
 
-ENSILO_VCSA_40 = ClusterDetails(vhost="ens-vcsa40.ensilo.local", name="Ensilo_vcsa40", resource_pools=["QA41", "SW42"], datastore_name="loc-vt41-r10-d1")
+ENSILO_VCSA_40 = ClusterDetails(vhost="ens-vcsa40.ensilo.local", name="Ensilo_vcsa40", resource_pools=["QA41", "QA42"], datastore_name="loc-vt41-r10-d1")

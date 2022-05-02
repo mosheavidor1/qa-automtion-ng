@@ -1,3 +1,5 @@
+from typing import List
+
 from infra.enums import ComponentType
 
 
@@ -27,7 +29,7 @@ class EnvironmentSystemComponent:
 class DeployedEnvInfo:
     def __init__(self,
                  env_id: str,
-                 components_created: str,
+                 components_created: List[dict],
                  registration_password: str,
                  admin_user: str,
                  admin_password: str,
@@ -52,6 +54,52 @@ class DeployedEnvInfo:
         self._installation_type = installation_type
         self._environment_pool = environment_pool
         self._error_description = error_description
+
+    def get_as_dict(self):
+        return {
+            'env_id': self._env_id,
+            'components_created': self._components_created,
+            'registration_password': self._registration_password,
+            'admin_user': self._admin_user,
+            'admin_password': self._admin_password,
+            'rest_api_user': self._rest_api_user,
+            'rest_api_password': self._rest_api_password,
+            'location': self._location,
+            'environment_name': self._environment_name,
+            'timezone': self._timezone,
+            'installation_type': self._installation_type,
+            'environment_pool': self._environment_pool,
+            'error_description': self._error_description,
+        }
+
+    @property
+    def management_ip(self):
+        if self._components_created is None:
+            return None
+
+        if len(self._components_created) == 0:
+            return None
+
+        for comp in self._components_created:
+            if comp.get('ComponentType') == 'both' or comp.get('ComponentType' == 'manager'):
+                return comp.get('MachineIp')
+
+        return None
+
+    @property
+    def aggregator_ips(self):
+        ips = []
+        if self._components_created is None:
+            return None
+
+        if len(self._components_created) == 0:
+            return None
+
+        for comp in self._components_created:
+            if comp.get('ComponentType') == 'both' or comp.get('ComponentType') == 'aggregator':
+                ips.append(comp.get('MachineIp'))
+
+        return ips
 
     @property
     def env_id(self):

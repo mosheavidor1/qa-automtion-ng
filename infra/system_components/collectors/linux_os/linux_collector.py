@@ -161,9 +161,15 @@ class LinuxCollector(Collector):
         wait_until_collector_pid_appears(self)
         self.update_process_id()
 
-    @allure.step("Check if installation folder exists")
-    def is_installation_folder_exists(self):
+    @allure.step("Check if collector files exist")
+    def is_collector_files_exist(self) -> bool:
         result = self.os_station.is_path_exist(COLLECTOR_INSTALLATION_FOLDER_PATH)
+
+        if result is True:
+            Reporter.report("Collector files exist, probably still installed")
+        else:
+            Reporter.report("Collector files does not exist, probably not installed anymore")
+
         return result
 
     @allure.step("{0} - Get the collector's installed package name")
@@ -185,8 +191,46 @@ class LinuxCollector(Collector):
         return result
 
     @allure.step("{0} - Install linux Collector")
-    def install_collector(self, installer_path):
+    def pure_install_collector(self, installer_path):
         install_cmd = f"{self.os_station.distro_data.commands.install} {installer_path}"
+        result = self.os_station.execute_cmd(cmd=install_cmd, fail_on_err=False)
+        assert "FortiEDR Collector installed successfully" in result, f"{self} failed to install"
+
+    # def _generate_installer_file_name(self, version):
+    #     installer_file_name = fr"FortiEDRCollectorInstaller_#OS_DISTRO#-{version}.x86_64.rpm"
+    #
+    #     match self.os_station.os_name:
+    #
+    #         case 'CentOS Linux 8 (Core)':
+    #             return installer_file_name.replace("#OS_DISTRO#", "CentOS8")
+    #
+    #         case 'CentOS Linux 7 (Core)':
+    #             return installer_file_name.replace("#OS_DISTRO#", "CentOS7")
+    #
+    #         case 'CentOS Linux 6 (Core)':
+    #             return installer_file_name.replace("#OS_DISTRO#", "CentOS6")
+    #
+    #     assert False, f"Can not conduct installer file name for OS: {self.os_station.os_name}"
+    #
+    @allure.step("{0} - Install FortiEDR Collector")
+    def install_collector(self,
+                          version: str,
+                          aggregator_ip: str,
+                          aggregator_port: int = None,
+                          registration_password: str = None,
+                          organization: str = None):
+
+        installer_path = self.prepare_version_installer_file(collector_version=version)
+
+        self.pure_install_collector(installer_path=installer_path)
+        self.configure_collector(aggregator_ip=aggregator_ip,
+                                 aggregator_port=aggregator_port,
+                                 registration_password=registration_password,
+                                 organization=organization)
+
+    @allure.step("{0} - Install linux Collector")
+    def pure_install_collector(self, installer_path):
+        install_cmd = f"yum install -y {installer_path}"
         result = self.os_station.execute_cmd(cmd=install_cmd, fail_on_err=False)
         assert "FortiEDR Collector installed successfully" in result, f"{self} failed to install"
 

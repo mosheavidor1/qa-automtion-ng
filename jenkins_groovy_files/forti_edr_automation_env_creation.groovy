@@ -110,9 +110,9 @@ pipeline {
                 defaultValue: '0',
                 description: '')
     }
-    agent { 
+    agent {
       node {
-        label 'cloud-agents' 
+        label 'cloud-agents'
         customWorkspace "/home/jenkins/workspace/forti_edr_automation/${env.BUILD_NUMBER}"
       }
     }
@@ -129,26 +129,6 @@ pipeline {
                     if (params.management_and_aggregator_deployment_architecture == "both" && params.aggregators_amount.toInteger() > 1){
                         error "aggregator amount should be 1 for *both* deployment architecture"
                     }
-
-//                     if (params.management_version.matches("\\d+.\\d+.\\d+.\\w+")){
-//                         error "Management: Incorrect version pattern"
-//                     }
-//
-//                     if (params.management_and_aggregator_deployment_architecture == "separate" && params.aggregator_version.matches("\\d+.\\d+.\\d+.\\w+")){
-//                         error "Aggregator: Incorrect version pattern"
-//                     }
-//
-//                     if (params.core_version.matches("\\d+.\\d+.\\d+.\\w+")){
-//                         error "Core: Incorrect version pattern"
-//                     }
-//
-//                     if (params.windows_collector_version.matches("\\d+.\\d+.\\d+.\\w+")){
-//                         error "Windows Collector: Incorrect version pattern"
-//                     }
-//
-//                     if (params.linux_collector_version.matches("\\d+.\\d+.\\d+.\\w+")){
-//                         error "Linux Collector: Incorrect version pattern"
-//                     }
                 }
             }
         }
@@ -156,12 +136,12 @@ pipeline {
         stage('Checkout') {
             steps {
                 script {
-                    cleanWs()              
-                    checkout scm    
+                    cleanWs()
+                    checkout scm
                     stdout_list.add("<div><h3><a href=\"${env.BUILD_URL}\">${env.BUILD_URL}</a></h3></div>")
                 }
             }
-        }      
+        }
         stage('Create Docker') {
             steps {
                 script {
@@ -266,16 +246,35 @@ pipeline {
                         println "Exception: ${e}"
                     } finally {
                         println "Stage $STAGE_NAME done"
+
+                        def envs = sh(returnStdout: true, script: 'env').split('\n')
+                        envs.each { name  ->
+                            println "Name: $name"
+                        }
                     }
                 }
             }
         }
 
 
+        stage('Set updated environment variables from myenv.txt file'){
+            steps{
+                script {
 
-
-
+                    // reading myenv.txt file which the automation updates during environment creation with new env details
+                    // and set all new details as environment details
+                    def file = readFile('./myenv.txt')
+                    file.split('\n').each {envLine ->
+                        def (key, value) = envLine.tokenize('=')
+                        echo "${key} = ${value}"
+                        env."${key}" = "${value}"
+                    }
+                    println("MANAGEMENT_HOST_IP = ${MANAGEMENT_HOST_IP}")
+                }
+            }
+        }
     }
+
     post {
         always {
             script {
@@ -287,19 +286,18 @@ pipeline {
                     results: [[path: './allure-results']]
                 ])
 
+                // recipients= env.email_list.split( "[\\s,]+" )
 
-                recipients= env.email_list.split( "[\\s,]+" )
+                // if ((env.TRIGGER_USER) && (env.TRIGGER_USER != "")){
+                //     recipients += env.TRIGGER_USER + "@ensilo.com"
+                // }
 
-                if ((env.TRIGGER_USER) && (env.TRIGGER_USER != "")){
-                    recipients += env.TRIGGER_USER + "@ensilo.com"
-                }
-
-                emailext (
-                    subject: "Job: ${env.JOB_NAME}, Build#: ${env.BUILD_NUMBER}, Status: ${currentBuild.result}",
-                    body: stdout_list.join(''),
-                    to: recipients.join(", "),
-                    recipientProviders: [[$class: 'DevelopersRecipientProvider'], [$class: 'RequesterRecipientProvider']],
-                )
+                // emailext (
+                //     subject: "Job: ${env.JOB_NAME}, Build#: ${env.BUILD_NUMBER}, Status: ${currentBuild.result}",
+                //     body: stdout_list.join(''),
+                //     to: recipients.join(", "),
+                //     recipientProviders: [[$class: 'DevelopersRecipientProvider'], [$class: 'RequesterRecipientProvider']],
+                // )
 			}
         }
     }

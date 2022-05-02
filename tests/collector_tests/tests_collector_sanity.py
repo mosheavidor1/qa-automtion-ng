@@ -1,8 +1,10 @@
 import allure
 import pytest
+
+from infra.system_components.collectors.linux_os.linux_collector import LinuxCollector
+from infra.system_components.collectors.windows_os.windows_collector import WindowsCollector
 from tests.utils.collector_utils import CollectorUtils
 from tests.utils.linux_collector_utils import LinuxCollectorUtils
-from tests.utils.test_utils import TestUtils
 from infra.allure_report_handler.reporter import Reporter, TEST_STEP, INFO
 from infra.system_components.collectors.collectors_common_utils import (
     wait_for_running_collector_status_in_mgmt,
@@ -71,28 +73,25 @@ def test_uninstall_install_windows_collector(management, aggregator, collector):
         6. validate that the new installed version is same as before the uninstallation
     """
 
+    assert isinstance(collector, WindowsCollector), "This test should run only on windows collector"
+
     with allure.step(f"Uninstall {collector} and validate"):
         version_before_uninstall = collector.get_version()
-        uninstallation_log_path = CollectorUtils.create_logs_path(collector, "uninstall_logs")
-        with TestUtils.append_log_to_report_on_failure_context(collector, uninstallation_log_path):
-            collector.uninstall_collector(registration_password=management.tenant.registration_password, logs_path=uninstallation_log_path)
-            Reporter.report(f"Validate {collector} uninstalled successfully:")
-            assert collector.is_installation_folder_empty(), f"Installation folder contains files, should be empty"
-            wait_for_disconnected_collector_status_in_mgmt(management, collector)
+        collector.uninstall_collector(registration_password=management.tenant.registration_password)
+        Reporter.report(f"Validate {collector} uninstalled successfully:")
+        assert not collector.is_collector_files_exist(), f"Installation folder contains files, should be empty"
+        wait_for_disconnected_collector_status_in_mgmt(management, collector)
 
     with allure.step(f"Install {collector} and validate"):
-        installation_log_path = CollectorUtils.create_logs_path(collector, "install_logs")
-        with TestUtils.append_log_to_report_on_failure_context(collector, installation_log_path):
-            collector.install_collector(version=collector.details.version,
-                                        aggregator_ip=aggregator.host_ip,
-                                        organization=management.tenant.organization,
-                                        registration_password=management.tenant.registration_password,
-                                        logs_path=installation_log_path)
-            Reporter.report(f"Validate {collector} installed successfully:")
-            wait_for_running_collector_status_in_mgmt(management, collector)
-            wait_for_running_collector_status_in_cli(collector)
-            assert collector.get_version() == version_before_uninstall, \
-                f"{collector} version is {collector.get_version()} instead of {version_before_uninstall}"
+        collector.install_collector(version=collector.details.version,
+                                    aggregator_ip=aggregator.host_ip,
+                                    organization=management.tenant.organization,
+                                    registration_password=management.tenant.registration_password)
+        Reporter.report(f"Validate {collector} installed successfully:")
+        wait_for_running_collector_status_in_mgmt(management, collector)
+        wait_for_running_collector_status_in_cli(collector)
+        assert collector.get_version() == version_before_uninstall, \
+            f"{collector} version is {collector.get_version()} instead of {version_before_uninstall}"
 
 
 @allure.epic("Collectors")
@@ -112,31 +111,33 @@ def test_uninstall_install_configure_linux_collector(management, aggregator, col
         7. validate that pid exists + collector status in MGMT & CLI is running
         8. validate that the new installed version is same as before the uninstallation
     """
+
+    assert isinstance(collector, LinuxCollector), "This test should run only on linux collector"
+
     with allure.step(f"Before uninstalling {collector}, prepare the installer file:"):
         version_before_uninstall = collector.get_version()
         package_name_before_uninstall = collector.get_package_name()
-        installer_path = collector.prepare_version_installer_file(collector_version=version_before_uninstall)
 
     with allure.step(f"Uninstall {collector} and validate:"):
         uninstall_output = collector.uninstall_collector(registration_password=management.tenant.registration_password)
         Reporter.report(f"Validate {collector} uninstalled successfully:")
         LinuxCollectorUtils.validate_uninstallation_cmd_output(uninstall_output, collector)
         Reporter.report(f"Validate that {collector} installation folder & installed package removed:")
-        assert not collector.is_installation_folder_exists(), f"Installation folder was not deleted"
+        assert not collector.is_collector_files_exist(), f"Installation folder was not deleted"
         package_name_after_uninstall = collector.get_package_name()
         assert package_name_after_uninstall is None, \
             f"Collector package was not deleted from OS, name: '{package_name_after_uninstall}'"
         wait_for_disconnected_collector_status_in_mgmt(management, collector)
 
     with allure.step(f"Install {collector} & Configure"):
-        collector.install_collector(installer_path)
-        collector.configure_collector(aggregator_ip=aggregator.host_ip,
-                                      registration_password=management.tenant.registration_password,
-                                      organization=management.tenant.organization)
+        collector.install_collector(version=version_before_uninstall,
+                                    aggregator_ip=aggregator.host_ip,
+                                    organization=management.tenant.organization,
+                                    registration_password=management.tenant.registration_password)
 
     with allure.step(f"Validate {collector} installed and configured successfully:"):
         Reporter.report(f"Validate {collector} installation folder & installed package name:")
-        assert collector.is_installation_folder_exists(), f"Installation folder was not created"
+        assert collector.is_collector_files_exist(), f"Installation folder was not created"
         installed_package_name = collector.get_package_name()
         assert installed_package_name == package_name_before_uninstall, \
             f"{collector} Package name is '{installed_package_name}' instead of '{package_name_before_uninstall}'"
