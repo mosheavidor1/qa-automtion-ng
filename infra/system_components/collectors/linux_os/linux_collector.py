@@ -228,12 +228,6 @@ class LinuxCollector(Collector):
                                  registration_password=registration_password,
                                  organization=organization)
 
-    @allure.step("{0} - Install linux Collector")
-    def pure_install_collector(self, installer_path):
-        install_cmd = f"yum install -y {installer_path}"
-        result = self.os_station.execute_cmd(cmd=install_cmd, fail_on_err=False)
-        assert "FortiEDR Collector installed successfully" in result, f"{self} failed to install"
-
     @allure.step("{0} - Configure linux Collector")
     def configure_collector(self, aggregator_ip, aggregator_port=None, registration_password=None, organization=None):
         """ Can't read the stdout of the configuration cmd,
