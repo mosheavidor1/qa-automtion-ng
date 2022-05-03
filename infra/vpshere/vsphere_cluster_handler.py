@@ -146,23 +146,22 @@ class VsphereClusterHandler(object):
 
     @allure.step("Search for VM by ip")
     def search_vm_by_ip(self, ip_address: str):
-        """Searching VM name in the vSphere cluster, after it found, VM object set.
-
-        Parameters
-        ----------
-        ip_address : str
-            IP address that you want to search in the vSphere
-
-        Returns
-        -------
-        object
-            Returns a VM object
+        """Return pyvmomi vm obj from vcenter, by desired ip.
+        If there are more than 1 vm with the same ip so it is an issue in the env.
+        'FindAllByIP' returns more than one match for one VM that's why we are searching for unique vms by their uuid
         """
-        vm_obj = self._service_instance.content.searchIndex.FindByIp(None, ip_address, True)
-
-        if vm_obj is None:
-            Reporter.report(f"VM is not found under {self._cluster_details.cluster_name}")
+        # Validate that we have only 0-1 vm with the desired ip
+        all_vms = self._service_instance.content.searchIndex.FindAllByIp(None, ip_address, True)
+        all_uuids = [vm.config.uuid for vm in all_vms]
+        unique_uuids = set(all_uuids)
+        unique_vms_count = len(unique_uuids)
+        assert unique_vms_count < 2, f"There are {unique_vms_count} vms with the same ip '{ip_address}', should be one"
+        if not unique_vms_count:
+            Reporter.report(f"VM with ip {ip_address}, was not found under {self._cluster_details.cluster_name}")
             return None
+        # Get the desired vm
+        vm_obj = self._service_instance.content.searchIndex.FindByIp(None, ip_address, True)
+        assert vm_obj is not None
 
         if ip_address == vm_obj.guest.ipAddress and vm_obj.guest.ipAddress and vm_obj.configStatus == 'green':
             Reporter.report(f"IP address '{ip_address}' of a collector {vm_obj.name} found. ")

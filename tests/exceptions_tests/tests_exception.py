@@ -19,13 +19,15 @@ class ExceptionsTests:
                              ],
                              indirect=True)
     @pytest.mark.sanity
+    @pytest.mark.linux_sanity
     @pytest.mark.management_sanity
+    @pytest.mark.management_linux_sanity
     def test_create_full_covered_exception(self, xray, exception_function_fixture):
         """
         test name: Full covered exception - event excepted
         steps:
-        1. create event DynamicCodeTests
-        2. create exception for DynamicCodeTests
+        1. create event on collector
+        2. create exception for this event
         3. create same event - event should not be created
         """
 
@@ -42,13 +44,15 @@ class ExceptionsTests:
                              [('EN-68890', ExceptionTestType.CREATE_PARTIALLY_COVERED_EXCEPTION)],
                              indirect=True)
     @pytest.mark.sanity
+    @pytest.mark.linux_sanity
     @pytest.mark.management_sanity
+    @pytest.mark.management_linux_sanity
     def test_create_partially_covered_exception(self, xray, exception_function_fixture):
         """
         test name: Partially covered exception - event excepted
         steps:
-        1. create event DynamicCodeTests
-        2. create exception for DynamicCodeTests with empty group
+        1. create event
+        2. create exception for event with empty group
         3. move collector to the empty group
         4. assign group to policies
         5. create same event - event should not be created
@@ -72,12 +76,14 @@ class ExceptionsTests:
                              [('EN-68891', ExceptionTestType.CREATE_PARTIALLY_COVERED_EXCEPTION_EVENT_CREATED)],
                              indirect=True)
     @pytest.mark.sanity
+    @pytest.mark.linux_sanity
     @pytest.mark.management_sanity
+    @pytest.mark.management_linux_sanity
     def test_create_partially_covered_exception_event_created(self, xray, exception_function_fixture):
         """
         steps:
-        1. create event DynamicCodeTests
-        2. create exception for DynamicCodeTests with empty group
+        1. create event
+        2. create exception for event with empty group
         3. create same event - event should be created because collector not in the group
         """
         management: Management = exception_function_fixture.get('management')
@@ -95,14 +101,16 @@ class ExceptionsTests:
                              [('EN-68885', ExceptionTestType.EDIT_FULL_COVERED_EXCEPTION)],
                              indirect=True)
     @pytest.mark.sanity
+    @pytest.mark.linux_sanity
     @pytest.mark.management_sanity
+    @pytest.mark.management_linux_sanity
     @allure.link('http://10.151.100.52/browse/EN-73885')
     def test_edit_fully_covered_exception(self, xray, exception_function_fixture):
         """
         EN-73885 - when fixed add event_id as input to validate_exception
         steps:
-        1. create event DynamicCodeTests
-        2. create exception for DynamicCodeTests
+        1. create event
+        2. create exception for event
         3. edit exception - change group to empty group
         4. edit exception - change destination to specific destination
         """
@@ -122,7 +130,8 @@ class ExceptionsTests:
             "organization": management.tenant.organization,
             "groups": [group_name],
             "destinations": [destination],
-            "eventID": event_id
+            "eventID": event_id,
+            "eventName": malware_name
         }
         management.ui_client.exceptions.edit_exceptions(data=test_im_data)
         exception_id = ManagementUtils.validate_exception(management,
@@ -135,14 +144,16 @@ class ExceptionsTests:
                              [('EN-68888', ExceptionTestType.EDIT_PARTIALLY_COVERED_EXCEPTION)],
                              indirect=True)
     @pytest.mark.sanity
+    @pytest.mark.linux_sanity
     @pytest.mark.management_sanity
+    @pytest.mark.management_linux_sanity
     @allure.link('http://10.151.100.52/browse/EN-73885')
     def test_edit_partially_covered_exception(self, xray, exception_function_fixture):
         """
         EN-73885 - when fixed add event_id as input to validate_exception
         steps:
-        1. create event DynamicCodeTests
-        2. create exception for DynamicCodeTests with empty group
+        1. create event
+        2. create exception for event with empty group
         3. edit exception - change destination to specific destination
         """
         management: Management = exception_function_fixture.get('management')
@@ -164,7 +175,8 @@ class ExceptionsTests:
             "loginOrganization": management.tenant.organization,
             "organization": management.tenant.organization,
             "destinations": [destination],
-            "eventID": event_id
+            "eventID": event_id,
+            "eventName": malware_name
         }
         management.ui_client.exceptions.edit_exceptions(data=test_im_data)
         exception_id = ManagementUtils.validate_exception(management, process=malware_name, group=group_name,
@@ -175,12 +187,14 @@ class ExceptionsTests:
                              [('EN-68892', ExceptionTestType.GENERAL)],
                              indirect=True)
     @pytest.mark.sanity
+    @pytest.mark.linux_sanity
     @pytest.mark.management_sanity
+    @pytest.mark.management_linux_sanity
     def test_delete_exception(self, xray, exception_function_fixture):
         """
         steps:
-        1. create event DynamicCodeTests
-        2. create exception for DynamicCodeTests
+        1. create event
+        2. create exception for event
         3. remove Exception
         """
         management: Management = exception_function_fixture.get('management')
@@ -203,12 +217,14 @@ class ExceptionsTests:
                              [('EN-68992', ExceptionTestType.GENERAL)],
                              indirect=True)
     @pytest.mark.sanity
+    @pytest.mark.linux_sanity
     @pytest.mark.management_sanity
+    @pytest.mark.management_linux_sanity
     def test_edit_exception_comments(self, xray, exception_function_fixture):
         """
         steps:
-        1. create event DynamicCodeTests
-        2. create exception for DynamicCodeTests
+        1. create event
+        2. create exception for event
         3. edit exception - change group to empty group
         4. edit exception - add comments
         """
@@ -229,7 +245,8 @@ class ExceptionsTests:
             "organization": management.tenant.organization,
             "groups": [group_name],
             "eventID": event_id,
-            "comment": comment
+            "comment": comment,
+            "eventName": malware_name
         }
         management.ui_client.exceptions.edit_exceptions(data=testim_data)
         exception_id = ManagementUtils.validate_exception(management, process=malware_name, group=group_name,
@@ -240,12 +257,14 @@ class ExceptionsTests:
                              [('EN-68989', ExceptionTestType.GENERAL)],
                              indirect=True)
     @pytest.mark.sanity
+    @pytest.mark.linux_sanity
     @pytest.mark.management_sanity
+    @pytest.mark.management_linux_sanity
     def test_multiple_exceptions(self, xray, exception_function_fixture):
         """
         steps:
-        1. create event DynamicCodeTests
-        2. create exception for DynamicCodeTests
+        1. create event
+        2. create exception for event
         3. edit exception - add another exception to the same event
         """
         management: Management = exception_function_fixture.get('management')
@@ -261,7 +280,8 @@ class ExceptionsTests:
             "loginUser": management.tenant.user_name,
             "loginPassword": management.tenant.user_password,
             "loginOrganization": management.tenant.organization,
-            "organization": management.tenant.organization
+            "organization": management.tenant.organization,
+            "eventName": malware_name
         }
         management.ui_client.exceptions.add_another_exception(data=testim_data)
         exception_id = ManagementUtils.validate_exception(management, process=malware_name, event_id=event_id, group=group_name)

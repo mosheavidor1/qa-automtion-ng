@@ -375,6 +375,7 @@ def create_snapshot_for_all_collectors_at_the_beginning_of_the_run(management: M
                     logger.info)
     Reporter.report("Stop because we want to take snapshot of a collector in a static mode")
     collector.stop_collector(password=management.tenant.registration_password)
+    assert collector.is_status_down_in_cli(), "Collector was not stopped"
     wait_for_disconnected_collector_status_in_mgmt(management, collector)
     collector.os_station.vm_operations.remove_all_snapshots()
     collector.remove_all_crash_dumps_files()
@@ -382,8 +383,15 @@ def create_snapshot_for_all_collectors_at_the_beginning_of_the_run(management: M
     collector.os_station.vm_operations.snapshot_create(snapshot_name=snap_name)
     Reporter.report(f"Snapshot '{snap_name}' created")
 
+    Reporter.report("Start the collector so it will be ready for a new test")
+    collector.start_collector()
+    wait_for_running_collector_status_in_cli(collector)
+    wait_for_running_collector_status_in_mgmt(management, collector)
+    Reporter.report("Check that starting collector didn't create any crashes (for debugging)")
+    check_if_collectors_has_crashed([collector])
 
-@pytest.fixture(scope="function", autouse=sut_details.debug_mode)
+
+@pytest.fixture(scope="function", autouse=False)
 def revert_to_snapshot(management, collector):
     revert_to_first_snapshot_for_all_collectors(management=management, collectors=[collector])
     yield
@@ -574,11 +582,12 @@ def revert_to_first_snapshot_for_all_collectors(management: Management, collecto
         first_snapshot_name = collector.os_station.vm_operations.snapshot_list[0][0]
         collector.os_station.vm_operations.snapshot_revert_by_name(snapshot_name=first_snapshot_name)
         Reporter.report(f"{collector} vm reverted to:'{first_snapshot_name}'", logger.info)
-        if 'linux' in collector.details.os_family.lower():  # To establish new connection after revert
+        if collector.is_unix():  # To establish new connection after revert
             time.sleep(wait_after_revert)
             collector.os_station.disconnect()
         Reporter.report("Wait until collector is offline in MGMT because it still might be online from previous test",
                         logger.info)
+        assert collector.is_status_down_in_cli(), "Collector was not stopped"
         wait_for_disconnected_collector_status_in_mgmt(management, collector)
         Reporter.report("Sometimes the revert action creates a crash files so we want to remove them",
                         logger.info)

@@ -62,6 +62,7 @@ class ExceptionsRest(BaseRestFunctionality):
         else:
             assert False, f"failed to create exception, error: {response}"
 
+    @allure.step("Get exceptions")
     def get_exceptions(self, event_id=None):
         """
         :param event_id: string, optional, if no event id given returns all the exceptions
@@ -79,7 +80,8 @@ class ExceptionsRest(BaseRestFunctionality):
 
         exceptions = json.loads(response.text)
 
-        Reporter.report(f'Successfully got information of the following event id: {event_id}.')
+        Reporter.report(f'Successfully got information of the following event id: {event_id}. '
+                        f'Exceptions are: {exceptions}')
         return exceptions
 
     def delete_exception(self, exception_id):

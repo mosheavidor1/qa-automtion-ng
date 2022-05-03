@@ -56,9 +56,7 @@ class LinuxStation(OsStation):
             raise Exception("Can not execute asynchronous command via ssh with paramiko library")
 
         try:
-            if self._remote_connection_session is None:
-                self.connect()
-
+            self.establish_ssh_active_session()
             stdin, stdout, stderr = self._remote_connection_session.exec_command(command=cmd, timeout=timeout)
 
             if return_output or attach_output_to_report:
@@ -91,7 +89,17 @@ class LinuxStation(OsStation):
 
         except Exception as e:
             Reporter.report(f'Failed to execute command {cmd} on remote Linux machine, original exception: {e}')
+            self.disconnect()
             raise e
+
+    def establish_ssh_active_session(self):
+        ssh_client = self._remote_connection_session
+        if ssh_client is not None:
+            if not ssh_client.get_transport().is_active():
+                self.disconnect()
+                self.connect()
+        elif ssh_client is None:
+            self.connect()
 
     def get_os_architecture(self):
         cmd = 'arch'
@@ -379,12 +387,14 @@ class LinuxStation(OsStation):
             files_in_mounting_point = self.get_list_of_files_in_folder(folder_path=mounted_dir_name)
             for file_name_to_copy in files_to_copy:
                 mounted_file_path_to_copy = f'{mounted_dir_name}/{file_name_to_copy}'
-                assert mounted_file_path_to_copy in files_in_mounting_point, \
-                    f"'{file_name_to_copy}' does not exist in mounting point '{mounted_dir_name}'"
+                if file_name_to_copy != '*':
+                    assert mounted_file_path_to_copy in files_in_mounting_point, \
+                        f"'{file_name_to_copy}' does not exist in mounting point '{mounted_dir_name}'"
                 self.copy_files(source=mounted_file_path_to_copy, target=target_folder)
-                copied_file_path = f'{target_folder}/{file_name_to_copy}'
-                assert copied_file_path in self.get_list_of_files_in_folder(folder_path=target_folder), \
-                    f"'{file_name_to_copy}' was not copied to '{target_folder}'"
+                if file_name_to_copy != '*':
+                    copied_file_path = f'{target_folder}/{file_name_to_copy}'
+                    assert copied_file_path in self.get_list_of_files_in_folder(folder_path=target_folder), \
+                        f"'{file_name_to_copy}' was not copied to '{target_folder}'"
             return target_folder
 
         finally:

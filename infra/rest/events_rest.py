@@ -35,11 +35,13 @@ class EventsRest(BaseRestFunctionality):
         events = []
         while time.time() - start_time < timeout and not is_found:
             try:
+                Reporter.report("Trying again to get events")
                 status, response = self._rest.events.ListEvents(**validation_data)
                 if not status:
                     error_message = f'Could not get response from the management. \n{response}'
 
                 events = json.loads(response.text)
+                Reporter.report(f"Got these events: {events}")
                 if not len(events):
                     error_message = 'No event with the given parameters found.'
                     time.sleep(sleep_delay)

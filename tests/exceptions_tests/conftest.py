@@ -1,6 +1,9 @@
 from enum import Enum
 import pytest
 
+WINDOWS_MALWARE_NAME = "DynamicCodeTests.exe"
+LINUX_MALWARE_NAME = "listen"
+
 
 class ExceptionTestType(Enum):
     E2E = 'E2E'
@@ -28,19 +31,18 @@ def setup_method(management):
 @pytest.fixture(scope="function")
 def exception_function_fixture(management, collector, request):
     test_flow = request.param
-
-    malware_name = "DynamicCodeTests.exe"
+    malware_name = LINUX_MALWARE_NAME if collector.is_unix() else WINDOWS_MALWARE_NAME
     group_name = "empty"
     destination = "Internal Destinations"
 
-    # delete by a given organization name
     management.tenant.rest_api_client.exceptions.delete_all_exceptions(timeout=1)
     management.tenant.rest_api_client.events.delete_all_events()
-
     start_group = collector.details.collector_group_name
-
+    exceptions = management.tenant.rest_api_client.exceptions.get_exceptions()
+    assert len(exceptions) == 0, f"Exceptions were not deleted, {exceptions}"
     collector.create_event(malware_name=malware_name)
-    events = management.tenant.rest_api_client.events.get_security_events({"process": malware_name})
+    events = management.tenant.rest_api_client.events.get_security_events(validation_data={"process": malware_name},
+                                                                          timeout=120)
     event_id = events[0]['eventId']
 
     match test_flow:

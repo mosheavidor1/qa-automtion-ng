@@ -95,3 +95,9 @@ class Collector:
     @abstractmethod
     def remove_all_crash_dumps_files(self):
         pass
+
+    def is_unix(self):
+        return 'linux' in self.details.os_family.lower()
+
+    def is_windows(self):
+        return 'windows' in self.details.os_family.lower()
