@@ -29,6 +29,10 @@ CRASH_FOLDERS_PATHS = ["/var/crash", COLLECTOR_CRASH_DUMPS_FOLDER_PATH]
 REGISTRATION_PASS = management_registration_password
 DEFAULT_AGGREGATOR_PORT = 8081
 
+SUPPORTED_MALWARE_FOLDER_NAME = "listen"
+LINUX_SHARED_MALWARE_FOLDER_PATH = rf'{third_party_details.SHARED_DRIVE_QA_PATH}\automation_ng\malware_sample\linux'
+LINUX_LOCAL_MALWARE_FOLDER_PATH = "/tmp/malware_simulator"
+
 
 class LinuxCollector(Collector):
     def __init__(self, host_ip: str, user_name: str, password: str, collector_details: CollectorDetails):
@@ -294,3 +298,34 @@ class LinuxCollector(Collector):
             raise Exception(f"{self.os_station.distro_type} is not supported yet")
 
         return package_name_to_uninstall
+
+    @allure.step("{0} - Create event {malware_name}")
+    def create_event(self, malware_name=SUPPORTED_MALWARE_FOLDER_NAME):
+        """ If the malware simulator does not exist on local machine, we will copy it from the shared drive """
+        malware_folder_name = malware_name
+        assert malware_folder_name == SUPPORTED_MALWARE_FOLDER_NAME, \
+            f"Malware '{malware_folder_name}' is not supported in linux"
+        local_malware_folder_path = f'{LINUX_LOCAL_MALWARE_FOLDER_PATH}/{malware_folder_name}'
+        malware_file_path = f"{local_malware_folder_path}/test.sh"
+        is_malware_file_exist_on_machine = self.os_station.is_path_exist(path=malware_file_path)
+        if not is_malware_file_exist_on_machine:
+            Reporter.report(f"'{malware_file_path}' does not exist, copy malware folder files from the shared drive")
+            shared_malware_folder_path = fr'{LINUX_SHARED_MALWARE_FOLDER_PATH}\{malware_folder_name}'
+            self.os_station.copy_files_from_shared_folder(
+                target_path_in_local_machine=local_malware_folder_path, shared_drive_path=shared_malware_folder_path,
+                shared_drive_user_name=third_party_details.USER_NAME,
+                shared_drive_password=third_party_details.PASSWORD,
+                files_to_copy=['*'])
+            assert self.os_station.is_path_exist(path=malware_file_path), \
+                f"Malware file '{malware_name}' was not copied"
+        chmod_cmd = f"chmod +x {malware_file_path}"
+        self.os_station.execute_cmd(cmd=chmod_cmd, fail_on_err=True, return_output=True,
+                                    attach_output_to_report=True)
+        self.os_station.execute_cmd(cmd="ps aux")
+        pid = self.os_station.get_service_process_ids(malware_file_path)
+        assert pid is None, f"{malware_name} already running pid is {pid}"
+        trigger_event_cmd = f"cd {local_malware_folder_path}; {malware_file_path}"
+        result = self.os_station.execute_cmd(cmd=trigger_event_cmd, fail_on_err=False, return_output=True,
+                                             attach_output_to_report=True)
+        self.os_station.execute_cmd(cmd="ps aux")
+        return result

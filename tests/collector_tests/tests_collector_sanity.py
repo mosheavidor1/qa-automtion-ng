@@ -16,6 +16,7 @@ from infra.system_components.collectors.collectors_common_utils import (
 @allure.epic("Collectors")
 @allure.feature("Basic Functionality")
 @pytest.mark.sanity
+@pytest.mark.linux_sanity
 @pytest.mark.collector_sanity
 @pytest.mark.collector_linux_sanity
 @pytest.mark.xray('EN-73287')
@@ -40,6 +41,7 @@ def test_stop_start_collector(management, collector):
 @allure.epic("Collectors")
 @allure.feature("Basic Functionality")
 @pytest.mark.sanity
+@pytest.mark.linux_sanity
 @pytest.mark.collector_sanity
 @pytest.mark.collector_linux_sanity
 @pytest.mark.xray('EN-73912')
@@ -96,6 +98,7 @@ def test_uninstall_install_windows_collector(management, aggregator, collector):
 
 @allure.epic("Collectors")
 @allure.feature("Basic Functionality")
+@pytest.mark.linux_sanity
 @pytest.mark.collector_linux_sanity
 @pytest.mark.xray('EN-69548')
 def test_uninstall_install_configure_linux_collector(management, aggregator, collector):
