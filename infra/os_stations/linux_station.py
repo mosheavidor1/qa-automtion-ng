@@ -12,6 +12,8 @@ from infra.os_stations.os_station_base import OsStation
 from infra.utils.utils import StringUtils
 from infra.common_utils import wait_for_predict_condition
 from .linux_distros import LinuxDistroDetails
+import logging
+logger = logging.getLogger(__name__)
 
 INTERVAL_STATION_KEEPALIVE = 5
 WAIT_FOR_STATION_UP_TIMEOUT = 4 * 60
@@ -133,13 +135,28 @@ class LinuxStation(OsStation):
     def start_service(self, service_name: str):
         raise Exception("Not Implemented yet")
 
-    @allure.step("Reboot")
+    @allure.step("Reboot collector")
     def reboot(self):
+        ip_before_reboot = self.vm_operations.vm_obj.guest.ipAddress
+        logger.info(f"ip before reboot is: {ip_before_reboot}")
         uptime_sec_before_reboot = self.get_machine_uptime_seconds()
         cmd = 'reboot'
         self.execute_cmd(cmd=cmd, fail_on_err=True, return_output=True, attach_output_to_report=True)
         self.wait_until_machine_is_unreachable()
-        self.wait_until_machine_is_reachable()
+        try:
+            self.wait_until_machine_is_reachable()
+        except Exception as e:
+            logger.info("Machine is not reachable, After reboot a new ip might be assigned to the vm")
+            current_ip = self.vm_operations.vm_obj.guest.ipAddress
+            logger.info(f"ip after reboot is: {current_ip}")
+            if current_ip == ip_before_reboot:
+                logger.info("The ip was not changed so machine is unreachable because a real issue")
+                raise e
+            else:
+                logger.info(f"Update the ip to: {current_ip} and validate machine is reachable with the new ip")
+                self.host_ip = current_ip
+                self.wait_until_machine_is_reachable()
+
         uptime_sec_after_reboot = self.get_machine_uptime_seconds()
         assert uptime_sec_after_reboot < uptime_sec_before_reboot, "Machine was not actually rebooted"
 
