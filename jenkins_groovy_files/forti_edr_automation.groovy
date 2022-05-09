@@ -53,7 +53,11 @@ pipeline {
         booleanParam(name: 'debug_mode',
                     defaultValue: true,
                     description: 'Set true for running the test with logs collection and snpashots functionality')
-                           
+
+        booleanParam(name: 'upgrade_to_latest_build',
+                    defaultValue: true,
+                    description: 'Set true in case you want to upgrade to latest build available')
+
     }
     agent { 
       node {
