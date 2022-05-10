@@ -50,10 +50,10 @@ def test_reboot_collector(management, collector):
     1. Reboot the machine and wait until it is reachable after reboot.
     2. Validate that collector is in status 'running' in management and via cli.
     """
-    with allure.step(f"Reboot the machine and wait until is reachable:"):
+    with TEST_STEP(f"Reboot the machine and wait until is reachable:"):
         collector.reboot()
 
-    with allure.step(f"Validate that {collector} is running:"):
+    with TEST_STEP(f"Validate that {collector} is running:"):
         wait_for_running_collector_status_in_mgmt(management, collector)
         wait_for_running_collector_status_in_cli(collector)
 
