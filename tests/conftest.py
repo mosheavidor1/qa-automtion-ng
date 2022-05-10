@@ -9,8 +9,11 @@ from infra.assertion.assertion import Assertion
 from infra.containers.management_api_body_containers import CreateOrganizationRestData, CreateUserRestData, \
     OrganizationRestData
 from infra.enums import CollectorTypes, SystemState, UserRoles
+from infra.environment_creation.environment_creation_handler import EnvironmentCreationHandler
 from infra.system_components.aggregator import Aggregator
 from infra.system_components.collector import Collector
+from infra.system_components.collectors.linux_os.linux_collector import LinuxCollector
+from infra.system_components.collectors.windows_os.windows_collector import WindowsCollector
 from infra.system_components.core import Core
 from infra.system_components.forti_edr_linux_station import FortiEdrLinuxStation
 from infra.system_components.management import Management
@@ -358,19 +361,13 @@ def tenant(management, collector):
             target_group_name='Default Collector Group',
             current_collectors_organization="Default",
             target_organization=management.tenant.organization)
-
+    # add here wait until collector will be shown under the new organization
     yield management.tenant
 
 
-@pytest.fixture(scope="session", autouse=sut_details.debug_mode)
-def create_snapshot_for_all_collectors_at_the_beginning_of_the_run(management: Management, collector: Collector,
-                                                                   tenant):
-    """
-    The role of this method is to create snapshot before the tests start, in static mode (paused).
-    we do it because we revert to this (initial) snapshot before each test start in order to run on "clean"
-    collector environment.
-    Before taking the snapshot we validate that the env is clean (stop collector, no crashes)
-    """
+def create_snapshot_for_collector(snapshot_name: str,
+                                  management: Management,
+                                  collector: Collector):
     Reporter.report(f"Preparing {collector} for snapshot: stop it + remove old snaps + remove crashes",
                     logger.info)
     Reporter.report("Stop because we want to take snapshot of a collector in a static mode")
@@ -379,9 +376,8 @@ def create_snapshot_for_all_collectors_at_the_beginning_of_the_run(management: M
     wait_for_disconnected_collector_status_in_mgmt(management, collector)
     collector.os_station.vm_operations.remove_all_snapshots()
     collector.remove_all_crash_dumps_files()
-    snap_name = f'beginning_pytest_session_snapshot_{time.time()}'
-    collector.os_station.vm_operations.snapshot_create(snapshot_name=snap_name)
-    Reporter.report(f"Snapshot '{snap_name}' created")
+    collector.os_station.vm_operations.snapshot_create(snapshot_name=snapshot_name)
+    Reporter.report(f"Snapshot '{snapshot_name}' created")
 
     Reporter.report("Start the collector so it will be ready for a new test")
     collector.start_collector()
@@ -389,6 +385,59 @@ def create_snapshot_for_all_collectors_at_the_beginning_of_the_run(management: M
     wait_for_running_collector_status_in_mgmt(management, collector)
     Reporter.report("Check that starting collector didn't create any crashes (for debugging)")
     check_if_collectors_has_crashed([collector])
+
+
+@pytest.fixture(scope="session", autouse=sut_details.debug_mode)
+def create_snapshot_for_collector_at_the_beginning_of_the_run(management: Management,
+                                                              collector: Collector,
+                                                              tenant):
+    """
+    The role of this method is to create snapshot before the tests start, in static mode (paused).
+    we do it because we revert to this (initial) snapshot before each test start in order to run on "clean"
+    collector environment.
+    Before taking the snapshot we validate that the env is clean (stop collector, no crashes)
+    """
+    create_snapshot_for_collector(snapshot_name=f'beginning_pytest_session_snapshot_{time.time()}',
+                                  management=management,
+                                  collector=collector)
+
+
+@pytest.fixture(scope="session", autouse=sut_details.upgrade_to_latest_build)
+def upgrade_to_latest_build(management: Management,
+                            aggregator: Aggregator,
+                            core: Core,
+                            collector: Collector,
+                            create_snapshot_for_collector_at_the_beginning_of_the_run):
+    """
+    The role of this fixture is to upgrade environment to latest builds.
+    should run after creating snapshot of the system components which gives us the ability to revert in case of
+    upgrade failure or broken version
+    """
+    management.upgrade_to_specific_build(desired_build=None, create_snapshot_before_upgrade=True)
+
+    if management.host_ip != aggregator.host_ip:
+        aggregator.upgrade_to_specific_build(desired_build=None, create_snapshot_before_upgrade=True)
+
+    core.upgrade_to_specific_build(desired_build=None, create_snapshot_before_upgrade=True)
+
+    collector_latest_version = get_collector_latest_version(collector=collector)
+    if collector.get_version() != collector_latest_version:
+        collector.uninstall_collector(registration_password=management.tenant.registration_password)
+        collector.install_collector(version=collector_latest_version,
+                                    aggregator_ip=aggregator.host_ip,
+                                    organization=management.tenant.organization,
+                                    registration_password=management.tenant.registration_password)
+
+        wait_for_running_collector_status_in_cli(collector)
+        wait_for_running_collector_status_in_mgmt(management, collector)
+
+        # in case of installation of the new version passed successfully we need to create new snapshot
+        # for future purposes such as revert to first snapshot (revert to the new version)
+        first_snapshot_name = collector.os_station.vm_operations.snapshot_list[0][0]
+        collector.os_station.vm_operations.remove_all_snapshots()
+        create_snapshot_for_collector(snapshot_name=first_snapshot_name,
+                                      management=management,
+                                      collector=collector)
 
 
 @pytest.fixture(scope="function", autouse=False)
@@ -600,6 +649,51 @@ def revert_to_first_snapshot_for_all_collectors(management: Management, collecto
         check_if_collectors_has_crashed([collector])
 
 
+def get_collector_latest_version(collector: Collector) -> str:
+    collector_version = collector.get_version()
+    collector_base_version = StringUtils.get_txt_by_regex(text=collector_version, regex='(\d+.\d+.\d+).\d+', group=1)
+    latest_versions = EnvironmentCreationHandler.get_latest_versions(base_version=collector_base_version)
+
+    latest_version = None
+    if isinstance(collector, WindowsCollector):
+        architecture = collector.os_station.get_os_architecture()
+        if architecture == '64-bit':
+            latest_version = latest_versions['windows_64_collector']
+
+        elif architecture == '32-bit':
+            latest_version = latest_versions['windows_32_collector']
+
+        else:
+            raise Exception(f"Upgrade for windows {architecture} is not supported yet")
+
+    elif isinstance(collector, LinuxCollector):
+        if collector.os_station.distro_data.version_name == 'CentOS6':
+            latest_version = latest_versions['centos_6_collector']
+
+        elif collector.os_station.distro_data.version_name == 'CentOS7':
+            latest_version = latest_versions['centos_7_collector']
+
+        elif collector.os_station.distro_data.version_name == 'CentOS8':
+            latest_version = latest_versions['centos_8_collector']
+
+        elif collector.os_station.distro_data.version_name == 'Ubuntu20.04':
+            latest_version = latest_versions['ubuntu_20_collector']
+
+        elif 'ubuntu18' in collector.os_station.distro_data.version_name.lower():
+            latest_version = latest_versions['ubuntu_18_collector']
+
+        elif 'ubuntu16' in collector.os_station.distro_data.version_name.lower():
+            latest_version = latest_versions['ubuntu_16_collector']
+
+        else:
+            raise Exception(f"Upgrade for {collector.os_station.distro_data.version_name} is not supported yet")
+
+    assert latest_version is not None, f"Can not find latest version for collector: {collector}"
+
+    return latest_version
+
+
 @pytest.fixture()
 def xray():
     pass
+
