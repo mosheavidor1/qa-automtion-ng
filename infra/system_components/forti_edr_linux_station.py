@@ -1,3 +1,4 @@
+import time
 from abc import abstractmethod
 from datetime import datetime
 from typing import List
@@ -7,6 +8,7 @@ import allure
 import third_party_details
 from infra.allure_report_handler.reporter import Reporter
 from infra.enums import SystemState, ComponentType
+from infra.environment_creation.environment_creation_handler import EnvironmentCreationHandler
 from infra.os_stations.linux_station import LinuxStation
 from infra.utils.utils import StringUtils
 
@@ -24,6 +26,13 @@ class FortiEdrLinuxStation(LinuxStation):
 
         self.__component_type = component_type
         self._version_content_folder = "/tmp/version_files"
+
+    def __repr__(self):
+        return f"{self.__component_type.name} {self._host_ip}"
+
+    @property
+    def component_type(self) -> ComponentType:
+        return self.__component_type
 
     @abstractmethod
     def get_logs_folder_path(self):
@@ -90,6 +99,20 @@ class FortiEdrLinuxStation(LinuxStation):
         else:
             Reporter.report(f"the status is {status}, not as expected")
             return False
+
+    @allure.step('Wait until service will be in desired state: {desired_state}')
+    def wait_until_service_will_be_in_desired_state(self,
+                                                    desired_state: SystemState,
+                                                    timeout: int = 5*60,
+                                                    check_interval: int = 10):
+        start_time = time.time()
+        is_system_in_desired_state = self.is_system_in_desired_state(desired_state=desired_state)
+        while time.time() - start_time < timeout and not is_system_in_desired_state:
+            Reporter.report(f'going to sleep {check_interval} seconds')
+            time.sleep(check_interval)
+            is_system_in_desired_state = self.is_system_in_desired_state(desired_state=desired_state)
+
+        assert is_system_in_desired_state, f"{self.__component_type} is not in the state: {desired_state} within {timeout}"
 
     @allure.step("Clear {0} logs")
     def clear_logs(self, file_suffix='.log'):
@@ -250,6 +273,58 @@ class FortiEdrLinuxStation(LinuxStation):
 
             if content is not None:
                 Reporter.attach_str_as_file(file_name=single_file, file_content=content)
+
+    @allure.step("Upgrade {0} machine to build: {desired_build}")
+    def upgrade_to_specific_build(self,
+                                  desired_build: int = None,
+                                  create_snapshot_before_upgrade: bool = False):
+        """
+        The role of this method is to upgrade build of the system component
+        :param desired_build: specific build number or None for latest build
+        """
+        current_version = self.get_version()
+        base_version = StringUtils.get_txt_by_regex(text=current_version, regex="(\d+.\d+.\d+)", group=1)
+        current_build = StringUtils.get_txt_by_regex(text=current_version, regex="\d+.\d+.\d+.(\d+)", group=1)
+
+        if desired_build is None:
+            latest_versions = EnvironmentCreationHandler.get_latest_versions(base_version=base_version)
+            match self.__component_type:
+                case ComponentType.MANAGEMENT:
+                    desired_build = latest_versions.get('management')
+                case ComponentType.AGGREGATOR:
+                    desired_build = latest_versions.get('aggregator')
+                case ComponentType.CORE:
+                    desired_build = latest_versions.get('core')
+
+            assert desired_build is not None, f"did not found versions that matching to the component {self.__component_type}"
+
+            desired_build = StringUtils.get_txt_by_regex(text=desired_build, regex="\d+.\d+.\d+.(\d+)", group=1)
+
+            if int(desired_build) > int(current_build):
+
+                if create_snapshot_before_upgrade:
+                    self.vm_operations.remove_all_snapshots()
+                    self.vm_operations.snapshot_create(snapshot_name=f"Before_upgrade_{StringUtils.generate_random_string(length=3)}")
+
+                upgrade_file_name = f'FortiEDRInstaller_{base_version}.{desired_build}.x'
+                shared_drive_path = fr'{third_party_details.SHARED_DRIVE_VERSIONS_PATH}\{base_version}.{desired_build}'
+                copied_files_dir = self.copy_files_from_shared_folder(
+                    target_path_in_local_machine=self._version_content_folder, shared_drive_path=shared_drive_path,
+                    shared_drive_user_name=third_party_details.USER_NAME, shared_drive_password=third_party_details.PASSWORD,
+                    files_to_copy=[upgrade_file_name])
+
+                with allure.step("Going to upgrade to machine"):
+                    result = self.execute_cmd(cmd=f'{copied_files_dir}/{upgrade_file_name}', timeout=15*60)
+                    Reporter.attach_str_as_file(file_name='upgrade output', file_content=result)
+                    if 'FortiEDR patch installation finished successfully' not in result:
+                        assert False, "Something went wrong during the upgrade"
+
+                self.wait_until_service_will_be_in_desired_state(desired_state=SystemState.RUNNING)
+
+            else:
+                Reporter.report(f"Skipping upgrade since the current version is >= desired version, current build: {current_build}, desired build: {desired_build}")
+
+
 
 
 

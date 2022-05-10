@@ -153,12 +153,6 @@ class LinuxCollector(Collector):
             system_state = SystemState.DOWN
         return system_state
 
-    def is_status_running_in_cli(self):
-        return self.get_collector_status() == SystemState.RUNNING
-
-    def is_status_down_in_cli(self):
-        return self.get_collector_status() == SystemState.DOWN
-
     @allure.step("Reboot linux Collector")
     def reboot(self):
         self.os_station.reboot()

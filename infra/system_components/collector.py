@@ -51,9 +51,11 @@ class Collector:
     def get_collector_status(self) -> SystemState:
         pass
 
-    @abstractmethod
     def is_status_running_in_cli(self):
-        pass
+        return self.get_collector_status() == SystemState.RUNNING
+
+    def is_status_down_in_cli(self):
+        return self.get_collector_status() == SystemState.DOWN
 
     @abstractmethod
     def reboot(self):
