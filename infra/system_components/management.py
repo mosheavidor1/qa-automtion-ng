@@ -1,3 +1,5 @@
+import logging
+
 import allure
 import functools
 
@@ -18,6 +20,8 @@ from infra.system_components.forti_edr_linux_station import FortiEdrLinuxStation
 from infra.test_im.management_ui_client import ManagementUiClient
 from infra.utils.utils import StringUtils
 
+logger = logging.getLogger(__name__)
+
 
 @Singleton
 class Management(FortiEdrLinuxStation):
@@ -30,6 +34,9 @@ class Management(FortiEdrLinuxStation):
     _DB_TBL_ADM_ROLES = 'adm_roles'
 
     def __init__(self):
+        logger.info(
+            f"Trying to init management object with user_name: {sut_details.management_ssh_user_name},"
+            f" password: {sut_details.management_ssh_password}")
 
         super().__init__(
             host_ip=sut_details.management_host,

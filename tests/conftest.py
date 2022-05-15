@@ -226,13 +226,19 @@ def create_results_json(session, tests_results: dict):
 
 @pytest.fixture(scope="session")
 def management():
-    logger.info("Create MGMT instance")
+    logger.info("Going to create MGMT instance")
     management: Management = Management.instance()
+    logger.info("Management instance was created successfully")
+
+    if sut_details.upgrade_management_to_latest_build:
+        management.upgrade_to_specific_build(desired_build=None, create_snapshot_before_upgrade=True)
+
     yield management
 
 
 @pytest.fixture(scope="session")
 def aggregator(management):
+    logger.info("Going to create Aggregator instance")
     aggregators = SystemComponentsFactory.get_aggregators(management=management)
 
     if len(aggregators) == 0:
@@ -241,17 +247,28 @@ def aggregator(management):
     if len(aggregators) > 1:
         assert False, "Automation does not support more than 1 aggregator for functional testing"
 
+    logger.info("Aggregator instance was created successfully")
+
+    if sut_details.upgrade_aggregator_to_latest_build and management.host_ip != aggregator.host_ip:
+        aggregators[0].upgrade_to_specific_build(desired_build=None, create_snapshot_before_upgrade=True)
+
     yield aggregators[0]
 
 
 @pytest.fixture(scope="session")
 def core(management):
+
     cores = SystemComponentsFactory.get_cores(management=management)
     if len(cores) == 0:
         assert False, "There is no registered core in management, can not create Core object"
 
     if len(cores) > 1:
         assert False, "Automation does not support more than 1 core for functional testing"
+
+    logger.info("Core instance was created successfully")
+
+    if sut_details.upgrade_core_to_latest_build:
+        cores[0].upgrade_to_specific_build(desired_build=None, create_snapshot_before_upgrade=True)
 
     yield cores[0]
 
@@ -277,21 +294,34 @@ def collector(management, aggregator):
     # elements in the collectors list
     # according to the assert above, if we got to this row, there is at least 1 element in the collectors list.
     logger.info(f"Chosen this collector for the test: {collectors[0]}")
-    yield collectors[0]
+
+    collector = collectors[0]
+
+    create_organization_for_collector(management=management, collector=collector)
+
+    if sut_details.upgrade_collector_latest_build:
+        collector_latest_version = get_collector_latest_version(collector=collector)
+
+        if collector.get_version() != collector_latest_version:
+            # create snapshot before new version installation process
+            create_snapshot_for_collector(snapshot_name=f'snapshot_before_installation_process_{StringUtils.generate_random_string(length=6)}',
+                                          management=management,
+                                          collector=collector)
+
+            collector.uninstall_collector(registration_password=management.tenant.registration_password)
+            collector.install_collector(version=collector_latest_version,
+                                        aggregator_ip=aggregator.host_ip,
+                                        organization=management.tenant.organization,
+                                        registration_password=management.tenant.registration_password)
+
+            wait_for_running_collector_status_in_cli(collector)
+            wait_for_running_collector_status_in_mgmt(management, collector)
+
+    yield collector
 
 
-@pytest.fixture(scope="session", autouse=True)
-def init_jira_xray_object(management, aggregator, core, collector):
-    global jira_xray_handler
-
-    jira_xray_handler.management = management
-    jira_xray_handler.aggregator = aggregator
-    jira_xray_handler.core = core
-    jira_xray_handler.collector = collector
-
-
-@pytest.fixture(scope="session", autouse=True)
-def tenant(management, collector):
+@allure.step("Create organization for the collector")
+def create_organization_for_collector(management, collector):
     license_capacity = 100
 
     # assign collector instance to tenant object
@@ -302,7 +332,7 @@ def tenant(management, collector):
         organization_name=management.tenant.organization)
 
     if not is_org_exist:
-        default_org_data = management.admin_rest_api_client.organizations.get_specific_organization_data("Default")
+        default_org_data = management.admin_rest_api_client.organizations.get_specific_organization_data(sut_details.default_organization)
         expiration_date = StringUtils.get_txt_by_regex(text=default_org_data.get('expirationDate'),
                                                        regex=r'(\d+-\d+-\d+)',
                                                        group=1)
@@ -359,10 +389,14 @@ def tenant(management, collector):
         management.admin_rest_api_client.system_inventory.move_collectors(
             collectors_names=[f'{collector.details.name}'],
             target_group_name='Default Collector Group',
-            current_collectors_organization="Default",
+            current_collectors_organization=sut_details.default_organization,
             target_organization=management.tenant.organization)
+
+        collector.details.collector_group_name = 'Default Collector Group'
+        collector.details.organization = management.tenant.organization
+        collector.details.account_name = management.tenant.organization
+
     # add here wait until collector will be shown under the new organization
-    yield management.tenant
 
 
 def create_snapshot_for_collector(snapshot_name: str,
@@ -389,8 +423,7 @@ def create_snapshot_for_collector(snapshot_name: str,
 
 @pytest.fixture(scope="session", autouse=sut_details.debug_mode)
 def create_snapshot_for_collector_at_the_beginning_of_the_run(management: Management,
-                                                              collector: Collector,
-                                                              tenant):
+                                                              collector: Collector):
     """
     The role of this method is to create snapshot before the tests start, in static mode (paused).
     we do it because we revert to this (initial) snapshot before each test start in order to run on "clean"
@@ -402,42 +435,42 @@ def create_snapshot_for_collector_at_the_beginning_of_the_run(management: Manage
                                   collector=collector)
 
 
-@pytest.fixture(scope="session", autouse=sut_details.upgrade_to_latest_build)
-def upgrade_to_latest_build(management: Management,
-                            aggregator: Aggregator,
-                            core: Core,
-                            collector: Collector,
-                            create_snapshot_for_collector_at_the_beginning_of_the_run):
-    """
-    The role of this fixture is to upgrade environment to latest builds.
-    should run after creating snapshot of the system components which gives us the ability to revert in case of
-    upgrade failure or broken version
-    """
-    management.upgrade_to_specific_build(desired_build=None, create_snapshot_before_upgrade=True)
-
-    if management.host_ip != aggregator.host_ip:
-        aggregator.upgrade_to_specific_build(desired_build=None, create_snapshot_before_upgrade=True)
-
-    core.upgrade_to_specific_build(desired_build=None, create_snapshot_before_upgrade=True)
-
-    collector_latest_version = get_collector_latest_version(collector=collector)
-    if collector.get_version() != collector_latest_version:
-        collector.uninstall_collector(registration_password=management.tenant.registration_password)
-        collector.install_collector(version=collector_latest_version,
-                                    aggregator_ip=aggregator.host_ip,
-                                    organization=management.tenant.organization,
-                                    registration_password=management.tenant.registration_password)
-
-        wait_for_running_collector_status_in_cli(collector)
-        wait_for_running_collector_status_in_mgmt(management, collector)
-
-        # in case of installation of the new version passed successfully we need to create new snapshot
-        # for future purposes such as revert to first snapshot (revert to the new version)
-        first_snapshot_name = collector.os_station.vm_operations.snapshot_list[0][0]
-        collector.os_station.vm_operations.remove_all_snapshots()
-        create_snapshot_for_collector(snapshot_name=first_snapshot_name,
-                                      management=management,
-                                      collector=collector)
+# @pytest.fixture(scope="session", autouse=sut_details.upgrade_management_to_latest_build)
+# def upgrade_to_latest_build(management: Management,
+#                             aggregator: Aggregator,
+#                             core: Core,
+#                             collector: Collector,
+#                             create_snapshot_for_collector_at_the_beginning_of_the_run):
+#     """
+#     The role of this fixture is to upgrade environment to latest builds.
+#     should run after creating snapshot of the system components which gives us the ability to revert in case of
+#     upgrade failure or broken version
+#     """
+#     management.upgrade_to_specific_build(desired_build=None, create_snapshot_before_upgrade=True)
+#
+#     if management.host_ip != aggregator.host_ip:
+#         aggregator.upgrade_to_specific_build(desired_build=None, create_snapshot_before_upgrade=True)
+#
+#     core.upgrade_to_specific_build(desired_build=None, create_snapshot_before_upgrade=True)
+#
+#     collector_latest_version = get_collector_latest_version(collector=collector)
+#     if collector.get_version() != collector_latest_version:
+#         collector.uninstall_collector(registration_password=management.tenant.registration_password)
+#         collector.install_collector(version=collector_latest_version,
+#                                     aggregator_ip=aggregator.host_ip,
+#                                     organization=management.tenant.organization,
+#                                     registration_password=management.tenant.registration_password)
+#
+#         wait_for_running_collector_status_in_cli(collector)
+#         wait_for_running_collector_status_in_mgmt(management, collector)
+#
+#         # in case of installation of the new version passed successfully we need to create new snapshot
+#         # for future purposes such as revert to first snapshot (revert to the new version)
+#         first_snapshot_name = collector.os_station.vm_operations.snapshot_list[0][0]
+#         collector.os_station.vm_operations.remove_all_snapshots()
+#         create_snapshot_for_collector(snapshot_name=first_snapshot_name,
+#                                       management=management,
+#                                       collector=collector)
 
 
 @pytest.fixture(scope="function", autouse=False)
@@ -697,3 +730,12 @@ def get_collector_latest_version(collector: Collector) -> str:
 def xray():
     pass
 
+
+@pytest.fixture(scope="session", autouse=True)
+def init_jira_xray_object(management, aggregator, core, collector):
+    global jira_xray_handler
+
+    jira_xray_handler.management = management
+    jira_xray_handler.aggregator = aggregator
+    jira_xray_handler.core = core
+    jira_xray_handler.collector = collector
