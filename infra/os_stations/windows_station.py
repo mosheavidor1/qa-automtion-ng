@@ -35,8 +35,8 @@ class WindowsServiceStartTypeEnum(Enum):
 
 class WindowsStation(OsStation):
 
-    def __init__(self, host_ip, user_name, password, encrypted_connection: bool = True):
-        self.__encrypted_connection = encrypted_connection
+    def __init__(self, host_ip, user_name, password):
+        self.__encrypted_connection = True
         super().__init__(host_ip=host_ip,
                          user_name=user_name,
                          password=password)
@@ -61,6 +61,15 @@ class WindowsStation(OsStation):
             # here we are using wrapper because this library creates always same service name in the remote machine
             # and we want to ensure that it will create always unique process id in case that something will get wrong
             # with the original service.
+            self._connect_with_retry_on_different_encrypted_option()
+
+        except Exception as e:
+            logger.debug(f"Failed to connect to windows machine, original exception: {e}")
+            Reporter.report(f"Failed to connect to windows machine, original exception: {e}")
+            raise e
+
+    def _connect_with_retry_on_different_encrypted_option(self):
+        try:
             self._remote_connection_session = PsPyExecClientWrapper(self._host_ip,
                                                                     unique_connection_id=random.randint(1000000, 9999999),
                                                                     username=self._user_name,
@@ -70,10 +79,16 @@ class WindowsStation(OsStation):
             self._remote_connection_session.connect()
             self._remote_connection_session.create_service()
 
-        except Exception as e:
-            logger.debug(f"Failed to connect to windows machine, original exception: {e}")
-            Reporter.report(f"Failed to connect to windows machine, original exception: {e}")
-            raise e
+        except:
+            self._remote_connection_session = PsPyExecClientWrapper(self._host_ip,
+                                                                    unique_connection_id=random.randint(1000000,
+                                                                                                        9999999),
+                                                                    username=self._user_name,
+                                                                    password=self._password,
+                                                                    encrypt=not self.__encrypted_connection)
+            self._remote_connection_session.connect()
+            self._remote_connection_session.create_service()
+            self.__encrypted_connection = not self.__encrypted_connection
 
     @retry
     @allure.step("Executing command: {cmd}")

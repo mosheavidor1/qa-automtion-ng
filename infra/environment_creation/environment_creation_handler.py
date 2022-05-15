@@ -157,8 +157,7 @@ class EnvironmentCreationHandler:
                 collector = WindowsCollector(host_ip=new_vm.guest.ipAddress,
                                              user_name=sut_details.win_user_name,
                                              password=sut_details.win_password,
-                                             collector_details=None,
-                                             encrypted_connection=encrypted_connection)
+                                             collector_details=None)
 
             elif 'linux' in collector_template_name.name.lower():
 

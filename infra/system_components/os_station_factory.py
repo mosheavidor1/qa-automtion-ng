@@ -16,8 +16,7 @@ class OsStationFactory:
         if os_type == OsTypeEnum.WINDOWS:
             return WindowsStation(host_ip=host_ip,
                                   user_name=user_name,
-                                  password=password,
-                                  encrypted_connection=encrypted_connection)
+                                  password=password)
 
         elif os_type == OsTypeEnum.LINUX or os_type == OsTypeEnum.OS_X:
             return LinuxStation(host_ip=host_ip,
