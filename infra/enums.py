@@ -13,6 +13,8 @@ class SystemState(Enum):
     NOT_RUNNING = 'NOT_RUNNING'
     DISCONNECTED = 'DISCONNECTED'
     DOWN = 'DOWN'
+    DISABLED = 'DISABLED'
+    ENABLED = 'ENABLED'
 
 
 class ComponentType(Enum):

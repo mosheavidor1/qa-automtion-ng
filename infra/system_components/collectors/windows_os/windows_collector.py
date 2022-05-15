@@ -146,12 +146,6 @@ class WindowsCollector(Collector):
         self._process_id = self.get_current_process_id()
         Reporter.report(f"Collector process ID updated to: {self._process_id}", logger.debug)
 
-    def is_status_running_in_cli(self):
-        return self.get_collector_status() == SystemState.RUNNING
-
-    def is_status_down_in_cli(self):
-        return self.get_collector_status() == SystemState.DOWN
-
     @allure.step("Reboot Collector")
     def reboot(self):
         self.os_station.reboot()
@@ -257,6 +251,8 @@ class WindowsCollector(Collector):
             system_state = SystemState.RUNNING
         elif forti_edr_service_status == 'Down' and forti_edr_driver_status is None and forti_edr_status is None:
             system_state = SystemState.DOWN
+        elif forti_edr_service_status == 'Up' and forti_edr_driver_status == 'Up' and forti_edr_status == 'Disabled':
+            system_state = SystemState.DISABLED
         return system_state
 
     @allure.step('{0} - Start health mechanism')

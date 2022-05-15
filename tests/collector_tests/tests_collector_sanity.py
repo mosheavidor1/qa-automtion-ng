@@ -1,6 +1,6 @@
 import allure
 import pytest
-
+from infra.enums import SystemState
 from infra.system_components.collectors.linux_os.linux_collector import LinuxCollector
 from infra.system_components.collectors.windows_os.windows_collector import WindowsCollector
 from tests.utils.collector_utils import CollectorUtils
@@ -9,7 +9,9 @@ from infra.allure_report_handler.reporter import Reporter, TEST_STEP, INFO
 from infra.system_components.collectors.collectors_common_utils import (
     wait_for_running_collector_status_in_mgmt,
     wait_for_disconnected_collector_status_in_mgmt,
-    wait_for_running_collector_status_in_cli
+    wait_for_disabled_collector_status_in_mgmt,
+    wait_for_running_collector_status_in_cli,
+    wait_for_disabled_collector_status_in_cli
 )
 
 
@@ -151,3 +153,28 @@ def test_uninstall_install_configure_linux_collector(management, aggregator, col
         wait_for_running_collector_status_in_cli(collector)
         wait_for_running_collector_status_in_mgmt(management, collector)
 
+
+@allure.epic("Collectors")
+@allure.feature("Basic Functionality")
+@pytest.mark.sanity
+@pytest.mark.linux_sanity
+@pytest.mark.collector_sanity
+@pytest.mark.collector_linux_sanity
+@pytest.mark.xray('EN-57176')
+def test_disable_enable_collector(management, collector):
+    organization_name = management.tenant.organization
+    collector_name = collector.details.name
+
+    with TEST_STEP(f"Disable {collector} via MGMT and validate status in CLI and in MGMT"):
+        management.tenant.rest_api_client.system_inventory.toggle_collector(collector_name=collector_name,
+                                                                            organization_name=organization_name,
+                                                                            toggle_status=SystemState.DISABLED)
+        wait_for_disabled_collector_status_in_cli(collector)
+        wait_for_disabled_collector_status_in_mgmt(management, collector)
+
+    with TEST_STEP(f"Enable {collector} via MGMT and validate status in CLI and in MGMT"):
+        management.tenant.rest_api_client.system_inventory.toggle_collector(collector_name=collector_name,
+                                                                            organization_name=organization_name,
+                                                                            toggle_status=SystemState.ENABLED)
+        wait_for_running_collector_status_in_cli(collector)
+        wait_for_running_collector_status_in_mgmt(management, collector)

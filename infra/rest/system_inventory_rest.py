@@ -1,12 +1,13 @@
 import json
 from typing import List
-
+import logging
 import allure
 from ensilo.platform.rest.nslo_management_rest import NsloRest
-
+from infra.enums import SystemState
 from infra.allure_report_handler.reporter import Reporter
 from infra.rest.base_rest_functionality import BaseRestFunctionality
 from infra.system_components.collector import Collector
+logger = logging.getLogger(__name__)
 
 
 class SystemInventoryRest(BaseRestFunctionality):
@@ -127,6 +128,22 @@ class SystemInventoryRest(BaseRestFunctionality):
         Reporter.report(
             'Moved the collector ' + str(collector_name) + ' to the group ' + group_name + ' successfully.')
         return True
+
+    @allure.step("{toggle_status} collector via MGMT api")
+    def toggle_collector(self, collector_name: str, organization_name: str, toggle_status: SystemState,
+                         expected_status_code: int = 200):
+        """ Change collector status (disable/enable) via rest api to MGMT """
+        logger.info(f"{toggle_status} collector via MGMT api")
+        enable = True if toggle_status == SystemState.ENABLED else False
+        status, response = self._rest.inventory.ToggleCollectors(
+            collectors=[collector_name],
+            organization=organization_name,
+            enable=enable
+        )
+        self._validate_expected_status_code(
+            expected_status_code=expected_status_code,
+            actual_status_code=response.status_code,
+            error_message=f"Failed to disable collector, got {response.status_code} instead {expected_status_code}")
 
     @allure.step("Get Collector Groups in organization {organization_name}")
     def get_collector_groups(self,
