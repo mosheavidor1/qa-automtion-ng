@@ -300,29 +300,29 @@ class FortiEdrLinuxStation(LinuxStation):
 
             desired_build = StringUtils.get_txt_by_regex(text=desired_build, regex="\d+.\d+.\d+.(\d+)", group=1)
 
-            if int(desired_build) > int(current_build):
+        if int(desired_build) > int(current_build):
 
-                if create_snapshot_before_upgrade:
-                    self.vm_operations.remove_all_snapshots()
-                    self.vm_operations.snapshot_create(snapshot_name=f"Before_upgrade_{StringUtils.generate_random_string(length=3)}")
+            if create_snapshot_before_upgrade:
+                self.vm_operations.remove_all_snapshots()
+                self.vm_operations.snapshot_create(snapshot_name=f"Before_upgrade_{StringUtils.generate_random_string(length=3)}")
 
-                upgrade_file_name = f'FortiEDRInstaller_{base_version}.{desired_build}.x'
-                shared_drive_path = fr'{third_party_details.SHARED_DRIVE_VERSIONS_PATH}\{base_version}.{desired_build}'
-                copied_files_dir = self.copy_files_from_shared_folder(
-                    target_path_in_local_machine=self._version_content_folder, shared_drive_path=shared_drive_path,
-                    shared_drive_user_name=third_party_details.USER_NAME, shared_drive_password=third_party_details.PASSWORD,
-                    files_to_copy=[upgrade_file_name])
+            upgrade_file_name = f'FortiEDRInstaller_{base_version}.{desired_build}.x'
+            shared_drive_path = fr'{third_party_details.SHARED_DRIVE_VERSIONS_PATH}\{base_version}.{desired_build}'
+            copied_files_dir = self.copy_files_from_shared_folder(
+                target_path_in_local_machine=self._version_content_folder, shared_drive_path=shared_drive_path,
+                shared_drive_user_name=third_party_details.USER_NAME, shared_drive_password=third_party_details.PASSWORD,
+                files_to_copy=[upgrade_file_name])
 
-                with allure.step("Going to upgrade to machine"):
-                    result = self.execute_cmd(cmd=f'{copied_files_dir}/{upgrade_file_name}', timeout=15*60)
-                    Reporter.attach_str_as_file(file_name='upgrade output', file_content=result)
-                    if 'FortiEDR patch installation finished successfully' not in result:
-                        assert False, "Something went wrong during the upgrade"
+            with allure.step("Going to upgrade to machine"):
+                result = self.execute_cmd(cmd=f'{copied_files_dir}/{upgrade_file_name}', timeout=15*60)
+                Reporter.attach_str_as_file(file_name='upgrade output', file_content=result)
+                if 'FortiEDR patch installation finished successfully' not in result:
+                    assert False, "Something went wrong during the upgrade"
 
-                self.wait_until_service_will_be_in_desired_state(desired_state=SystemState.RUNNING)
+            self.wait_until_service_will_be_in_desired_state(desired_state=SystemState.RUNNING)
 
-            else:
-                Reporter.report(f"Skipping upgrade since the current version is >= desired version, current build: {current_build}, desired build: {desired_build}")
+        else:
+            Reporter.report(f"Skipping upgrade since the current version is >= desired version, current build: {current_build}, desired build: {desired_build}")
 
 
 
