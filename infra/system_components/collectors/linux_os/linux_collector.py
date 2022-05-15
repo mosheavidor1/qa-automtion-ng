@@ -151,6 +151,8 @@ class LinuxCollector(Collector):
             system_state = SystemState.RUNNING
         elif forti_edr_service_status == 'Down' and forti_edr_driver_status == 'Down' and forti_edr_status == 'Stopped':
             system_state = SystemState.DOWN
+        elif forti_edr_service_status == 'Up' and forti_edr_driver_status == 'NONE' and forti_edr_status == 'Disabled':
+            system_state = SystemState.DISABLED
         return system_state
 
     @allure.step("Reboot linux Collector")

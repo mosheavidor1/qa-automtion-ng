@@ -58,11 +58,29 @@ def wait_for_disconnected_collector_status_in_mgmt(management, collector, timeou
                                timeout_sec=timeout, interval_sec=COLLECTOR_KEEPALIVE_INTERVAL)
 
 
+@allure.step("Wait until status of {collector} in {management} is 'Disabled'")
+def wait_for_disabled_collector_status_in_mgmt(management, collector, timeout=None):
+    logger.info(f"Wait until status of {collector} in {management} is 'Disabled'")
+    timeout = timeout or MAX_WAIT_FOR_STATUS
+    predict_condition_func = functools.partial(management.is_collector_status_disabled_in_mgmt, collector)
+    wait_for_predict_condition(predict_condition_func=predict_condition_func,
+                               timeout_sec=timeout, interval_sec=COLLECTOR_KEEPALIVE_INTERVAL)
+
+
 @allure.step("Wait for a running status of {collector} in cli")
 def wait_for_running_collector_status_in_cli(collector, timeout=None):
     logger.info(f"Wait for a running status of {collector} in cli")
     timeout = timeout or MAX_WAIT_FOR_STATUS
     predict_condition_func = collector.is_status_running_in_cli
+    wait_for_predict_condition(predict_condition_func=predict_condition_func,
+                               timeout_sec=timeout, interval_sec=COLLECTOR_KEEPALIVE_INTERVAL)
+
+
+@allure.step("Wait for a disabled status of {collector} in cli")
+def wait_for_disabled_collector_status_in_cli(collector, timeout=None):
+    logger.info(f"Wait for a disabled status of {collector} in cli")
+    timeout = timeout or MAX_WAIT_FOR_STATUS
+    predict_condition_func = collector.is_status_disabled_in_cli
     wait_for_predict_condition(predict_condition_func=predict_condition_func,
                                timeout_sec=timeout, interval_sec=COLLECTOR_KEEPALIVE_INTERVAL)
 

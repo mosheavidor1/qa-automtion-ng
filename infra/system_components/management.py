@@ -266,6 +266,9 @@ class Management(FortiEdrLinuxStation):
         elif relevant_collector_info.get('state') == 'Disconnected':
             return SystemState.DISCONNECTED
 
+        elif relevant_collector_info.get('state') == 'Disabled':
+            return SystemState.DISABLED
+
         return SystemState.NOT_RUNNING
 
     def is_collector_status_running_in_mgmt(self, collector):
@@ -276,3 +279,7 @@ class Management(FortiEdrLinuxStation):
     def is_collector_status_disconnected_in_mgmt(self, collector):
         collector_ip = collector.os_station.host_ip
         return self.get_collector_status(collector_ip) == SystemState.DISCONNECTED
+
+    def is_collector_status_disabled_in_mgmt(self, collector):
+        collector_ip = collector.os_station.host_ip
+        return self.get_collector_status(collector_ip) == SystemState.DISABLED
