@@ -29,21 +29,21 @@ class OsTypeEnum(Enum):
 
 
 class CollectorTypes(Enum):
-    WINDOWS_11_64 = 'WINDOWS_11_64'
-    WINDOWS_10_32 = 'WINDOWS_10_32'
-    WINDOWS_10_64 = 'WINDOWS_10_64'
-    WINDOWS_8_64 = 'WINDOWS_8_64'
-    WINDOWS_8_32 = 'WINDOWS_8_32'
-    WINDOWS_7_64 = 'WINDOWS_7_64'
-    WINDOWS_7_32 = 'WINDOWS_7_32'
-    WIN_SERVER_2016 = 'WIN_SERVER_2016'
-    WIN_SERVER_2019 = 'WIN_SERVER_2019'
-    LINUX_CENTOS_6 = 'LINUX_CENTOS_6'
-    LINUX_CENTOS_7 = 'LINUX_CENTOS_7'
-    LINUX_CENTOS_8 = 'LINUX_CENTOS_8'
-    LINUX_UBUNTU_16 = 'LINUX_UBUNTU_16'
-    LINUX_UBUNTU_18 = 'LINUX_UBUNTU_18'
-    LINUX_UBUNTU_20 = 'LINUX_UBUNTU_20'
+    WINDOWS_11_64 = 'Windows 11'
+    WINDOWS_10_64 = 'Windows 10'
+    WINDOWS_10_32 = 'Windows 10'
+    WINDOWS_8_64 = 'Windows 8.1'
+    WINDOWS_8_32 = 'Windows 8.1'
+    WINDOWS_7_64 = 'Windows 7'
+    WINDOWS_7_32 = 'Windows 7'
+    WIN_SERVER_2016 = 'Windows Server 2016'
+    WIN_SERVER_2019 = 'Windows Server 2019'
+    LINUX_CENTOS_6 = 'CentOS Linux 6'
+    LINUX_CENTOS_7 = 'CentOS Linux 7'
+    LINUX_CENTOS_8 = 'CentOS Linux 8'
+    # LINUX_UBUNTU_16 = 'LINUX_UBUNTU_16'
+    # LINUX_UBUNTU_18 = 'LINUX_UBUNTU_18'
+    # LINUX_UBUNTU_20 = 'LINUX_UBUNTU_20'
 
 
 class CollectorTemplateNames(Enum):

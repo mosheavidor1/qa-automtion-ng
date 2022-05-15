@@ -27,7 +27,9 @@ pipeline {
                 description: 'suites or tests to run according to given keyword')
 
         choice(name: 'collector_type',
-               choices: ['WINDOWS_11_64', 'WINDOWS_10_64', 'WINDOWS_10_32', 'LINUX_CENTOS_7', 'LINUX_UBUNTU_20'],
+               choices: ['WINDOWS_11_64', 'WINDOWS_10_64', 'WINDOWS_10_32', 'WINDOWS_8_64',
+               'WINDOWS_8_32', 'WINDOWS_7_64', 'WINDOWS_7_32',
+               'WIN_SERVER_2016', 'WIN_SERVER_2019', 'LINUX_CENTOS_7', 'LINUX_UBUNTU_20'],
                description: 'choose collector type to run the tests on')
 
         booleanParam(name: 'report_results_to_jira',
@@ -54,9 +56,50 @@ pipeline {
                     defaultValue: true,
                     description: 'Set true for running the test with logs collection and snpashots functionality')
 
-        booleanParam(name: 'upgrade_to_latest_build',
+
+        separator( name: 'upgrade_section')
+
+        booleanParam(name: 'upgrade_management_to_latest_build',
                     defaultValue: true,
                     description: 'Set true in case you want to upgrade to latest build available')
+
+        booleanParam(name: 'upgrade_aggregator_to_latest_build',
+                    defaultValue: true,
+                    description: 'Set true in case you want to upgrade to latest build available')
+
+        booleanParam(name: 'upgrade_core_to_latest_build',
+                    defaultValue: true,
+                    description: 'Set true in case you want to upgrade to latest build available')
+
+        booleanParam(name: 'upgrade_collector_to_latest_build',
+                    defaultValue: true,
+                    description: 'Set true in case you want to upgrade to latest build available')
+
+        separator( name: 'setup_details_section')
+
+//         string( name: 'management_ssh_user_name',
+//                 defaultValue: 'root',
+//                 description: '')
+//
+//         string( name: 'management_ssh_password',
+//                 defaultValue: 'enSilo$$',
+//                 description: '')
+
+        string( name: 'rest_api_user',
+                defaultValue: 'admin',
+                description: '')
+
+        string( name: 'rest_api_password',
+                defaultValue: '12345678',
+                description: '')
+
+        string( name: 'registration_password',
+                defaultValue: '12345678',
+                description: '')
+
+        string( name: 'default_organization',
+                defaultValue: 'Default',
+                description: '')
 
     }
     agent { 

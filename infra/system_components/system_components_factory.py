@@ -91,27 +91,8 @@ class SystemComponentsFactory:
                 user_name = sut_details.win_user_name
                 password = sut_details.win_password
 
-                match collector_type:
-
-                    case collector_type.WINDOWS_11_64:
-                        if 'windows 11' not in collector_details.operating_system.lower():
-                            continue
-
-                    case collector_type.WINDOWS_10_64 | collector_type.WINDOWS_10_32:
-                        if 'windows 10' not in collector_details.operating_system.lower():
-                            continue
-
-                    case collector_type.WINDOWS_8_64:
-                        # TODO - no logic yet - skipping create collector instance
-                        continue
-
-                    case collector_type.WINDOWS_7_64 | collector_type.WINDOWS_7_32:
-                        if 'windows 7' not in collector_details.operating_system.lower():
-                            continue
-
-                    case collector_type.WIN_SERVER_2019 | collector_type.WIN_SERVER_2016:
-                        # TODO - no logic yet - skipping create collector instance
-                        continue
+                if collector_type.value.lower() not in collector_details.operating_system.lower():
+                    continue
 
                 collector = WindowsCollector(host_ip=collector_details.ip_address,
                                              user_name=user_name,
@@ -128,30 +109,8 @@ class SystemComponentsFactory:
 
             elif 'linux' in collector_type.name.lower() and 'linux' in collector_details.os_family.lower():
 
-                match collector_type:
-
-                    case collector_type.LINUX_CENTOS_8:
-                        if 'centos linux 8' not in collector_details.operating_system.lower():
-                            continue
-
-                    case collector_type.LINUX_CENTOS_7:
-                        if 'centos linux 7' not in collector_details.operating_system.lower():
-                            continue
-
-                    case collector_type.LINUX_CENTOS_6:
-                        if 'centos linux 6' not in collector_details.operating_system.lower():
-                            continue
-
-                    case collector_type.LINUX_UBUNTU_20:
-                        if 'ubuntu 20' not in collector_details.operating_system.lower():
-                            continue
-
-                    case collector_type.LINUX_UBUNTU_18:
-                        if 'ubuntu 18' not in collector_details.operating_system.lower():
-                            continue
-                    case collector_type.LINUX_UBUNTU_16:
-                        if 'ubuntu 16' not in collector_details.operating_system.lower():
-                            continue
+                if collector_type.value.lower() not in collector_details.operating_system.lower():
+                    continue
 
                 collector = LinuxCollector(host_ip=collector_details.ip_address, user_name=sut_details.linux_user_name,
                                            password=sut_details.linux_password, collector_details=collector_details)
