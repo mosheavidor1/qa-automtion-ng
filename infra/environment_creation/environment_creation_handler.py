@@ -127,12 +127,15 @@ class EnvironmentCreationHandler:
                                  machine_name: str,
                                  version: str,
                                  collector_template_name: CollectorTemplateNames,
-                                 raise_exception_on_failure: bool = True):
+                                 organization: str = "Default",
+                                 raise_exception_on_failure: bool = True,
+                                 time_to_wait_before_create_new_vm: int = 0):
 
         new_vm = None
         collector = None
 
         try:
+            time.sleep(time_to_wait_before_create_new_vm)
             new_vm = vsphere_cluster_handler.create_vm(
                 vm_template=collector_template_name,
                 desired_vm_name=machine_name,
@@ -167,7 +170,7 @@ class EnvironmentCreationHandler:
             collector.install_collector(version=version,
                                         aggregator_ip=aggregator_ip,
                                         registration_password=registration_password,
-                                        organization=None)
+                                        organization=organization)
         except Exception as e:
             if raise_exception_on_failure:
                 raise e

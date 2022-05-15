@@ -1,4 +1,5 @@
 import atexit
+import collections.abc
 import time
 from enum import Enum
 
@@ -7,7 +8,6 @@ from pyVim.connect import SmartConnectNoSSL, Disconnect
 from pyVmomi import vim
 
 from infra.allure_report_handler.reporter import Reporter
-from infra.utils.utils import StringUtils
 from infra.vpshere.vsphere_cluster_details import ClusterDetails
 from infra.enums import CollectorTemplateNames
 from infra.vpshere.vsphere_vm_operations import VsphereMachineOperations
@@ -137,12 +137,27 @@ class VsphereClusterHandler(object):
         object
             Returns a VM object
         """
-        for vm_obj in self._service_instance.content.rootFolder.childEntity[0].vmFolder.childEntity:
+        vm_objs = self._get_list_of_vms_inside_child_entity(child_entity=self._service_instance.content.rootFolder.childEntity[0].vmFolder.childEntity)
+
+        for vm_obj in vm_objs:
+            if isinstance(vm_obj, vim.Folder):
+                pass
+
             if vm_name == vm_obj.name:
                 Reporter.report(f"VM found by name: {vm_name}")
                 return vm_obj
 
         return None
+
+    def _get_list_of_vms_inside_child_entity(self, child_entity):
+        vm_objs = []
+        for obj in child_entity:
+            if isinstance(obj, vim.VirtualMachine):
+                vm_objs.append(obj)
+            elif isinstance(obj, vim.Folder):
+                vm_objs += self._get_list_of_vms_inside_child_entity(child_entity=obj.childEntity)
+
+        return vm_objs
 
     @allure.step("Search for VM by ip")
     def search_vm_by_ip(self, ip_address: str):
@@ -256,16 +271,22 @@ if __name__ == '__main__':
     cluster_details = vsphere_cluster_details.ENSILO_VCSA_40
     vsphere_cluster_handler = VsphereClusterHandler(cluster_details=cluster_details)
 
-    # vsphere_cluster_handler.get_specific_vm_from_cluster(vm_search_type=VmSearchTypeEnum.VM_NAME,
-    #                                                      txt_to_search=CollectorTemplateNames.WIN10_X64.value
-    #                                                      )
+    vms = []
+    all_enums = [e.value for e in CollectorTemplateNames]
+    all_enums.remove('')
+    for template_name in all_enums:
+        print(template_name)
+        vm = vsphere_cluster_handler.get_specific_vm_from_cluster(vm_search_type=VmSearchTypeEnum.VM_NAME,
+                                                                  txt_to_search=template_name)
+        if vm is None:
+            print(f"{template_name} is None")
 
-    created_vm = vsphere_cluster_handler.create_vm(
-        vm_template=CollectorTemplateNames.WIN10_X64,
-        desired_vm_name="dima_colletor10x64"
-    )
+    # created_vm = vsphere_cluster_handler.create_vm(
+    #     vm_template=CollectorTemplateNames.WIN_11X64,
+    #     desired_vm_name="dima_colletor10x64"
+    # )
 
-    created_vm_ip = created_vm.guest.ipAddress
+    # created_vm_ip = created_vm.guest.ipAddress
 
     # vm_ops.power_off()
     # vm_ops.snapshot_rename(vm_ops.vm_obj.snapshot.currentSnapshot, 'dima test new name')

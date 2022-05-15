@@ -14,6 +14,10 @@ pipeline {
                 defaultValue: 'main',
                 description: 'Automation branch')
 
+        string( name: 'environment_name',
+                defaultValue: '',
+                description: 'Desired environment name')
+
 //         separator(name: "system components version")
 
         string( name: 'management_version',
@@ -86,29 +90,29 @@ pipeline {
                 defaultValue: '0',
                 description: '')
 
-        string( name: 'centOS_6',
-                defaultValue: '0',
-                description: '')
+//         string( name: 'centOS_6',
+//                 defaultValue: '0',
+//                 description: '')
 
         string( name: 'centOS_7',
                 defaultValue: '0',
                 description: '')
 
-        string( name: 'centOS_8',
-                defaultValue: '0',
-                description: '')
+//         string( name: 'centOS_8',
+//                 defaultValue: '0',
+//                 description: '')
 
-        string( name: 'ubuntu_16',
-                defaultValue: '0',
-                description: '')
+//         string( name: 'ubuntu_16',
+//                 defaultValue: '0',
+//                 description: '')
 
-        string( name: 'ubuntu_18',
-                defaultValue: '0',
-                description: '')
+//         string( name: 'ubuntu_18',
+//                 defaultValue: '0',
+//                 description: '')
 
-        string( name: 'ubuntu_20',
-                defaultValue: '0',
-                description: '')
+//         string( name: 'ubuntu_20',
+//                 defaultValue: '0',
+//                 description: '')
     }
     agent {
       node {

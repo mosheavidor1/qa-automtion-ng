@@ -411,6 +411,11 @@ class WindowsStation(OsStation):
             return target_folder
         try:
             self.remove_mounted_drive()
+
+            if "Windows 7" in self._os_name and not shared_drive_user_name.startswith(
+                    "ensilo\\") and 'ens-fs01' in shared_drive_path:
+                shared_drive_user_name = fr"ensilo\{shared_drive_user_name}"
+
             self.mount_shared_drive_locally(desired_local_drive='X:',
                                             shared_drive=shared_drive_path,
                                             user_name=shared_drive_user_name,

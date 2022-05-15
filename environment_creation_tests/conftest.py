@@ -1,11 +1,13 @@
+import random
 import time
+from datetime import date
 from typing import List
 import concurrent.futures
 
 import allure
 import pytest
 
-import desired_env_details
+from environment_creation_tests import desired_env_details
 from infra.allure_report_handler.reporter import Reporter
 from infra.containers.environment_creation_containers import MachineType, EnvironmentSystemComponent, DeployedEnvInfo
 from infra.enums import ComponentType, CollectorTemplateNames
@@ -115,11 +117,11 @@ def get_non_collector_latest_version(version: str, last_versions_dict: dict, com
 
 def get_base_versions_of_all_sys_components_as_dict():
     base_versions_dict = {}
-    base_versions_dict[StringUtils.get_txt_by_regex(text=desired_env_details.management_version, regex="(\d+.\d+.\d+).\w+",group=1)] = None
-    base_versions_dict[StringUtils.get_txt_by_regex(text=desired_env_details.aggregator_version, regex="(\d+.\d+.\d+).\w+",group=1)] = None
+    base_versions_dict[StringUtils.get_txt_by_regex(text=desired_env_details.management_version, regex="(\d+.\d+.\d+).\w+", group=1)] = None
+    base_versions_dict[StringUtils.get_txt_by_regex(text=desired_env_details.aggregator_version, regex="(\d+.\d+.\d+).\w+", group=1)] = None
     base_versions_dict[StringUtils.get_txt_by_regex(text=desired_env_details.core_version, regex="(\d+.\d+.\d+).\w+", group=1)] = None
-    base_versions_dict[StringUtils.get_txt_by_regex(text=desired_env_details.windows_collector_version, regex="(\d+.\d+.\d+).\w+",group=1)] = None
-    base_versions_dict[StringUtils.get_txt_by_regex(text=desired_env_details.linux_collector_version, regex="(\d+.\d+.\d+).\w+",group=1)] = None
+    base_versions_dict[StringUtils.get_txt_by_regex(text=desired_env_details.windows_collector_version, regex="(\d+.\d+.\d+).\w+", group=1)] = None
+    base_versions_dict[StringUtils.get_txt_by_regex(text=desired_env_details.linux_collector_version, regex="(\d+.\d+.\d+).\w+", group=1)] = None
     return base_versions_dict
 
 
@@ -134,7 +136,7 @@ def get_latest_versions_of_all_base_versions_dict(base_versions_dict: dict):
 
 
 @allure.step("Deploy system components")
-def deploy_system_components(env_name='automation_env_exp'):
+def deploy_system_components(env_name='automation_env'):
     base_versions_dict = get_base_versions_of_all_sys_components_as_dict()
     latest_versions_dict = get_latest_versions_of_all_base_versions_dict(base_versions_dict=base_versions_dict)
 
@@ -148,7 +150,9 @@ def deploy_system_components(env_name='automation_env_exp'):
                                                 last_versions_dict=latest_versions_dict,
                                                 component_type=ComponentType.CORE)
 
-    machine_type = MachineType(cpu_count=1, memory_limit=4000, disk_size=500000)
+    machine_type = MachineType(cpu_count=4,
+                               memory_limit=16000,
+                               disk_size=40000)
 
     sys_comp_list = []
     if desired_env_details.management_and_aggregator_deployment_architecture == 'both':
@@ -201,7 +205,7 @@ def get_list_of_desired_collectors() -> List[CollectorTemplateNames]:
     deployment_list += [CollectorTemplateNames.WIN7_X86 for i in range(desired_env_details.windows_7_32_bit)]
     # deployment_list += [CollectorTemplateNames.WIN_SERV_2022 for i in range(desired_env_details.)]
     # deployment_list += [CollectorTemplateNames.WIN_SERV_2020 for i in range(desired_env_details.)]
-    deployment_list += [CollectorTemplateNames.WIN_SERV_2019 for i in range(desired_env_details.windows_server_2016)]
+    deployment_list += [CollectorTemplateNames.WIN_SERV_2019 for i in range(desired_env_details.windows_server_2019)]
     deployment_list += [CollectorTemplateNames.WIN_SERV_2016 for i in range(desired_env_details.windows_server_2016)]
     # deployment_list += [CollectorTemplateNames.WIN_SERV_2012 for i in range(desired_env_details.)]
     deployment_list += [CollectorTemplateNames.LINUX_CENTOS_8 for i in range(desired_env_details.centOS_8)]
@@ -222,8 +226,9 @@ def get_list_of_desired_collectors() -> List[CollectorTemplateNames]:
 
 
 @allure.step('Deploy collectors')
-def deploy_collectors(aggregator_ip,
-                      registration_password,
+def deploy_collectors(aggregator_ip: str,
+                      registration_password: str,
+                      organization: str,
                       env_name='automation_env_exp') -> dict:
 
     base_versions_dict = get_base_versions_of_all_sys_components_as_dict()
@@ -249,11 +254,21 @@ def deploy_collectors(aggregator_ip,
         version = get_collector_latest_version(version=desired_version,
                                                last_versions_dict=latest_versions_dict,
                                                collector_template_name=template)
+
         raise_exception_on_failure = False
         rand_str = StringUtils.generate_random_string(length=5)  # added in case of multi-thread usage
-        collector_name = f'{env_name}_{template.value}_{rand_str}_{time.time()}'
+        curr_time = str(time.time()).replace('.', '_')
+        collector_name = f'{env_name}_{template.value}_{rand_str}_{curr_time}'
+        if len(collector_name) >= 80:
+            collector_name = collector_name.replace("TEMPLATE", "")
+            collector_name = collector_name[:79]
 
-        args = (vsphere_cluster_handler, aggregator_ip, registration_password, collector_name, version, template, raise_exception_on_failure)
+        time_to_sleep_before_create_new_vm = random.randint(0, 60)
+
+        args = (
+            vsphere_cluster_handler, aggregator_ip, registration_password, collector_name, version, template,
+            organization,
+            raise_exception_on_failure, time_to_sleep_before_create_new_vm)
         args_list.append(args)
 
     with concurrent.futures.ThreadPoolExecutor() as executor:
@@ -285,15 +300,21 @@ def get_deployed_system_component_info_by_type(deployed_env_info: DeployedEnvInf
 
 @pytest.fixture(scope="session")
 def setup_environment():
-    env_name = f'automation_env'
 
-    deployed_env_info = deploy_system_components(env_name=env_name)
+    environment_name = desired_env_details.environment_name
+    if environment_name is None:
+        today = date.today()
+        curr_day = today.strftime("%d-%b-%Y")
+        environment_name = f'{curr_day}_automation_environment_{StringUtils.generate_random_string(4)}'
+
+    deployed_env_info = deploy_system_components(env_name=environment_name)
     aggregator_ips = deployed_env_info.aggregator_ips
     assert len(aggregator_ips) != 0, "There is no deployed aggregators, can not proceed and deploy collectors machines"
 
-    deployed_collectors_info = deploy_collectors(env_name=env_name,
+    deployed_collectors_info = deploy_collectors(env_name=deployed_env_info.env_id,
                                                  aggregator_ip=aggregator_ips[0],
-                                                 registration_password=deployed_env_info.registration_password)
+                                                 registration_password=deployed_env_info.registration_password,
+                                                 organization=deployed_env_info.environment_name)
 
     ret_dict = {
         'system_components': deployed_env_info,
