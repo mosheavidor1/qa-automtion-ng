@@ -34,11 +34,9 @@ INSTALL_UNINSTALL_LOGS_FOLDER_PATH = "C:\\InstallUninstallLogs"
 
 class WindowsCollector(Collector):
 
-    def __init__(self, host_ip: str, user_name: str, password: str, collector_details: CollectorDetails,
-                 encrypted_connection: bool = True):
+    def __init__(self, host_ip: str, user_name: str, password: str, collector_details: CollectorDetails):
         super().__init__(host_ip=host_ip)
-        self._os_station = WindowsStation(host_ip=host_ip, user_name=user_name, password=password,
-                                         encrypted_connection=encrypted_connection)
+        self._os_station = WindowsStation(host_ip=host_ip, user_name=user_name, password=password)
         self._details = collector_details
         self._process_id = self.get_current_process_id()
         self.__collector_installation_path: str = r"C:\Program Files\Fortinet\FortiEDR"

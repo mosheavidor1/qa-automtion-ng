@@ -90,7 +90,6 @@ class SystemComponentsFactory:
 
                 user_name = sut_details.win_user_name
                 password = sut_details.win_password
-                encrypted_connection = True
 
                 match collector_type:
 
@@ -107,7 +106,6 @@ class SystemComponentsFactory:
                         continue
 
                     case collector_type.WINDOWS_7_64 | collector_type.WINDOWS_7_32:
-                        encrypted_connection = False
                         if 'windows 7' not in collector_details.operating_system.lower():
                             continue
 
@@ -118,8 +116,7 @@ class SystemComponentsFactory:
                 collector = WindowsCollector(host_ip=collector_details.ip_address,
                                              user_name=user_name,
                                              password=password,
-                                             collector_details=collector_details,
-                                             encrypted_connection=encrypted_connection)
+                                             collector_details=collector_details)
 
                 if '64' in collector_type.name and '64' not in collector.os_station.os_architecture:
                     continue
