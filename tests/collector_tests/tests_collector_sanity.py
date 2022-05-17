@@ -1,7 +1,6 @@
 import allure
 import pytest
 
-import bugs
 import sut_details
 from infra.enums import SystemState
 from infra.system_components.collectors.linux_os.linux_collector import LinuxCollector
@@ -86,10 +85,11 @@ def test_uninstall_install_windows_collector(management, aggregator, collector):
         version_before_uninstall = collector.get_version()
 
         password = management.tenant.registration_password
-        if not bugs.IS_EN_75315_FIXED:
-            password = sut_details.management_registration_password
 
-        collector.uninstall_collector(registration_password=password)
+        try:
+            collector.uninstall_collector(registration_password=password)
+        except:
+            collector.uninstall_collector(registration_password=sut_details.management_registration_password)
 
         Reporter.report(f"Validate {collector} uninstalled successfully:")
         assert not collector.is_collector_files_exist(), f"Installation folder contains files, should be empty"
