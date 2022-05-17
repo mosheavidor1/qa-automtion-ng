@@ -56,8 +56,6 @@ class Management(FortiEdrLinuxStation):
                                                    self._ui_admin_password,
                                                    organization=None)
 
-        self._ui_client = ManagementUiClient(management_ui_ip=self.host_ip)
-
         self._details: ManagementDetails = self._get_management_details()
 
         self._tenant: Tenant = Tenant(management_host_ip=self.host_ip,
@@ -66,6 +64,9 @@ class Management(FortiEdrLinuxStation):
                                       registration_password=sut_details.collector_type,
                                       organization=sut_details.collector_type,
                                       collector=None)
+
+        self._ui_client = ManagementUiClient(management_ui_ip=self.host_ip,
+                                             tenant=self._tenant)
 
     @property
     def ui_admin_user_name(self) -> str:
