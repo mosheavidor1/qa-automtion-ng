@@ -86,7 +86,7 @@ class SystemComponentsFactory:
                                                  logged_users=single_collector.get('loggedUsers'),
                                                  system_information=single_collector.get('systemInformation'))
 
-            if 'windows' in collector_type.name.lower() and 'windows' in collector_details.os_family.lower():
+            if 'windows' in collector_type.value.lower() and 'windows' in collector_details.os_family.lower():
 
                 user_name = sut_details.win_user_name
                 password = sut_details.win_password
