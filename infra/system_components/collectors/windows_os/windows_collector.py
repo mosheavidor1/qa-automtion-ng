@@ -4,6 +4,7 @@ from typing import List
 import logging
 import allure
 
+import bugs
 import sut_details
 import third_party_details
 from infra.os_stations.windows_station import WindowsStation
@@ -128,12 +129,12 @@ class WindowsCollector(Collector):
     def stop_collector(self, password=None):
         logger.info(f"Stop {self}")
         password = password or REGISTRATION_PASS
-        try:
-            cmd = f'"{self.__collector_service_exe}" --stop -rp:{password}'
-            self.os_station.execute_cmd(cmd=cmd, fail_on_err=True)
-        except:
-            cmd = f'"{self.__collector_service_exe}" --stop -rp:{sut_details.management_registration_password}'
-            self.os_station.execute_cmd(cmd=cmd, fail_on_err=True)
+
+        if not bugs.IS_EN_75315_FIXED:
+            password = sut_details.management_registration_password
+
+        cmd = f'"{self.__collector_service_exe}" --stop -rp:{password}'
+        self.os_station.execute_cmd(cmd=cmd, fail_on_err=True)
 
         wait_until_collector_pid_disappears(self)
         self.update_process_id()

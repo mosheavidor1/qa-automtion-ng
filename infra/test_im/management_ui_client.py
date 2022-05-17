@@ -1,15 +1,18 @@
 import sut_details
 import third_party_details
 from infra.assertion.assertion import AssertTypeEnum
+from infra.multi_tenancy.tenant import Tenant
 from infra.test_im.test_im_handler import TestImHandler
 
 
 class ManagementUiClient:
 
     def __init__(self,
-                 management_ui_ip=sut_details.management_host):
+                 management_ui_ip=sut_details.management_host,
+                 tenant: Tenant = None):
         self.management_ui_ip = management_ui_ip
         self._testim_handler = TestImHandler(branch=third_party_details.TEST_IM_BRANCH)
+        self._tenant = tenant
 
         self.generic_functionality = self.FortiEdrGenericFunctionality(self)
         self.exceptions = self.FortiEdrExceptions(self)
@@ -37,9 +40,13 @@ class ManagementUiClient:
             "loginUser": "admin",
             "loginPassword": "12345678",
             "loginOrganization": "",
-            "organization": "Default",
-            "collectorName": "collector1"
+            "organization": "Default"
         }
+        if self._tenant is not None:
+            base_data['loginUser'] = self._tenant.user_name
+            base_data['loginPassword'] = self._tenant.user_password
+            base_data['loginOrganization'] = self._tenant.organization
+            base_data['organization'] = self._tenant.organization
 
         if data is not None:
             base_data.update(data)

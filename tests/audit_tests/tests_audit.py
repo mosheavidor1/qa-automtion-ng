@@ -9,7 +9,7 @@ import pytest
 class AuditTests:
 
     @pytest.mark.xray('EN-73328')
-    def test_verify_audit_file_was_downloaded(self, management):
+    def test_verify_audit_file_was_downloaded(self, management, collector):
         """
         1. Login
         2. go to Administrator > Tools page
@@ -17,9 +17,8 @@ class AuditTests:
         4. click on generate audit button
         5. Verify that file was downloaded
         """
-        malware_name = "DynamicCodeTests.exe"
-        test_im_params = {"eventName": malware_name}
+        test_im_params = {
+            "eventName": "DynamicCodeTests.exe",
+            "collectorName": collector.details.name
+        }
         management.ui_client.audit.export_report(test_im_params)
-
-
-
