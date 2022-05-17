@@ -1,5 +1,7 @@
 from enum import Enum
 
+import aenum as aenum
+
 
 class UserRoles(Enum):
     USER = 'User'
@@ -30,7 +32,8 @@ class OsTypeEnum(Enum):
     OS_X = 'OS_X'
 
 
-class CollectorTypes(Enum):
+class CollectorTypes(aenum.Enum):
+    _settings_ = aenum.NoAlias
     WINDOWS_11_64 = 'Windows 11'
     WINDOWS_10_64 = 'Windows 10'
     WINDOWS_10_32 = 'Windows 10'

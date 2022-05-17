@@ -60,19 +60,19 @@ pipeline {
         separator( name: 'upgrade_section')
 
         booleanParam(name: 'upgrade_management_to_latest_build',
-                    defaultValue: true,
+                    defaultValue: false,
                     description: 'Set true in case you want to upgrade to latest build available')
 
         booleanParam(name: 'upgrade_aggregator_to_latest_build',
-                    defaultValue: true,
+                    defaultValue: false,
                     description: 'Set true in case you want to upgrade to latest build available')
 
         booleanParam(name: 'upgrade_core_to_latest_build',
-                    defaultValue: true,
+                    defaultValue: false,
                     description: 'Set true in case you want to upgrade to latest build available')
 
         booleanParam(name: 'upgrade_collector_to_latest_build',
-                    defaultValue: true,
+                    defaultValue: false,
                     description: 'Set true in case you want to upgrade to latest build available')
 
         separator( name: 'setup_details_section')
