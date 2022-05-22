@@ -124,7 +124,7 @@ class WindowsStation(OsStation):
                     else:
                         Reporter.report(f"command output: {output}")
 
-                if (fail_on_err and stderr_err_output != '') or (fail_on_err and status_code != 0):
+                if (fail_on_err and stderr_err_output != '') or (fail_on_err and status_code != 0 and 'windows 7' not in self.os_name.lower()):
                     assert False, f"Failing because stderr was returned, {output}"
 
                 if return_output:
