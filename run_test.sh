@@ -28,6 +28,10 @@ if [ "$report_results_to_jira" = "true" ]; then
      pytest_cmd="${pytest_cmd} --jira-xray"
 fi
 
+if [ "$retry_on_failure" = "true" ]; then
+     pytest_cmd="${pytest_cmd} --reruns 1"
+fi
+
 echo $pytest_cmd
 eval $pytest_cmd
 
