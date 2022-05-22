@@ -248,11 +248,12 @@ def aggregator(management):
         assert False, "Automation does not support more than 1 aggregator for functional testing"
 
     logger.info("Aggregator instance was created successfully")
-
+    aggregator = aggregators[0]
+    
     if sut_details.upgrade_aggregator_to_latest_build and management.host_ip != aggregator.host_ip:
-        aggregators[0].upgrade_to_specific_build(desired_build=None, create_snapshot_before_upgrade=True)
+        aggregator.upgrade_to_specific_build(desired_build=None, create_snapshot_before_upgrade=True)
 
-    yield aggregators[0]
+    yield aggregator
 
 
 @pytest.fixture(scope="session")
@@ -391,6 +392,7 @@ def create_organization_for_collector(management, collector):
             target_group_name='Default Collector Group',
             current_collectors_organization=sut_details.default_organization,
             target_organization=management.tenant.organization)
+        time.sleep(30) # wait until collector will get the new configuration
 
         collector.details.collector_group_name = 'Default Collector Group'
         collector.details.organization = management.tenant.organization
@@ -481,13 +483,20 @@ def revert_to_snapshot(management, collector):
 
 @pytest.fixture(scope="function", autouse=True)
 def collector_health_check(management: Management, collector: Collector):
-    if not sut_details.debug_mode:
-        # check if collector is up only in case the debug mode = False to validate that the system starts with
-        # "healthy collecor
-        # else (debug mode = True) - we are checking that
-        # collector is up in CLI and management in revert_to_snapshot fixture
-        assert management.is_collector_status_running_in_mgmt(collector), f"{collector} is not running in {management}"
-        assert collector.is_status_running_in_cli(), f"{collector} status is not running"
+
+    if isinstance(collector, WindowsCollector):
+        try:
+            collector.os_station.execute_cmd(cmd='echo hi',
+                                             return_output=True,
+                                             fail_on_err=True,
+                                             attach_output_to_report=True,
+                                             asynchronous=False)
+        except:
+            collector.os_station.vm_operations.reboot()
+            time.sleep(60)
+
+    assert management.is_collector_status_running_in_mgmt(collector), f"{collector} is not running in {management}"
+    assert collector.is_status_running_in_cli(), f"{collector} status is not running"
 
     yield collector
     assert management.is_collector_status_running_in_mgmt(collector), f"{collector} is not running in {management}"

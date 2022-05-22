@@ -2,6 +2,7 @@ import os
 import subprocess
 import pathlib
 import json
+import time
 from datetime import datetime
 
 import allure
@@ -62,7 +63,8 @@ class TestImHandler:
                  ui_ip: str,
                  data: dict = None,
                  assert_type: AssertTypeEnum = AssertTypeEnum.HARD,
-                 test_timeout=600):
+                 test_timeout=600,
+                 num_retry_on_failure=5):
 
         json_name = None
 
@@ -83,6 +85,19 @@ class TestImHandler:
             status_code, output = self._send_commands_via_test_im_proxy(testim_cmd=testim_cmd,
                                                                         data=data,
                                                                         test_timeout=test_timeout)
+            if 'finished status: FAILED' in output and 'duration: 0:0:0.0' in output:
+                # if the test failed to start (night be chrome initiation failure \ network failure)
+                curr_try = 1
+                while curr_try <= num_retry_on_failure:
+                    time.sleep(30)
+                    status_code, output = self._send_commands_via_test_im_proxy(testim_cmd=testim_cmd,
+                                                                                data=data,
+                                                                                test_timeout=test_timeout)
+                    if 'duration: 0:0:0.0' not in output:
+                        curr_try = num_retry_on_failure + 1
+                    else:
+                        curr_try += 1
+
         else:
             try:
                 Reporter.report(f"Going to run TestIM command from the dir: {self.script_dir}")
@@ -156,7 +171,8 @@ class TestImHandler:
     def _send_commands_via_test_im_proxy(self,
                                          testim_cmd: str,
                                          data: dict,
-                                         test_timeout: int = 600):
+                                         test_timeout: int = 600,
+                                         num_retries: int = 3):
         data = {
             'testim_cmd': testim_cmd,
             'params': data,
@@ -167,7 +183,18 @@ class TestImHandler:
         url = f'http://{third_party_details.AUTOMATION_SERVICES_UTILS_MACHINE_IP}:{third_party_details.TEST_IM_PROXY_PORT}/startTestim'
         Reporter.attach_str_as_file(file_name=url, file_content=json.dumps(data, indent=4))
 
-        response = requests.post(url=url, json=data, timeout=test_timeout)
+        response = None
+        curr_try = 0
+        while response is None and curr_try < num_retries:
+            try:
+                response = requests.post(url=url, json=data, timeout=test_timeout)
+                curr_try = num_retries
+            except Exception as e:
+                curr_try += 1
+                if curr_try == num_retries:
+                    raise e
+                time.sleep(10)
+
         assert response.status_code == 200, f"Proxy Machine returned {response.status_code} , failed to proccess the request and run the test"
         resp_as_dict = json.loads(response.content)
         test_im_cmd_status_code = resp_as_dict.get('status_code')

@@ -13,7 +13,7 @@ from infra.system_components.collectors.collectors_common_utils import (
 )
 from infra.allure_report_handler.reporter import Reporter
 from infra.containers.system_component_containers import CollectorDetails
-from infra.enums import SystemState, OsTypeEnum
+from infra.enums import SystemState
 from infra.system_components.collector import Collector
 from infra.utils.utils import StringUtils
 from sut_details import management_registration_password

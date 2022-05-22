@@ -257,8 +257,9 @@ def deploy_collectors(aggregator_ip: str,
 
         raise_exception_on_failure = False
         rand_str = StringUtils.generate_random_string(length=5)  # added in case of multi-thread usage
-        curr_time = str(time.time()).replace('.', '_')
-        collector_name = f'{env_name}_{template.value}_{rand_str}_{curr_time}'
+        # curr_time = str(time.time()).replace('.', '_')
+        # collector_name = f'{env_name}_{template.value}_{rand_str}_{curr_time}'
+        collector_name = f'{template.value}_{rand_str}_{env_name}'
         if len(collector_name) >= 80:
             collector_name = collector_name.replace("TEMPLATE", "")
             collector_name = collector_name[:79]
@@ -311,7 +312,7 @@ def setup_environment():
     aggregator_ips = deployed_env_info.aggregator_ips
     assert len(aggregator_ips) != 0, "There is no deployed aggregators, can not proceed and deploy collectors machines"
 
-    deployed_collectors_info = deploy_collectors(env_name=deployed_env_info.env_id,
+    deployed_collectors_info = deploy_collectors(env_name=f'{environment_name}_{deployed_env_info.env_id}',
                                                  aggregator_ip=aggregator_ips[0],
                                                  registration_password=deployed_env_info.registration_password,
                                                  organization=deployed_env_info.environment_name)
