@@ -26,6 +26,10 @@ pipeline {
                 defaultValue: 'sanity',
                 description: 'suites or tests to run according to given keyword')
 
+        booleanParam(name: 'retry_on_failure',
+                    defaultValue: false,
+                    description: 're-run test in case of failure')
+
         choice(name: 'collector_type',
                choices: ['WINDOWS_11_64', 'WINDOWS_10_64', 'WINDOWS_10_32', 'WINDOWS_8_64',
                'WINDOWS_8_32', 'WINDOWS_7_64', 'WINDOWS_7_32',
