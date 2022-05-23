@@ -25,9 +25,6 @@ class SystemInventoryRest(BaseRestFunctionality):
         :return: according to the get_info function.
         """
         status, response = self._rest.inventory.ListCollectors(organization=organization)
-        self._validate_expected_status_code(expected_status_code=200,
-                                            actual_status_code=response.status_code,
-                                            error_message=f"Failed to get collector info - expected response code: {200}, actual: {response.status_code}")
         return self._get_info(status, response, 'collector', validation_data, output_parameters)
 
     def create_group(self, name, organization=None):

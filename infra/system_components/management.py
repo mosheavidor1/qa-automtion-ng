@@ -294,6 +294,7 @@ class Management(FortiEdrLinuxStation):
             try:
                 aggregators = self.admin_rest_api_client.system_inventory.get_aggregator_info()
             except Exception as e:
+                logger.info("Rest API is not available yet, going to sleep 5 sceonds")
                 time.sleep(5)
 
         assert aggregators is not None, f"REST API is not available within timeout of {timeout}"
