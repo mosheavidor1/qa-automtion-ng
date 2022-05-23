@@ -21,6 +21,9 @@ class AdministratorRest(BaseRestFunctionality):
             parameter = [parameter]
 
         status, response = self._rest.admin.GetSystemSummary()
+        self._validate_expected_status_code(expected_status_code=200,
+                                            actual_status_code=response.status_code,
+                                            error_message=f"Get system summary - expected response code: {200}, actual: {response.status_code}")
 
         if not status:
             assert False, f'Could not get response from the management. \n{response}'

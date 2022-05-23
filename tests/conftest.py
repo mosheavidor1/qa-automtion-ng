@@ -233,12 +233,15 @@ def management():
     if sut_details.upgrade_management_to_latest_build:
         management.upgrade_to_specific_build(desired_build=None, create_snapshot_before_upgrade=True)
 
+    management.wait_until_rest_api_available()
+
     yield management
 
 
 @pytest.fixture(scope="session")
 def aggregator(management):
     logger.info("Going to create Aggregator instance")
+
     aggregators = SystemComponentsFactory.get_aggregators(management=management)
 
     if len(aggregators) == 0:

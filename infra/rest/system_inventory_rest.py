@@ -25,6 +25,9 @@ class SystemInventoryRest(BaseRestFunctionality):
         :return: according to the get_info function.
         """
         status, response = self._rest.inventory.ListCollectors(organization=organization)
+        self._validate_expected_status_code(expected_status_code=200,
+                                            actual_status_code=response.status_code,
+                                            error_message=f"Failed to get collector info - expected response code: {200}, actual: {response.status_code}")
         return self._get_info(status, response, 'collector', validation_data, output_parameters)
 
     def create_group(self, name, organization=None):
@@ -65,6 +68,9 @@ class SystemInventoryRest(BaseRestFunctionality):
         :return: according to the get_info function.
         """
         status, response = self._rest.inventory.ListAggregators()
+        self._validate_expected_status_code(expected_status_code=200,
+                                            actual_status_code=response.status_code,
+                                            error_message=f"Failed to get aggregator info - expected response code: {200}, actual: {response.status_code}")
         return self._get_info(status, response, 'aggregator', validation_data, output_parameters)
 
     def get_core_info(self, validation_data=None, output_parameters=None):
@@ -76,6 +82,9 @@ class SystemInventoryRest(BaseRestFunctionality):
         :return: according to the get_info function.
         """
         status, response = self._rest.inventory.ListCores()
+        self._validate_expected_status_code(expected_status_code=200,
+                                            actual_status_code=response.status_code,
+                                            error_message=f"Failed to get core info - expected response code: {200}, actual: {response.status_code}")
         return self._get_info(status, response, 'core', validation_data, output_parameters)
 
     @allure.step(

@@ -1,4 +1,5 @@
 import logging
+import time
 
 import allure
 import functools
@@ -284,3 +285,15 @@ class Management(FortiEdrLinuxStation):
     def is_collector_status_disabled_in_mgmt(self, collector):
         collector_ip = collector.os_station.host_ip
         return self.get_collector_status(collector_ip) == SystemState.DISABLED
+
+    @allure.step("Wait until rest api available")
+    def wait_until_rest_api_available(self, timeout: int = 60):
+        start_time = time.time()
+        aggregators = None
+        while time.time() - start_time < timeout and aggregators is None:
+            try:
+                aggregators = self.admin_rest_api_client.system_inventory.get_aggregator_info()
+            except Exception as e:
+                time.sleep(5)
+
+        assert aggregators is not None, f"REST API is not available within timeout of {timeout}"

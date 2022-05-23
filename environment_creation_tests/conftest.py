@@ -182,7 +182,7 @@ def deploy_system_components(env_name='automation_env'):
         sys_comp_list.append(core)
 
     env_id = EnvironmentCreationHandler.deploy_system_components(
-        environment_name=env_name,
+        environment_name=env_name.replace(" ", "_"),
         system_components=sys_comp_list,
         installation_type='qa')
 
@@ -260,8 +260,9 @@ def deploy_collectors(aggregator_ip: str,
         # curr_time = str(time.time()).replace('.', '_')
         # collector_name = f'{env_name}_{template.value}_{rand_str}_{curr_time}'
         collector_name = f'{template.value}_{rand_str}_{env_name}'
+        collector_name = collector_name.replace("TEMPLATE", "")
+        collector_name = collector_name.replace(" ", "_")
         if len(collector_name) >= 80:
-            collector_name = collector_name.replace("TEMPLATE", "")
             collector_name = collector_name[:79]
 
         time_to_sleep_before_create_new_vm = random.randint(0, 60)
