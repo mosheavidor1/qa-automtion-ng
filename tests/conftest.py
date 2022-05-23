@@ -91,7 +91,7 @@ def pytest_runtest_makereport(item, call):
     test_path = str(result.nodeid)
     if test_path in tests_results.keys():
         if tests_results[test_path]['hit'] == 3:
-            del tests_results['test_path']
+            del tests_results[test_path]
 
     if test_path not in tests_results.keys():
         result = {
@@ -241,8 +241,8 @@ def management():
 @pytest.fixture(scope="session")
 def aggregator(management):
     logger.info("Going to create Aggregator instance")
-
     aggregators = SystemComponentsFactory.get_aggregators(management=management)
+    logger.info("Aggregator instance was created successfully")
 
     if len(aggregators) == 0:
         assert False, "There is no registered aggregator in management, can not create Aggregator object"
@@ -250,7 +250,6 @@ def aggregator(management):
     if len(aggregators) > 1:
         assert False, "Automation does not support more than 1 aggregator for functional testing"
 
-    logger.info("Aggregator instance was created successfully")
     aggregator = aggregators[0]
     
     if sut_details.upgrade_aggregator_to_latest_build and management.host_ip != aggregator.host_ip:
@@ -261,7 +260,7 @@ def aggregator(management):
 
 @pytest.fixture(scope="session")
 def core(management):
-
+    logger.info("Going to create Core instance")
     cores = SystemComponentsFactory.get_cores(management=management)
     if len(cores) == 0:
         assert False, "There is no registered core in management, can not create Core object"
@@ -516,16 +515,15 @@ def validate_all_system_components_are_running(management: Management,
     collector_status_timeout = 30
 
     for sys_comp in non_collector_sys_components:
-        if isinstance(sys_comp, Core):
-            with allure.step("Workaround for core - change DeploymentMethod to Cloud although it's onPrem"):
-                content = core.get_file_content(file_path='/opt/FortiEDR/core/Config/Core/CoreBootstrap.jsn')
-                deployment_mode = StringUtils.get_txt_by_regex(text=content, regex='"DeploymentMode":"(\w+)"', group=1)
-                if deployment_mode == 'OnPremise':
-                    core.execute_cmd(
-                        """sed -i 's/"DeploymentMode":"OnPremise"/"DeploymentMode":"Cloud"/g' /opt/FortiEDR/core/Config/Core/CoreBootstrap.jsn""")
-                    core.stop_service()
-                    core.start_service()
-
+    #     if isinstance(sys_comp, Core):
+    #         with allure.step("Workaround for core - change DeploymentMethod to Cloud although it's onPrem"):
+    #             content = core.get_file_content(file_path='/opt/FortiEDR/core/Config/Core/CoreBootstrap.jsn')
+    #             deployment_mode = StringUtils.get_txt_by_regex(text=content, regex='"DeploymentMode":"(\w+)"', group=1)
+    #             if deployment_mode == 'OnPremise':
+    #                 core.execute_cmd(
+    #                     """sed -i 's/"DeploymentMode":"OnPremise"/"DeploymentMode":"Cloud"/g' /opt/FortiEDR/core/Config/Core/CoreBootstrap.jsn""")
+    #                 core.stop_service()
+    #                 core.start_service()
         sys_comp.validate_system_component_is_in_desired_state(desired_state=SystemState.RUNNING)
 
     assert management.is_collector_status_running_in_mgmt(collector), f"{collector} is not running in {management}"

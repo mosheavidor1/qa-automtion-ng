@@ -1,3 +1,4 @@
+import logging
 from typing import List
 
 import sut_details
@@ -11,16 +12,18 @@ from infra.system_components.core import Core
 from infra.system_components.management import Management
 from infra.utils.utils import StringUtils
 
+logger = logging.getLogger(__name__)
+
 
 class SystemComponentsFactory:
 
     @staticmethod
     def get_aggregators(management: Management) -> List[Aggregator]:
         aggr_list = []
+
         aggregators = management.admin_rest_api_client.system_inventory.get_aggregator_info()
         for single_aggr in aggregators:
             ip_addr, port = StringUtils.get_ip_port_as_tuple(single_aggr.get('ipAddress'))
-
             aggregator_details = AggregatorDetails(host_name=single_aggr.get('hostName'),
                                                    system_id=single_aggr.get('id'),
                                                    version=single_aggr.get('version'),

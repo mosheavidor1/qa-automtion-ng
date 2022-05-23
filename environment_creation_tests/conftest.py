@@ -260,7 +260,7 @@ def deploy_collectors(aggregator_ip: str,
         # curr_time = str(time.time()).replace('.', '_')
         # collector_name = f'{env_name}_{template.value}_{rand_str}_{curr_time}'
         collector_name = f'{template.value}_{rand_str}_{env_name}'
-        collector_name = collector_name.replace("TEMPLATE", "")
+        collector_name = collector_name.replace("TEMPLATE_", "")
         collector_name = collector_name.replace(" ", "_")
         if len(collector_name) >= 80:
             collector_name = collector_name[:79]
