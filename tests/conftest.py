@@ -232,6 +232,7 @@ def management():
 
     if sut_details.upgrade_management_to_latest_build:
         management.upgrade_to_specific_build(desired_build=None, create_snapshot_before_upgrade=True)
+        management.details.management_version = management.get_version()
 
     management.wait_until_rest_api_available()
 
@@ -254,6 +255,7 @@ def aggregator(management):
     
     if sut_details.upgrade_aggregator_to_latest_build and management.host_ip != aggregator.host_ip:
         aggregator.upgrade_to_specific_build(desired_build=None, create_snapshot_before_upgrade=True)
+        aggregator.details.version = aggregator.get_version()
 
     yield aggregator
 
@@ -272,6 +274,7 @@ def core(management):
 
     if sut_details.upgrade_core_to_latest_build:
         cores[0].upgrade_to_specific_build(desired_build=None, create_snapshot_before_upgrade=True)
+        cores[0].details.version = cores[0].get_version()
 
     yield cores[0]
 
@@ -316,6 +319,8 @@ def collector(management, aggregator):
                                         aggregator_ip=aggregator.host_ip,
                                         organization=management.tenant.organization,
                                         registration_password=management.tenant.registration_password)
+
+            collector.details.version = collector_latest_version
 
             wait_for_running_collector_status_in_cli(collector)
             wait_for_running_collector_status_in_mgmt(management, collector)
