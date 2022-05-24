@@ -225,6 +225,14 @@ class VsphereMachineOperations:
         WaitForTask(task, self._service_instance)
         # Reporter.report(f"Machine suspend: {task.info.state}")
 
+    @allure.step("Remove VM")
+    def remove_vm(self):
+        Reporter.report("Powering off the VM before removal")
+        self.power_off()
+        Reporter.report("Removing VM from VSphere inventory")
+        task = self.vm_obj.Destroy_Task()
+        WaitForTask(task, self._service_instance)
+
     @allure.step("Create VM from template")
     def clone_vm_by_name(self,
                          vm_template_object,
