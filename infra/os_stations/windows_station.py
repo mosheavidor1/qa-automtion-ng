@@ -97,8 +97,7 @@ class WindowsStation(OsStation):
                     asynchronous: bool = False):
 
         try:
-            if self._remote_connection_session is None:
-                self.connect()
+            self.connect()
 
             cmd = cmd.replace('\\\\', r'\\')
             logger.debug(f"Executing command: {cmd}")
@@ -134,19 +133,23 @@ class WindowsStation(OsStation):
                     return output
 
         except SCMRException as e:
+            self._remote_connection_session = None
             Reporter.report("Failed to Execute command because somthing went wrong with pypsexec library connection, connecting again")
             self.connect()
             raise e
 
         except ConnectionAbortedError as e:
+            self._remote_connection_session = None
             self.connect()
             raise e
 
         except PipeBroken as e:
+            self._remote_connection_session = None
             Reporter.report("Failed to connect to windows machine, if you are connected via VPN, check that windows firewall is disabled")
             raise e
 
         except Exception as e:
+            self._remote_connection_session = None
             Reporter.report(f"Failed to execute command: {cmd} on remote windows machine, original exception: {e}")
             raise e
 
@@ -158,7 +161,7 @@ class WindowsStation(OsStation):
         if self._remote_connection_session is not None:
             self._remote_connection_session.remove_service()
             self._remote_connection_session.disconnect()
-            self._remote_connection_session = None
+        self._remote_connection_session = None
 
     @allure.step("Reboot")
     def reboot(self):
