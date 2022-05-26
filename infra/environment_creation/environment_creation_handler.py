@@ -11,7 +11,7 @@ from infra.containers.environment_creation_containers import EnvironmentSystemCo
 from infra.enums import HttpRequestMethodsEnum, CollectorTemplateNames
 from infra.system_components.collectors.linux_os.linux_collector import LinuxCollector
 from infra.system_components.collectors.windows_os.windows_collector import WindowsCollector
-from infra.utils.utils import JsonUtils, HttpRequesterUtils
+from infra.utils.utils import JsonUtils, HttpRequesterUtils, StringUtils
 from infra.vpshere.vsphere_cluster_handler import VsphereClusterHandler
 
 
@@ -158,6 +158,7 @@ class EnvironmentCreationHandler:
                                              user_name=sut_details.win_user_name,
                                              password=sut_details.win_password,
                                              collector_details=None)
+                collector.os_station.rename_hostname(host_name=StringUtils.generate_random_string(5))
 
             elif 'linux' in collector_template_name.name.lower():
 

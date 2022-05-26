@@ -490,3 +490,9 @@ class WindowsStation(OsStation):
         uptime_sec = self.execute_cmd(cmd=cmd, fail_on_err=True, return_output=True, attach_output_to_report=True)
         Reporter.report(f"Uptime sec is {uptime_sec}")
         return int(uptime_sec)
+
+    @allure.step("Rename host name")
+    def rename_hostname(self, host_name: str):
+        host_name = "Computer%RANDOM%" if host_name is None else host_name
+        self.execute_cmd(cmd=f'wmic computersystem where name="%COMPUTERNAME%" call rename name={host_name}')
+        self.reboot()
