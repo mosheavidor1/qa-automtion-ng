@@ -46,9 +46,7 @@ class CollectorTypes(aenum.Enum):
     LINUX_CENTOS_6 = 'CentOS Linux 6'
     LINUX_CENTOS_7 = 'CentOS Linux 7'
     LINUX_CENTOS_8 = 'CentOS Linux 8'
-    # LINUX_UBUNTU_16 = 'LINUX_UBUNTU_16'
-    # LINUX_UBUNTU_18 = 'LINUX_UBUNTU_18'
-    # LINUX_UBUNTU_20 = 'LINUX_UBUNTU_20'
+    LINUX_UBUNTU_20 = 'Ubuntu 20'
 
 
 class CollectorTemplateNames(Enum):
