@@ -12,7 +12,7 @@ pipeline {
     parameters {
         string( name: 'branchName',
                 defaultValue: 'main',
-                description: 'Branch to build')	
+                description: 'Branch to build')
 
         string( name: 'management_host_ip',
                 defaultValue: '',
@@ -42,8 +42,8 @@ pipeline {
 
         string( name: 'email_list',
                 defaultValue: '',
-                description: 'Email List, comma delimiter')	   
-                    
+                description: 'Email List, comma delimiter')
+
         string( name: 'platfom_rest_branch',
                 defaultValue: 'master',
                 description: 'Platfom Rest Branch')
@@ -106,36 +106,60 @@ pipeline {
                 description: '')
 
     }
-    agent { 
+    triggers {
+        parameterizedCron('''
+            # leave spaces where you want them around the parameters. They'll be trimmed.
+            # we let the build run with the default name
+            00 19 * * 0-4 % branchName=main; management_host_ip=10.151.125.61; collector_type=WINDOWS_11_64; tests_discover_type=suite; tests=sanity; report_results_to_jira=True; use_test_im_proxy=True; debug_mode=True; rest_api_user=enSiloCloudServices; rest_api_password=NlZtMJHJIJUcHTK5w7BBrBpB; registration_password=OAQZQKQlHtJOPzRJ9rZJ9Ols; default_organization=5_2_0_sanity; upgrade_management_to_latest_build=True; upgrade_aggregator_to_latest_build=True; upgrade_core_to_latest_build=True; upgrade_collector_to_latest_build=True; retry_on_failure=True
+            30 19 * * 0-4 % branchName=main; management_host_ip=10.151.125.61; collector_type=WINDOWS_10_64; tests_discover_type=suite; tests=sanity; report_results_to_jira=True; use_test_im_proxy=True; debug_mode=True; rest_api_user=enSiloCloudServices; rest_api_password=NlZtMJHJIJUcHTK5w7BBrBpB; registration_password=OAQZQKQlHtJOPzRJ9rZJ9Ols; default_organization=5_2_0_sanity; upgrade_management_to_latest_build=False; upgrade_aggregator_to_latest_build=False; upgrade_core_to_latest_build=False; upgrade_collector_to_latest_build=True; retry_on_failure=True
+            35 19 * * 0-4 % branchName=main; management_host_ip=10.151.125.61; collector_type=WINDOWS_10_32; tests_discover_type=suite; tests=sanity; report_results_to_jira=True; use_test_im_proxy=True; debug_mode=True; rest_api_user=enSiloCloudServices; rest_api_password=NlZtMJHJIJUcHTK5w7BBrBpB; registration_password=OAQZQKQlHtJOPzRJ9rZJ9Ols; default_organization=5_2_0_sanity; upgrade_management_to_latest_build=False; upgrade_aggregator_to_latest_build=False; upgrade_core_to_latest_build=False; upgrade_collector_to_latest_build=True; retry_on_failure=True
+            40 19 * * 0-4 % branchName=main; management_host_ip=10.151.125.61; collector_type=WINDOWS_8_64; tests_discover_type=suite; tests=sanity; report_results_to_jira=True; use_test_im_proxy=True; debug_mode=True; rest_api_user=enSiloCloudServices; rest_api_password=NlZtMJHJIJUcHTK5w7BBrBpB; registration_password=OAQZQKQlHtJOPzRJ9rZJ9Ols; default_organization=5_2_0_sanity; upgrade_management_to_latest_build=False; upgrade_aggregator_to_latest_build=False; upgrade_core_to_latest_build=False; upgrade_collector_to_latest_build=True; retry_on_failure=True
+            45 19 * * 0-4 % branchName=main; management_host_ip=10.151.125.61; collector_type=WINDOWS_7_64; tests_discover_type=suite; tests=sanity; report_results_to_jira=True; use_test_im_proxy=True; debug_mode=True; rest_api_user=enSiloCloudServices; rest_api_password=NlZtMJHJIJUcHTK5w7BBrBpB; registration_password=OAQZQKQlHtJOPzRJ9rZJ9Ols; default_organization=5_2_0_sanity; upgrade_management_to_latest_build=False; upgrade_aggregator_to_latest_build=False; upgrade_core_to_latest_build=False; upgrade_collector_to_latest_build=True; retry_on_failure=True
+            00 19 * * 0-4 % branchName=main; management_host_ip=10.151.125.61; collector_type=WINDOWS_7_32; tests_discover_type=suite; tests=sanity; report_results_to_jira=True; use_test_im_proxy=True; debug_mode=True; rest_api_user=enSiloCloudServices; rest_api_password=NlZtMJHJIJUcHTK5w7BBrBpB; registration_password=OAQZQKQlHtJOPzRJ9rZJ9Ols; default_organization=5_2_0_sanity; upgrade_management_to_latest_build=False; upgrade_aggregator_to_latest_build=False; upgrade_core_to_latest_build=False; upgrade_collector_to_latest_build=True; retry_on_failure=True
+            05 19 * * 0-4 % branchName=main; management_host_ip=10.151.125.61; collector_type=WIN_SERVER_2016; tests_discover_type=suite; tests=sanity; report_results_to_jira=True; use_test_im_proxy=True; debug_mode=True; rest_api_user=enSiloCloudServices; rest_api_password=NlZtMJHJIJUcHTK5w7BBrBpB; registration_password=OAQZQKQlHtJOPzRJ9rZJ9Ols; default_organization=5_2_0_sanity; upgrade_management_to_latest_build=False; upgrade_aggregator_to_latest_build=False; upgrade_core_to_latest_build=False; upgrade_collector_to_latest_build=True; retry_on_failure=True
+            10 19 * * 0-4 % branchName=main; management_host_ip=10.151.125.61; collector_type=WIN_SERVER_2019; tests_discover_type=suite; tests=sanity; report_results_to_jira=True; use_test_im_proxy=True; debug_mode=True; rest_api_user=enSiloCloudServices; rest_api_password=NlZtMJHJIJUcHTK5w7BBrBpB; registration_password=OAQZQKQlHtJOPzRJ9rZJ9Ols; default_organization=5_2_0_sanity; upgrade_management_to_latest_build=False; upgrade_aggregator_to_latest_build=False; upgrade_core_to_latest_build=False; upgrade_collector_to_latest_build=True; retry_on_failure=True
+
+            10 12 * * 0-4 % branchName=main; management_host_ip=10.151.125.30; collector_type=WINDOWS_11_64; tests_discover_type=suite; tests=sanity; report_results_to_jira=True; use_test_im_proxy=True; debug_mode=True; rest_api_user=enSiloCloudServices; rest_api_password=EBvQaj6cJYnfkMntoOV31UJl; registration_password=Fa83OsVswVcPrV6IcQTZnYgX; default_organization=gabis_5_1_0; upgrade_management_to_latest_build=False; upgrade_aggregator_to_latest_build=False; upgrade_core_to_latest_build=False; upgrade_collector_to_latest_build=False; retry_on_failure=True
+            35 12 * * 0-4 % branchName=main; management_host_ip=10.151.125.30; collector_type=WINDOWS_10_64; tests_discover_type=suite; tests=sanity; report_results_to_jira=True; use_test_im_proxy=True; debug_mode=True; rest_api_user=enSiloCloudServices; rest_api_password=EBvQaj6cJYnfkMntoOV31UJl; registration_password=Fa83OsVswVcPrV6IcQTZnYgX; default_organization=gabis_5_1_0; upgrade_management_to_latest_build=False; upgrade_aggregator_to_latest_build=False; upgrade_core_to_latest_build=False; upgrade_collector_to_latest_build=False; retry_on_failure=True
+            40 12 * * 0-4 % branchName=main; management_host_ip=10.151.125.30; collector_type=WINDOWS_10_32; tests_discover_type=suite; tests=sanity; report_results_to_jira=True; use_test_im_proxy=True; debug_mode=True; rest_api_user=enSiloCloudServices; rest_api_password=EBvQaj6cJYnfkMntoOV31UJl; registration_password=Fa83OsVswVcPrV6IcQTZnYgX; default_organization=gabis_5_1_0; upgrade_management_to_latest_build=False; upgrade_aggregator_to_latest_build=False; upgrade_core_to_latest_build=False; upgrade_collector_to_latest_build=False; retry_on_failure=True
+            45 12 * * 0-4 % branchName=main; management_host_ip=10.151.125.30; collector_type=WINDOWS_8_64; tests_discover_type=suite; tests=sanity; report_results_to_jira=True; use_test_im_proxy=True; debug_mode=True; rest_api_user=enSiloCloudServices; rest_api_password=EBvQaj6cJYnfkMntoOV31UJl; registration_password=Fa83OsVswVcPrV6IcQTZnYgX; default_organization=gabis_5_1_0; upgrade_management_to_latest_build=False; upgrade_aggregator_to_latest_build=False; upgrade_core_to_latest_build=False; upgrade_collector_to_latest_build=False; retry_on_failure=True
+            50 12 * * 0-4 % branchName=main; management_host_ip=10.151.125.30; collector_type=WINDOWS_7_64; tests_discover_type=suite; tests=sanity; report_results_to_jira=True; use_test_im_proxy=True; debug_mode=True; rest_api_user=enSiloCloudServices; rest_api_password=EBvQaj6cJYnfkMntoOV31UJl; registration_password=Fa83OsVswVcPrV6IcQTZnYgX; default_organization=gabis_5_1_0; upgrade_management_to_latest_build=False; upgrade_aggregator_to_latest_build=False; upgrade_core_to_latest_build=False; upgrade_collector_to_latest_build=False; retry_on_failure=True
+            00 13 * * 0-4 % branchName=main; management_host_ip=10.151.125.30; collector_type=WINDOWS_7_32; tests_discover_type=suite; tests=sanity; report_results_to_jira=True; use_test_im_proxy=True; debug_mode=True; rest_api_user=enSiloCloudServices; rest_api_password=EBvQaj6cJYnfkMntoOV31UJl; registration_password=Fa83OsVswVcPrV6IcQTZnYgX; default_organization=gabis_5_1_0; upgrade_management_to_latest_build=False; upgrade_aggregator_to_latest_build=False; upgrade_core_to_latest_build=False; upgrade_collector_to_latest_build=False; retry_on_failure=True
+            10 13 * * 0-4 % branchName=main; management_host_ip=10.151.125.30; collector_type=WIN_SERVER_2016; tests_discover_type=suite; tests=sanity; report_results_to_jira=True; use_test_im_proxy=True; debug_mode=True; rest_api_user=enSiloCloudServices; rest_api_password=EBvQaj6cJYnfkMntoOV31UJl; registration_password=Fa83OsVswVcPrV6IcQTZnYgX; default_organization=gabis_5_1_0; upgrade_management_to_latest_build=False; upgrade_aggregator_to_latest_build=False; upgrade_core_to_latest_build=False; upgrade_collector_to_latest_build=False; retry_on_failure=True
+            20 13 * * 0-4 % branchName=main; management_host_ip=10.151.125.30; collector_type=WIN_SERVER_2019; tests_discover_type=suite; tests=sanity; report_results_to_jira=True; use_test_im_proxy=True; debug_mode=True; rest_api_user=enSiloCloudServices; rest_api_password=EBvQaj6cJYnfkMntoOV31UJl; registration_password=Fa83OsVswVcPrV6IcQTZnYgX; default_organization=gabis_5_1_0; upgrade_management_to_latest_build=False; upgrade_aggregator_to_latest_build=False; upgrade_core_to_latest_build=False; upgrade_collector_to_latest_build=False; retry_on_failure=True
+            30 13 * * 0-4 % branchName=main; management_host_ip=10.151.125.30; collector_type=LINUX_CENTOS_7; tests_discover_type=suite; tests=collector_linux_sanity; report_results_to_jira=True; use_test_im_proxy=True; debug_mode=True; rest_api_user=enSiloCloudServices; rest_api_password=EBvQaj6cJYnfkMntoOV31UJl; registration_password=Fa83OsVswVcPrV6IcQTZnYgX; default_organization=gabis_5_1_0; upgrade_management_to_latest_build=False; upgrade_aggregator_to_latest_build=False; upgrade_core_to_latest_build=False; upgrade_collector_to_latest_build=False; retry_on_failure=True
+        ''')
+    }
+    agent {
       node {
-        label 'cloud-agents' 
+        label 'cloud-agents'
         customWorkspace "/home/jenkins/workspace/forti_edr_automation/${env.BUILD_NUMBER}"
       }
     }
-    stages {  
+    stages {
 
         stage('Checkout') {
             steps {
                 script {
-                    cleanWs()              
-                    checkout scm    
+                    cleanWs()
+                    checkout scm
                     stdout_list.add("<div><h3><a href=\"${env.BUILD_URL}\">${env.BUILD_URL}</a></h3></div>")
                 }
             }
-        }      
+        }
         stage('Create Docker') {
             steps {
                 script {
 
-                    sh '[ -f ./myenv.txt ] && rm -f ./myenv.txt || echo "env file truncated"'  
+                    sh '[ -f ./myenv.txt ] && rm -f ./myenv.txt || echo "env file truncated"'
                     params.each{
                         echo "Variable set $it.key = ${it.value}"
                         env."${it.key}" = it.value
                         sh "echo $it.key=${it.value} >> ./myenv.txt"
                     }
                     sh "echo BUILD_URL=${BUILD_URL} >> ./myenv.txt"
-                    
-                    try 
+
+                    try
                     {
 
                         withCredentials([sshUserPrivateKey(credentialsId: '3011e0c4-d9c2-4401-91b1-ae0808285370', keyFileVariable: 'KEYFILE')]) {
@@ -147,7 +171,7 @@ pipeline {
                                     echo "Host *\n  StrictHostKeyChecking no" > ./.ssh/config
                                 '''
                         }
-                        withCredentials([usernamePassword(credentialsId:'harbor_fortiedr_qa_automation', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')])  
+                        withCredentials([usernamePassword(credentialsId:'harbor_fortiedr_qa_automation', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')])
                         {
                             user = env.USERNAME
                             password = env.PASSWORD
@@ -158,81 +182,81 @@ pipeline {
                             DOCKER_SHA256SUM = sh( script: "sha256sum Dockerfile | cut -d' ' -f1", returnStdout: true).trim()
                             env.DOCKER_SHA256SUM = DOCKER_SHA256SUM
                             REQUIREMENTS_SHA256SUM = sh( script: "sha256sum resources/requirements.txt | cut -d' ' -f1", returnStdout: true).trim()
-                            env.REQUIREMENTS_SHA256SUM = REQUIREMENTS_SHA256SUM                                                        
+                            env.REQUIREMENTS_SHA256SUM = REQUIREMENTS_SHA256SUM
                             docker_exists = sh( script: '''
                                         echo $PASSWORD | docker login $HARBOR_DOCKER_REGISTRY  -u $USERNAME --password-stdin > /dev/null 2>&1
                                         echo $(docker inspect $HARBOR_DOCKER_REGISTRY/$IMAGE_NAME:$DOCKER_SHA256SUM  > /dev/null 2>&1 ; echo $?)
-                                        ''', returnStdout: true ).trim()  
+                                        ''', returnStdout: true ).trim()
                             requirements_no_change = sh( script: '''
                                         echo $PASSWORD | docker login $HARBOR_DOCKER_REGISTRY  -u $USERNAME --password-stdin > /dev/null 2>&1
                                         echo $(docker inspect $HARBOR_DOCKER_REGISTRY/$IMAGE_NAME:$REQUIREMENTS_SHA256SUM  > /dev/null 2>&1 ; echo $?)
-                                        ''', returnStdout: true ).trim()  
+                                        ''', returnStdout: true ).trim()
                             if ( docker_exists != "0" || requirements_no_change != "0" ) {
                                 println("Start Building docker image")
 
 
-                                sh '''                                                
-                                        echo $PASSWORD | docker login $HARBOR_DOCKER_REGISTRY  -u $USERNAME --password-stdin                                             
+                                sh '''
+                                        echo $PASSWORD | docker login $HARBOR_DOCKER_REGISTRY  -u $USERNAME --password-stdin
                                         docker image prune -a --force --filter "until=48h"
                                         docker build -t $IMAGE_NAME:$IMAGE_TAG  .
                                         docker tag $IMAGE_NAME:$IMAGE_TAG $HARBOR_DOCKER_REGISTRY/$IMAGE_NAME:$IMAGE_TAG
                                         docker push $HARBOR_DOCKER_REGISTRY/$IMAGE_NAME:$IMAGE_TAG
                                         docker tag $IMAGE_NAME:$IMAGE_TAG $HARBOR_DOCKER_REGISTRY/$IMAGE_NAME:latest
-                                        docker push $HARBOR_DOCKER_REGISTRY/$IMAGE_NAME:latest    
+                                        docker push $HARBOR_DOCKER_REGISTRY/$IMAGE_NAME:latest
                                         docker tag $IMAGE_NAME:$IMAGE_TAG $HARBOR_DOCKER_REGISTRY/$IMAGE_NAME:$DOCKER_SHA256SUM
-                                        docker push $HARBOR_DOCKER_REGISTRY/$IMAGE_NAME:$DOCKER_SHA256SUM                                                           
+                                        docker push $HARBOR_DOCKER_REGISTRY/$IMAGE_NAME:$DOCKER_SHA256SUM
                                         docker tag $IMAGE_NAME:$IMAGE_TAG $HARBOR_DOCKER_REGISTRY/$IMAGE_NAME:$REQUIREMENTS_SHA256SUM
-                                        docker push $HARBOR_DOCKER_REGISTRY/$IMAGE_NAME:$REQUIREMENTS_SHA256SUM                                                           
+                                        docker push $HARBOR_DOCKER_REGISTRY/$IMAGE_NAME:$REQUIREMENTS_SHA256SUM
                                     '''
                             }
                             else {
                                 println("Docker image didn't change")
-                            }                          
-                        }                            
-                        
+                            }
+                        }
+
                     } catch(Exception e) {
                         println "Exception: ${e}"
                         currentBuild.result = 'FAILURE'
                     } finally {
-                        
+
                         println "Stage $STAGE_NAME done"
-                       
-                    }                                      
+
+                    }
                 }
             }
-        }      
-        stage('Run Test') 
+        }
+        stage('Run Test')
         {
             steps {
                 script {
-                  
-                    try 
+
+                    try
                     {
 
-                        env.HARBOR_DOCKER_REGISTRY = HARBOR_DOCKER_REGISTRY             
-                        env.IMAGE_NAME = IMAGE_NAME             
-                        env.DOCKER_SHA256SUM = DOCKER_SHA256SUM             
-                        
-                        sh  '''                                                                                                                      
+                        env.HARBOR_DOCKER_REGISTRY = HARBOR_DOCKER_REGISTRY
+                        env.IMAGE_NAME = IMAGE_NAME
+                        env.DOCKER_SHA256SUM = DOCKER_SHA256SUM
+
+                        sh  '''
                                 docker run --volume $(pwd):/home/jenkins -w /home/jenkins --rm  --env-file ./myenv.txt -u $(id -u ${USER}):$(id -g ${USER}) $HARBOR_DOCKER_REGISTRY/$IMAGE_NAME:$DOCKER_SHA256SUM ./run_test.sh
                             '''
-                                                 
-                                             
-                        
+
+
+
                     } catch(Exception e) {
                         currentBuild.result = 'FAILURE'
                         println "Exception: ${e}"
                     } finally {
                         println "Stage $STAGE_NAME done"
-                    }                                      
+                    }
                 }
             }
-        }      
-        
+        }
 
-       
-       
-        
+
+
+
+
     }
     post {
         always {
@@ -244,7 +268,7 @@ pipeline {
                     reportBuildPolicy: 'ALWAYS',
                     results: [[path: './allure-results']]
                 ])
-                 
+
 
                 recipients= env.email_list.split( "[\\s,]+" )
 
@@ -257,8 +281,8 @@ pipeline {
                     body: stdout_list.join(''),
                     to: recipients.join(", "),
                     recipientProviders: [[$class: 'DevelopersRecipientProvider'], [$class: 'RequesterRecipientProvider']],
-                )	                 
-			}
+                )
+            }
         }        
     }
 }
