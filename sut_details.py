@@ -4,7 +4,7 @@ import os
 collector_type = os.getenv("collector_type") if os.getenv("collector_type") is not None else 'WINDOWS_11_64'
 
 # MANAGEMENT DETAILS
-management_host = os.getenv("management_host_ip") if os.getenv("management_host_ip") is not None else None
+management_host = os.getenv("management_host_ip") if os.getenv("management_host_ip") is not None else 'x.x.x.x'
 management_ssh_user_name = 'root' #os.getenv("management_ssh_user_name") if os.getenv("management_ssh_user_name") is not None else 'root'
 management_ssh_password = 'enSilo$$' # os.getenv("management_ssh_password").replace("17678", "") if os.getenv("management_ssh_password") is not None else 'enSilo$$'
 management_ui_admin_user_name = os.getenv("rest_api_user") if os.getenv("rest_api_user") is not None else 'admin'
