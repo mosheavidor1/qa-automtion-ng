@@ -3,12 +3,11 @@ import time
 from typing import List
 import third_party_details
 from infra.os_stations.linux_station import LinuxStation
-from infra.containers.system_component_containers import CollectorDetails
 from infra.enums import SystemState, LinuxDistroTypes
-from infra.system_components.collector import Collector
+from infra.system_components.collector import CollectorAgent
 from infra.utils.utils import StringUtils
 from infra.allure_report_handler.reporter import Reporter
-from infra.system_components.collectors.collectors_common_utils import (
+from infra.system_components.collectors.collectors_agents_utils import (
     wait_until_collector_pid_disappears,
     wait_until_collector_pid_appears
 )
@@ -34,11 +33,10 @@ LINUX_SHARED_MALWARE_FOLDER_PATH = rf'{third_party_details.SHARED_DRIVE_QA_PATH}
 LINUX_LOCAL_MALWARE_FOLDER_PATH = "/tmp/malware_simulator"
 
 
-class LinuxCollector(Collector):
-    def __init__(self, host_ip: str, user_name: str, password: str, collector_details: CollectorDetails):
+class LinuxCollector(CollectorAgent):
+    def __init__(self, host_ip: str, user_name: str, password: str):
         super().__init__(host_ip=host_ip)
         self._os_station = LinuxStation(host_ip=host_ip, user_name=user_name, password=password)
-        self._details = collector_details
         self.distro_type = self.os_station.distro_type
         self._process_id = self.get_current_process_id()
 
@@ -50,10 +48,6 @@ class LinuxCollector(Collector):
     @property
     def os_station(self) -> LinuxStation:
         return self._os_station
-
-    @property
-    def details(self) -> CollectorDetails:
-        return self._details
 
     @allure.step("Get current collector process ID")
     def get_current_process_id(self):
@@ -139,8 +133,8 @@ class LinuxCollector(Collector):
 
         return crash_dumps_paths if len(crash_dumps_paths) > 0 else None
 
-    @allure.step("{0} - Get collector status via cli")
-    def get_collector_status(self):
+    @allure.step("{0} - Get agent status via cli")
+    def get_agent_status(self):
         cmd = f"{COLLECTOR_CONTROL_PATH} --status"
         response = self.os_station.execute_cmd(cmd=cmd)
         forti_edr_service_status = StringUtils.get_txt_by_regex(text=response, regex='FortiEDR\s+Service:\s+(\w+)', group=1)
@@ -190,7 +184,7 @@ class LinuxCollector(Collector):
         self.update_process_id()
         return result
 
-    @allure.step("{0} - Install linux Collector")
+    @allure.step("{0} - Install linux agent")
     def pure_install_collector(self, installer_path):
         install_cmd = f"{self.os_station.distro_data.commands.install} {installer_path}"
         result = self.os_station.execute_cmd(cmd=install_cmd, fail_on_err=False)

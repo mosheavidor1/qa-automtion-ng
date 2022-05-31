@@ -5,8 +5,8 @@ import allure
 from ensilo.platform.rest.nslo_management_rest import NsloRest
 from infra.enums import SystemState
 from infra.allure_report_handler.reporter import Reporter
-from infra.rest.base_rest_functionality import BaseRestFunctionality
-from infra.system_components.collector import Collector
+from infra.api.nslo_wrapper.base_rest_functionality import BaseRestFunctionality
+from infra.system_components.collector import CollectorAgent
 logger = logging.getLogger(__name__)
 
 
@@ -14,6 +14,10 @@ class SystemInventoryRest(BaseRestFunctionality):
 
     def __init__(self, nslo_rest: NsloRest):
         super().__init__(nslo_rest=nslo_rest)
+
+    def get_collector_info_by_id(self, collector_id: int, validation_data=None, output_parameters=None):
+        status, response = self._rest.inventory.ListCollectors(devicesIds=[collector_id])
+        return self._get_info(status, response, 'collector', validation_data, output_parameters)
 
     def get_collector_info(self, validation_data=None, output_parameters=None, organization=None):
         """
@@ -165,10 +169,10 @@ class SystemInventoryRest(BaseRestFunctionality):
         return as_list_of_dicts
 
     @allure.step("Check if collector is in organization: {organization_name}")
-    def is_collector_in_organization(self, collector: Collector, organization_name: str):
+    def is_collector_in_organization(self, collector: CollectorAgent, organization_name: str):
         all_collectors = self.get_collector_info(organization=organization_name)
         for single_collector in all_collectors:
-            if single_collector.get('name') == collector.details.name and single_collector.get('ipAddress') == collector.os_station.host_ip:
+            if single_collector.get('ipAddress') == collector.os_station.host_ip:
                 Reporter.report("Collector found in the organization")
                 return True
 

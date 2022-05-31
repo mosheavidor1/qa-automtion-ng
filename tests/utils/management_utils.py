@@ -1,5 +1,5 @@
 import allure
-from infra.system_components.collector import Collector
+from infra.system_components.collector import CollectorAgent
 from infra.system_components.management import Management
 from infra.assertion.assertion import Assertion, AssertTypeEnum
 
@@ -8,7 +8,7 @@ class ManagementUtils:
 
     @staticmethod
     @allure.step("create excepted event and check if created")
-    def create_excepted_event_and_check(management: Management, collector: Collector, malware_name, expected_result):
+    def create_excepted_event_and_check(management: Management, collector: CollectorAgent, malware_name, expected_result):
         """
         create event with existing exception and check if created
         """

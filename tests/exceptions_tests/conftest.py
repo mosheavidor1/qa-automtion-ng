@@ -1,5 +1,6 @@
 from enum import Enum
 import pytest
+from infra.system_components.collectors.linux_os.linux_collector import LinuxCollector
 
 WINDOWS_MALWARE_NAME = "DynamicCodeTests.exe"
 LINUX_MALWARE_NAME = "listen"
@@ -31,13 +32,14 @@ def setup_method(management):
 @pytest.fixture(scope="function")
 def exception_function_fixture(management, collector, request):
     test_flow = request.param
-    malware_name = LINUX_MALWARE_NAME if collector.is_unix() else WINDOWS_MALWARE_NAME
+    malware_name = LINUX_MALWARE_NAME if isinstance(collector, LinuxCollector) else WINDOWS_MALWARE_NAME
     group_name = "empty"
     destination = "Internal Destinations"
 
     management.tenant.rest_api_client.exceptions.delete_all_exceptions(timeout=1)
     management.tenant.rest_api_client.events.delete_all_events()
-    start_group = collector.details.collector_group_name
+    rest_collector = management.tenant.rest_components.collectors.get_by_ip(ip=collector.host_ip)
+    start_group = rest_collector.get_group_name(from_cache=True)
     exceptions = management.tenant.rest_api_client.exceptions.get_exceptions()
     assert len(exceptions) == 0, f"Exceptions were not deleted, {exceptions}"
     collector.create_event(malware_name=malware_name)

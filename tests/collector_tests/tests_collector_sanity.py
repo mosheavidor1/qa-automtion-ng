@@ -1,20 +1,9 @@
 import allure
 import pytest
-
-import sut_details
-from infra.enums import SystemState
 from infra.system_components.collectors.linux_os.linux_collector import LinuxCollector
 from infra.system_components.collectors.windows_os.windows_collector import WindowsCollector
-from tests.utils.collector_utils import CollectorUtils
 from tests.utils.linux_collector_utils import LinuxCollectorUtils
 from infra.allure_report_handler.reporter import Reporter, TEST_STEP, INFO
-from infra.system_components.collectors.collectors_common_utils import (
-    wait_for_running_collector_status_in_mgmt,
-    wait_for_disconnected_collector_status_in_mgmt,
-    wait_for_disabled_collector_status_in_mgmt,
-    wait_for_running_collector_status_in_cli,
-    wait_for_disabled_collector_status_in_cli
-)
 
 
 @allure.epic("Collectors")
@@ -29,17 +18,20 @@ def test_stop_start_collector(management, collector):
     1. Stop a running collector and validate it stopped.
     2. Start collector and validate it started successfully.
     """
-    with TEST_STEP(f"Stop {collector} and validate"):
-        collector.stop_collector(password=management.tenant.registration_password)
-        Reporter.report(f"Validate {collector} stopped successfully:", INFO)
-        CollectorUtils.wait_for_service_down_status_in_cli(collector)
-        wait_for_disconnected_collector_status_in_mgmt(management, collector)
+    tenant = management.tenant
+    collector_agent = collector
+    rest_collector = tenant.rest_components.collectors.get_by_ip(ip=collector_agent.host_ip)
+    with TEST_STEP(f"Stop {collector_agent} and validate"):
+        collector_agent.stop_collector(password=tenant.registration_password)
+        Reporter.report(f"Validate {collector_agent} stopped successfully:", INFO)
+        collector_agent.wait_until_agent_down()
+        rest_collector.wait_until_disconnected()
 
-    with TEST_STEP(f"Start {collector} and validate"):
-        collector.start_collector()
-        Reporter.report(f"Validate {collector} started successfully:", INFO)
-        wait_for_running_collector_status_in_cli(collector)
-        wait_for_running_collector_status_in_mgmt(management, collector)
+    with TEST_STEP(f"Start {collector_agent} and validate"):
+        collector_agent.start_collector()
+        Reporter.report(f"Validate {collector_agent} started successfully:", INFO)
+        collector_agent.wait_until_agent_running()
+        rest_collector.wait_until_running()
 
 
 @allure.epic("Collectors")
@@ -54,12 +46,14 @@ def test_reboot_collector(management, collector):
     1. Reboot the machine and wait until it is reachable after reboot.
     2. Validate that collector is in status 'running' in management and via cli.
     """
+    collector_agent = collector
+    rest_collector = management.tenant.rest_components.collectors.get_by_ip(ip=collector_agent.host_ip)
     with TEST_STEP(f"Reboot the machine and wait until is reachable:"):
-        collector.reboot()
+        collector_agent.reboot()
 
-    with TEST_STEP(f"Validate that {collector} is running:"):
-        wait_for_running_collector_status_in_mgmt(management, collector)
-        wait_for_running_collector_status_in_cli(collector)
+    with TEST_STEP(f"Validate that {collector_agent} is running:"):
+        rest_collector.wait_until_running()
+        collector_agent.wait_until_agent_running()
 
 
 @allure.epic("Collectors")
@@ -80,31 +74,28 @@ def test_uninstall_install_windows_collector(management, aggregator, collector):
     """
 
     assert isinstance(collector, WindowsCollector), "This test should run only on windows collector"
+    tenant = management.tenant
+    collector_agent = collector
+    rest_collector = tenant.rest_components.collectors.get_by_ip(ip=collector_agent.host_ip)
+    collector_version = rest_collector.get_version(from_cache=True)
+    with allure.step(f"Uninstall {collector_agent} and validate"):
+        version_before_uninstall = collector_agent.get_version()
+        password = tenant.registration_password
+        collector_agent.uninstall_collector(registration_password=password)
+        Reporter.report(f"Validate {collector_agent} uninstalled successfully:")
+        assert not collector_agent.is_collector_files_exist(), f"Installation folder contains files, should be empty"
+        rest_collector.wait_until_disconnected()
 
-    with allure.step(f"Uninstall {collector} and validate"):
-        version_before_uninstall = collector.get_version()
-
-        password = management.tenant.registration_password
-
-        try:
-            collector.uninstall_collector(registration_password=password)
-        except:
-            collector.uninstall_collector(registration_password=sut_details.management_registration_password)
-
-        Reporter.report(f"Validate {collector} uninstalled successfully:")
-        assert not collector.is_collector_files_exist(), f"Installation folder contains files, should be empty"
-        wait_for_disconnected_collector_status_in_mgmt(management, collector)
-
-    with allure.step(f"Install {collector} and validate"):
-        collector.install_collector(version=collector.details.version,
-                                    aggregator_ip=aggregator.host_ip,
-                                    organization=management.tenant.organization,
-                                    registration_password=management.tenant.registration_password)
-        Reporter.report(f"Validate {collector} installed successfully:")
-        wait_for_running_collector_status_in_mgmt(management, collector)
-        wait_for_running_collector_status_in_cli(collector)
-        assert collector.get_version() == version_before_uninstall, \
-            f"{collector} version is {collector.get_version()} instead of {version_before_uninstall}"
+    with allure.step(f"Install {collector_agent} and validate"):
+        collector_agent.install_collector(version=collector_version,
+                                          aggregator_ip=aggregator.host_ip,
+                                          organization=tenant.organization,
+                                          registration_password=tenant.registration_password)
+        Reporter.report(f"Validate {collector_agent} installed successfully:")
+        rest_collector.wait_until_running()
+        collector_agent.wait_until_agent_running()
+        assert collector_agent.get_version() == version_before_uninstall, \
+            f"{collector_agent} version is {collector_agent.get_version()} instead of {version_before_uninstall}"
 
 
 @allure.epic("Collectors")
@@ -127,40 +118,43 @@ def test_uninstall_install_configure_linux_collector(management, aggregator, col
     """
 
     assert isinstance(collector, LinuxCollector), "This test should run only on linux collector"
+    tenant = management.tenant
+    collector_agent = collector
+    rest_collector = tenant.rest_components.collectors.get_by_ip(ip=collector_agent.host_ip)
 
-    with allure.step(f"Before uninstalling {collector}, prepare the installer file:"):
-        version_before_uninstall = collector.get_version()
-        package_name_before_uninstall = collector.get_package_name()
+    with allure.step(f"Before uninstalling {collector_agent}, prepare the installer file:"):
+        version_before_uninstall = collector_agent.get_version()
+        package_name_before_uninstall = collector_agent.get_package_name()
 
-    with allure.step(f"Uninstall {collector} and validate:"):
-        uninstall_output = collector.uninstall_collector(registration_password=management.tenant.registration_password)
-        Reporter.report(f"Validate {collector} uninstalled successfully:")
-        LinuxCollectorUtils.validate_uninstallation_cmd_output(uninstall_output, collector)
-        Reporter.report(f"Validate that {collector} installation folder & installed package removed:")
-        assert not collector.is_collector_files_exist(), f"Installation folder was not deleted"
-        package_name_after_uninstall = collector.get_package_name()
+    with allure.step(f"Uninstall {collector_agent} and validate:"):
+        uninstall_output = collector_agent.uninstall_collector(registration_password=tenant.registration_password)
+        Reporter.report(f"Validate {collector_agent} uninstalled successfully:")
+        LinuxCollectorUtils.validate_uninstallation_cmd_output(uninstall_output, collector_agent)
+        Reporter.report(f"Validate that {collector_agent} installation folder & installed package removed:")
+        assert not collector_agent.is_collector_files_exist(), f"Installation folder was not deleted"
+        package_name_after_uninstall = collector_agent.get_package_name()
         assert package_name_after_uninstall is None, \
             f"Collector package was not deleted from OS, name: '{package_name_after_uninstall}'"
-        wait_for_disconnected_collector_status_in_mgmt(management, collector)
+        rest_collector.wait_until_disconnected()
 
-    with allure.step(f"Install {collector} & Configure"):
-        collector.install_collector(version=version_before_uninstall,
-                                    aggregator_ip=aggregator.host_ip,
-                                    organization=management.tenant.organization,
-                                    registration_password=management.tenant.registration_password)
+    with allure.step(f"Install {collector_agent} & Configure"):
+        collector_agent.install_collector(version=version_before_uninstall,
+                                          aggregator_ip=aggregator.host_ip,
+                                          organization=tenant.organization,
+                                          registration_password=tenant.registration_password)
 
-    with allure.step(f"Validate {collector} installed and configured successfully:"):
-        Reporter.report(f"Validate {collector} installation folder & installed package name:")
-        assert collector.is_collector_files_exist(), f"Installation folder was not created"
-        installed_package_name = collector.get_package_name()
+    with allure.step(f"Validate {collector_agent} installed and configured successfully:"):
+        Reporter.report(f"Validate {collector_agent} installation folder & installed package name:")
+        assert collector_agent.is_collector_files_exist(), f"Installation folder was not created"
+        installed_package_name = collector_agent.get_package_name()
         assert installed_package_name == package_name_before_uninstall, \
-            f"{collector} Package name is '{installed_package_name}' instead of '{package_name_before_uninstall}'"
-        Reporter.report(f"Validate {collector} version:")
-        assert collector.get_version() == version_before_uninstall, \
-            f"{collector} version is {collector.get_version()} instead of {version_before_uninstall}"
-        Reporter.report(f"Validate {collector} status in MGMT and in CLI:")
-        wait_for_running_collector_status_in_cli(collector)
-        wait_for_running_collector_status_in_mgmt(management, collector)
+            f"{collector_agent} Package name is '{installed_package_name}' instead of '{package_name_before_uninstall}'"
+        Reporter.report(f"Validate {collector_agent} version:")
+        assert collector_agent.get_version() == version_before_uninstall, \
+            f"{collector_agent} version is {collector_agent.get_version()} instead of {version_before_uninstall}"
+        Reporter.report(f"Validate {collector_agent} status in MGMT and in CLI:")
+        collector_agent.wait_until_agent_running()
+        rest_collector.wait_until_running()
 
 
 @allure.epic("Collectors")
@@ -171,19 +165,15 @@ def test_uninstall_install_configure_linux_collector(management, aggregator, col
 @pytest.mark.collector_linux_sanity
 @pytest.mark.xray('EN-57176')
 def test_disable_enable_collector(management, collector):
-    organization_name = management.tenant.organization
-    collector_name = collector.details.name
+    collector_agent = collector
+    rest_collector = management.tenant.rest_components.collectors.get_by_ip(ip=collector_agent.host_ip)
 
-    with TEST_STEP(f"Disable {collector} via MGMT and validate status in CLI and in MGMT"):
-        management.tenant.rest_api_client.system_inventory.toggle_collector(collector_name=collector_name,
-                                                                            organization_name=organization_name,
-                                                                            toggle_status=SystemState.DISABLED)
-        wait_for_disabled_collector_status_in_cli(collector)
-        wait_for_disabled_collector_status_in_mgmt(management, collector)
+    with TEST_STEP(f"Disable {rest_collector} via MGMT and validate status in CLI (Agent) and in MGMT"):
+        rest_collector.disable()
+        collector_agent.wait_until_agent_disabled()
+        rest_collector.wait_until_disabled()
 
-    with TEST_STEP(f"Enable {collector} via MGMT and validate status in CLI and in MGMT"):
-        management.tenant.rest_api_client.system_inventory.toggle_collector(collector_name=collector_name,
-                                                                            organization_name=organization_name,
-                                                                            toggle_status=SystemState.ENABLED)
-        wait_for_running_collector_status_in_cli(collector)
-        wait_for_running_collector_status_in_mgmt(management, collector)
+    with TEST_STEP(f"Enable {rest_collector} via MGMT and validate status in CLI and in MGMT"):
+        rest_collector.enable()
+        collector_agent.wait_until_agent_running()
+        rest_collector.wait_until_running()

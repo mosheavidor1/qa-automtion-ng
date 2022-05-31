@@ -11,7 +11,7 @@ from infra.containers.management_api_body_containers import CreateOrganizationRe
 from infra.enums import CollectorTypes, SystemState, UserRoles
 from infra.environment_creation.environment_creation_handler import EnvironmentCreationHandler
 from infra.system_components.aggregator import Aggregator
-from infra.system_components.collector import Collector
+from infra.system_components.collector import CollectorAgent
 from infra.system_components.collectors.linux_os.linux_collector import LinuxCollector
 from infra.system_components.collectors.windows_os.windows_collector import WindowsCollector
 from infra.system_components.core import Core
@@ -19,12 +19,7 @@ from infra.system_components.forti_edr_linux_station import FortiEdrLinuxStation
 from infra.system_components.management import Management
 from infra.system_components.system_components_factory import SystemComponentsFactory
 from infra.utils.utils import StringUtils
-from infra.system_components.collectors.collectors_common_utils import (
-    wait_for_running_collector_status_in_cli,
-    wait_for_running_collector_status_in_mgmt,
-    wait_for_disconnected_collector_status_in_mgmt,
-    check_if_collectors_has_crashed
-)
+from infra.system_components.collectors.collectors_agents_utils import check_if_collectors_has_crashed
 import json
 import os
 import re
@@ -45,7 +40,7 @@ jira_xray_handler = JiraXrayHandler()
 def create_environment_properties_file_for_allure_report(management: Management,
                                                          aggregator: Aggregator,
                                                          core: Core,
-                                                         collector: Collector):
+                                                         collector: CollectorAgent):
     logger.info("Create environment properties file for allure report")
     alluredir = pytest_config.getoption('--alluredir')
     if alluredir is None:
@@ -61,7 +56,7 @@ def create_environment_properties_file_for_allure_report(management: Management,
 
         os_details = f'Os Name:{collector.os_station.os_name}, OS Version: {collector.os_station.os_version}, OS Artchitecture: {collector.os_station.os_architecture}'
         f.write(
-            f'Collector IP {collector.details.ip_address}, Version: {collector.get_version()}, OS Details: {os_details}\r\n')
+            f'Collector IP {collector.os_station.host_ip}, Version: {collector.get_version()}, OS Details: {os_details}\r\n')
 
 
 def pytest_configure(config):
@@ -280,64 +275,55 @@ def core(management):
 
 
 @pytest.fixture(scope="session")
-def collector(management, aggregator):
+def collector(management, aggregator) -> CollectorAgent:
+    """ Return collector agent """
     collector_type = sut_details.collector_type
+    tenant = management.tenant
 
     if collector_type not in CollectorTypes.__members__:
-        assert False, f"Automation does not support collector of the type: {collector_type}"
+        assert False, f"Automation does not support collector agent of the type: {collector_type}"
 
     collector_type_as_enum = [c_type for c_type in CollectorTypes if c_type.name == collector_type]
-
     collector_type_as_enum = collector_type_as_enum[0]
+    collectors_agents = SystemComponentsFactory.get_collectors_agents(management=management,
+                                                                      collector_type=collector_type_as_enum)
 
-    collectors = SystemComponentsFactory.get_collectors(management=management,
-                                                        collector_type=collector_type_as_enum)
-
-    if len(collectors) == 0:
-        assert False, f"There are no registered collectors of the type {collector_type_as_enum} in management"
-
-    # collector holds the list of collectors of the specific desired type (i.e. WINDOWS_10_64) so we can use any of the
-    # elements in the collectors list
-    # according to the assert above, if we got to this row, there is at least 1 element in the collectors list.
-    logger.info(f"Chosen this collector for the test: {collectors[0]}")
-
-    collector = collectors[0]
-
-    create_organization_for_collector(management=management, collector=collector)
+    if len(collectors_agents) == 0:
+        assert False, f"There are no registered collectors agents of the type {collector_type_as_enum} in management"
+    assert len(collectors_agents) == 1, f"We support one agent but actually have these agents: {collectors_agents}"
+    logger.info(f"Chosen this collector agent for the test: {collectors_agents[0]}")
+    collector_agent = collectors_agents[0]
+    create_organization_for_collector(management=management, collector=collector_agent)
 
     if sut_details.upgrade_collector_latest_build:
-        collector_latest_version = get_collector_latest_version(collector=collector)
-
-        if collector.get_version() != collector_latest_version:
+        collector_latest_version = get_collector_latest_version(collector=collector_agent)
+        if collector_agent.get_version() != collector_latest_version:
             # create snapshot before new version installation process
             create_snapshot_for_collector(snapshot_name=f'snapshot_before_installation_process_{StringUtils.generate_random_string(length=6)}',
                                           management=management,
-                                          collector=collector)
+                                          collector=collector_agent)
 
-            collector.uninstall_collector(registration_password=management.tenant.registration_password)
-            collector.install_collector(version=collector_latest_version,
-                                        aggregator_ip=aggregator.host_ip,
-                                        organization=management.tenant.organization,
-                                        registration_password=management.tenant.registration_password)
-
-            collector.details.version = collector_latest_version
-
-            wait_for_running_collector_status_in_cli(collector)
-            wait_for_running_collector_status_in_mgmt(management, collector)
-
-    yield collector
+            collector_agent.uninstall_collector(registration_password=tenant.registration_password)
+            collector_agent.install_collector(version=collector_latest_version, aggregator_ip=aggregator.host_ip,
+                                              organization=tenant.organization,
+                                              registration_password=tenant.registration_password)
+            collector_agent.wait_until_agent_running()
+            rest_collector = tenant.rest_components.collectors.get_by_ip(ip=collector_agent.host_ip)
+            rest_collector.wait_until_running()
+    yield collector_agent
 
 
 @allure.step("Create organization for the collector")
 def create_organization_for_collector(management, collector):
     license_capacity = 100
+    tenant = management.tenant
 
     # assign collector instance to tenant object
-    management.tenant.collector = collector
+    tenant.collector = collector
 
     # admin - check if organization exist, else create it
     is_org_exist = management.admin_rest_api_client.organizations.is_organization_exist(
-        organization_name=management.tenant.organization)
+        organization_name=tenant.organization)
 
     if not is_org_exist:
         default_org_data = management.admin_rest_api_client.organizations.get_specific_organization_data(sut_details.default_organization)
@@ -355,9 +341,9 @@ def create_organization_for_collector(management, collector):
                                                                            expected_status_code=200)
 
         new_org_data = CreateOrganizationRestData(expiration_date=expiration_date,
-                                                  organization_name=management.tenant.organization,
-                                                  password=management.tenant.registration_password,
-                                                  password_confirmation=management.tenant.registration_password,
+                                                  organization_name=tenant.organization,
+                                                  password=tenant.registration_password,
+                                                  password_confirmation=tenant.registration_password,
                                                   servers_allocated=license_capacity,
                                                   workstations_allocated=license_capacity,
                                                   iot_allocated=license_capacity,
@@ -367,8 +353,8 @@ def create_organization_for_collector(management, collector):
                                                                            expected_status_code=200)
 
     # admin - check if user exist in organization, else create it
-    is_user_exist = management.admin_rest_api_client.users_rest.is_user_exist(user_name=management.tenant.user_name,
-                                                                              organization_name=management.tenant.organization)
+    is_user_exist = management.admin_rest_api_client.users_rest.is_user_exist(user_name=tenant.user_name,
+                                                                              organization_name=tenant.organization)
 
     if not is_user_exist:
         user_data = CreateUserRestData(email="user@ensilo.com",
@@ -376,47 +362,46 @@ def create_organization_for_collector(management, collector):
                                        last_name='lastname',
                                        roles=[UserRoles.USER, UserRoles.LOCAL_ADMIN, UserRoles.REST_API],
                                        title="title",
-                                       user_name=management.tenant.user_name,
-                                       password=f'{management.tenant.user_password}_1',
-                                       confirm_password=f'{management.tenant.user_password}_1',
-                                       organization=management.tenant.organization)
+                                       user_name=tenant.user_name,
+                                       password=f'{tenant.user_password}_1',
+                                       confirm_password=f'{tenant.user_password}_1',
+                                       organization=tenant.organization)
         management.admin_rest_api_client.users_rest.create_user(user_data=user_data, expected_status_code=200)
 
         # reset password in order to avoid "change" password page\logic
-        management.admin_rest_api_client.users_rest.reset_user_password(user_name=management.tenant.user_name,
-                                                                        new_password=management.tenant.user_password,
-                                                                        organization=management.tenant.organization)
+        management.admin_rest_api_client.users_rest.reset_user_password(user_name=tenant.user_name,
+                                                                        new_password=tenant.user_password,
+                                                                        organization=tenant.organization)
 
-        management.tenant.rest_api_client.policies.turn_on_prevention_mode()
+        tenant.rest_api_client.policies.turn_on_prevention_mode()
 
     # user - search if desired collector found in organization, else move it from default organization to desired one
     is_collector_in_org = management.admin_rest_api_client.system_inventory.is_collector_in_organization(
-        collector=collector, organization_name=management.tenant.organization)
-
+        collector=collector, organization_name=tenant.organization)
+    rest_collector = tenant.rest_components.collectors.get_by_ip(ip=collector.host_ip)
+    collector_name = rest_collector.get_name(from_cache=True)
     if not is_collector_in_org:
         management.admin_rest_api_client.system_inventory.move_collectors(
-            collectors_names=[f'{collector.details.name}'],
+            collectors_names=[f'{collector_name}'],
             target_group_name='Default Collector Group',
             current_collectors_organization=sut_details.default_organization,
-            target_organization=management.tenant.organization)
+            target_organization=tenant.organization)
         time.sleep(30) # wait until collector will get the new configuration
 
-        collector.details.collector_group_name = 'Default Collector Group'
-        collector.details.organization = management.tenant.organization
-        collector.details.account_name = management.tenant.organization
 
     # add here wait until collector will be shown under the new organization
 
 
 def create_snapshot_for_collector(snapshot_name: str,
                                   management: Management,
-                                  collector: Collector):
+                                  collector: CollectorAgent):
+    rest_collector = management.tenant.rest_components.collectors.get_by_ip(ip=collector.host_ip)
     Reporter.report(f"Preparing {collector} for snapshot: stop it + remove old snaps + remove crashes",
                     logger.info)
     Reporter.report("Stop because we want to take snapshot of a collector in a static mode")
     collector.stop_collector(password=management.tenant.registration_password)
-    assert collector.is_status_down_in_cli(), "Collector was not stopped"
-    wait_for_disconnected_collector_status_in_mgmt(management, collector)
+    assert collector.is_agent_down(), "Collector agent was not stopped on host"
+    rest_collector.wait_until_disconnected()
     collector.os_station.vm_operations.remove_all_snapshots()
     collector.remove_all_crash_dumps_files()
     collector.os_station.vm_operations.snapshot_create(snapshot_name=snapshot_name)
@@ -424,15 +409,15 @@ def create_snapshot_for_collector(snapshot_name: str,
 
     Reporter.report("Start the collector so it will be ready for a new test")
     collector.start_collector()
-    wait_for_running_collector_status_in_cli(collector)
-    wait_for_running_collector_status_in_mgmt(management, collector)
+    collector.wait_until_agent_running()
+    rest_collector.wait_until_running()
     Reporter.report("Check that starting collector didn't create any crashes (for debugging)")
     check_if_collectors_has_crashed([collector])
 
 
 @pytest.fixture(scope="session", autouse=sut_details.debug_mode)
 def create_snapshot_for_collector_at_the_beginning_of_the_run(management: Management,
-                                                              collector: Collector):
+                                                              collector: CollectorAgent):
     """
     The role of this method is to create snapshot before the tests start, in static mode (paused).
     we do it because we revert to this (initial) snapshot before each test start in order to run on "clean"
@@ -489,7 +474,7 @@ def revert_to_snapshot(management, collector):
 
 
 @pytest.fixture(scope="function", autouse=True)
-def collector_health_check(management: Management, collector: Collector):
+def collector_health_check(management: Management, collector: CollectorAgent):
 
     if isinstance(collector, WindowsCollector):
         try:
@@ -503,18 +488,18 @@ def collector_health_check(management: Management, collector: Collector):
             time.sleep(60)
 
     assert management.is_collector_status_running_in_mgmt(collector), f"{collector} is not running in {management}"
-    assert collector.is_status_running_in_cli(), f"{collector} status is not running"
+    assert collector.is_agent_running(), f"{collector} status is not running"
 
     yield collector
     assert management.is_collector_status_running_in_mgmt(collector), f"{collector} is not running in {management}"
-    assert collector.is_status_running_in_cli(), f"{collector} status is not running"
+    assert collector.is_agent_running(), f"{collector} status is not running"
 
 
 @pytest.fixture(scope="function", autouse=True)
 def validate_all_system_components_are_running(management: Management,
                                                aggregator: Aggregator,
                                                core: Core,
-                                               collector: Collector):
+                                               collector: CollectorAgent):
     # non collector system components that inherited from fortiEDRLinuxStation
     non_collector_sys_components = [management, aggregator, core]
     collector_status_timeout = 30
@@ -533,7 +518,7 @@ def validate_all_system_components_are_running(management: Management,
 
     assert management.is_collector_status_running_in_mgmt(collector), f"{collector} is not running in {management}"
     Reporter.report(f"Assert that {collector} status is running in CLI")
-    assert collector.is_status_running_in_cli(), f"{collector} status is not running"
+    assert collector.is_agent_running(), f"{collector} status is not running"
 
 
 @pytest.fixture(scope="function", autouse=True)
@@ -636,20 +621,20 @@ def collector_logs(collector):
 
 
 @pytest.fixture(scope="session", autouse=False)
-def reset_driver_verifier_for_all_collectors(collector: Collector):
+def reset_driver_verifier_for_all_collectors(collector: CollectorAgent):
     collector.os_station.execute_cmd(cmd='Verifier.exe /reset', fail_on_err=False)
     collector.reboot()
 
 
 @pytest.fixture(scope="function", autouse=True)
-def check_if_collector_has_crashed(collector: Collector):
+def check_if_collector_has_crashed(collector: CollectorAgent):
     Reporter.report("Nothing to show at the beginning of the run")
     yield
     check_if_collectors_has_crashed([collector])
 
 
 @allure.step("Get collectors machine time at the beginning of the test")
-def get_collectors_machine_time(collectors: List[Collector]):
+def get_collectors_machine_time(collectors: List[CollectorAgent]):
     new_dict = {}
     for single_collector in collectors:
         date_time = single_collector.os_station.get_current_machine_datetime()
@@ -659,7 +644,7 @@ def get_collectors_machine_time(collectors: List[Collector]):
 
 
 @allure.step("Append logs from collectors")
-def append_logs_from_collectors(collectors: List[Collector], initial_time_stamp_dict: dict):
+def append_logs_from_collectors(collectors: List[CollectorAgent], initial_time_stamp_dict: dict):
     logger.info("Append logs from collectors")
     for single_collector in collectors:
         try:
@@ -670,7 +655,7 @@ def append_logs_from_collectors(collectors: List[Collector], initial_time_stamp_
 
 
 @allure.step("Revert all collectors to their snapshot that was taken at the beginning of the run")
-def revert_to_first_snapshot_for_all_collectors(management: Management, collectors: List[Collector]):
+def revert_to_first_snapshot_for_all_collectors(management: Management, collectors: List[CollectorAgent]):
     """ We want to start each test on a clean env(=the first snapshot)
     We also check that the revert operation didn't damage the collector (no crashes)
     """
@@ -679,25 +664,26 @@ def revert_to_first_snapshot_for_all_collectors(management: Management, collecto
         first_snapshot_name = collector.os_station.vm_operations.snapshot_list[0][0]
         collector.os_station.vm_operations.snapshot_revert_by_name(snapshot_name=first_snapshot_name)
         Reporter.report(f"{collector} vm reverted to:'{first_snapshot_name}'", logger.info)
-        if collector.is_unix():  # To establish new connection after revert
+        if isinstance(collector, LinuxCollector):  # To establish new connection after revert
             time.sleep(wait_after_revert)
             collector.os_station.disconnect()
         Reporter.report("Wait until collector is offline in MGMT because it still might be online from previous test",
                         logger.info)
-        assert collector.is_status_down_in_cli(), "Collector was not stopped"
-        wait_for_disconnected_collector_status_in_mgmt(management, collector)
+        assert collector.is_agent_down(), "Collector was not stopped"
+        rest_collector = management.tenant.rest_components.collectors.get_by_ip(ip=collector.host_ip)
+        rest_collector.wait_until_disconnected()
         Reporter.report("Sometimes the revert action creates a crash files so we want to remove them",
                         logger.info)
         collector.remove_all_crash_dumps_files()
         Reporter.report("Start the collector so it will be ready for a new test", logger.info)
         collector.start_collector()
-        wait_for_running_collector_status_in_cli(collector)
-        wait_for_running_collector_status_in_mgmt(management, collector)
+        collector.wait_until_agent_running()
+        rest_collector.wait_until_running()
         Reporter.report("Check that starting collector didn't create any crashes (for debugging)", logger.info)
         check_if_collectors_has_crashed([collector])
 
 
-def get_collector_latest_version(collector: Collector) -> str:
+def get_collector_latest_version(collector: CollectorAgent) -> str:
     collector_version = collector.get_version()
     collector_base_version = StringUtils.get_txt_by_regex(text=collector_version, regex='(\d+.\d+.\d+).\d+', group=1)
     latest_versions = EnvironmentCreationHandler.get_latest_versions(base_version=collector_base_version)

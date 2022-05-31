@@ -156,16 +156,13 @@ class EnvironmentCreationHandler:
 
                 collector = WindowsCollector(host_ip=new_vm.guest.ipAddress,
                                              user_name=sut_details.win_user_name,
-                                             password=sut_details.win_password,
-                                             collector_details=None)
-                collector.os_station.rename_hostname(host_name=StringUtils.generate_random_string(5))
+                                             password=sut_details.win_password)
 
             elif 'linux' in collector_template_name.name.lower():
 
                 collector = LinuxCollector(host_ip=new_vm.guest.ipAddress,
                                            user_name=sut_details.linux_user_name,
-                                           password=sut_details.linux_password,
-                                           collector_details=None)
+                                           password=sut_details.linux_password)
 
             collector.install_collector(version=version,
                                         aggregator_ip=aggregator_ip,

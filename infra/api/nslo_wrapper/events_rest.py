@@ -5,7 +5,7 @@ import allure
 from ensilo.platform.rest.nslo_management_rest import NsloRest
 
 from infra.allure_report_handler.reporter import Reporter
-from infra.rest.base_rest_functionality import BaseRestFunctionality
+from infra.api.nslo_wrapper.base_rest_functionality import BaseRestFunctionality
 
 
 class EventsRest(BaseRestFunctionality):

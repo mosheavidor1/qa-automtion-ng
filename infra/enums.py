@@ -11,11 +11,11 @@ class UserRoles(Enum):
 
 
 class SystemState(Enum):
-    RUNNING = 'RUNNING'
+    RUNNING = 'Running'  # Status name from management
     NOT_RUNNING = 'NOT_RUNNING'
-    DISCONNECTED = 'DISCONNECTED'
+    DISCONNECTED = 'Disconnected'  # Status name from management
     DOWN = 'DOWN'
-    DISABLED = 'DISABLED'
+    DISABLED = 'Disabled'  # Status name from management
     ENABLED = 'ENABLED'
 
 

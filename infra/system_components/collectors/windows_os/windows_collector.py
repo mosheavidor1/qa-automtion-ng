@@ -7,14 +7,13 @@ import allure
 import sut_details
 import third_party_details
 from infra.os_stations.windows_station import WindowsStation
-from infra.system_components.collectors.collectors_common_utils import (
+from infra.system_components.collectors.collectors_agents_utils import (
     wait_until_collector_pid_disappears,
     wait_until_collector_pid_appears
 )
 from infra.allure_report_handler.reporter import Reporter
-from infra.containers.system_component_containers import CollectorDetails
 from infra.enums import SystemState
-from infra.system_components.collector import Collector
+from infra.system_components.collector import CollectorAgent
 from infra.utils.utils import StringUtils
 from sut_details import management_registration_password
 from infra.system_components.collectors.windows_os.windows_collector_installation_utils import (
@@ -33,12 +32,11 @@ SERVICE_NAME = "FortiEDRCollectorService."
 INSTALL_UNINSTALL_LOGS_FOLDER_PATH = "C:\\InstallUninstallLogs"
 
 
-class WindowsCollector(Collector):
+class WindowsCollector(CollectorAgent):
 
-    def __init__(self, host_ip: str, user_name: str, password: str, collector_details: CollectorDetails):
+    def __init__(self, host_ip: str, user_name: str, password: str):
         super().__init__(host_ip=host_ip)
         self._os_station = WindowsStation(host_ip=host_ip, user_name=user_name, password=password)
-        self._details = collector_details
         self._process_id = self.get_current_process_id()
         self.__collector_installation_path: str = r"C:\Program Files\Fortinet\FortiEDR"
         self.__collector_service_exe: str = f"{self.__collector_installation_path}\FortiEDRCollectorService.exe"
@@ -56,10 +54,6 @@ class WindowsCollector(Collector):
     @property
     def os_station(self) -> WindowsStation:
         return self._os_station
-
-    @property
-    def details(self) -> CollectorDetails:
-        return self._details
 
     @allure.step("Kill all undesired process that running on windows collector")
     def _kill_all_undesired_processes(self):
@@ -245,7 +239,7 @@ class WindowsCollector(Collector):
                 self.os_station.remove_file(file_path=file)
 
     @allure.step("{0} - Get collector status via cli")
-    def get_collector_status(self) -> SystemState:
+    def get_agent_status(self) -> SystemState:
         cmd = f'"{self.__collector_service_exe}" --status'
         response = self.os_station.execute_cmd(cmd=cmd, return_output=True, fail_on_err=False)
 
@@ -265,7 +259,7 @@ class WindowsCollector(Collector):
     @allure.step('{0} - Start health mechanism')
     def start_health_mechanism(self):
         self.start_collector()
-        state = self.get_collector_status()
+        state = self.get_agent_status()
         if state == SystemState.RUNNING:
             Reporter.report("Health monitor successfully helped to bring collector service up")
         else:
@@ -486,7 +480,7 @@ class WindowsCollector(Collector):
 
         self.os_station.execute_cmd(f'{target_folder}\\{malware_name}', asynchronous=True)
 
-    def _get_logs_path(self, collector: Collector, prefix):
+    def _get_logs_path(self, collector: CollectorAgent, prefix):
         logs_file_name = f"{prefix}_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.txt"
         logs_folder = collector.os_station.create_new_folder(fr'{INSTALL_UNINSTALL_LOGS_FOLDER_PATH}')
         logs_path = fr"{logs_folder}\{logs_file_name}"

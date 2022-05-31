@@ -1,20 +1,17 @@
 import allure
-from infra.containers.system_component_containers import CollectorDetails
 from infra.enums import OsTypeEnum
-from infra.system_components.collector import Collector
+from infra.system_components.collector import CollectorAgent
 
 
-class OsXCollector(Collector):
+class OsXCollector(CollectorAgent):
 
     def __init__(self,
                  host_ip: str,
                  user_name: str,
-                 password: str,
-                 collector_details: CollectorDetails):
+                 password: str):
         super().__init__(host_ip=host_ip,
                          user_name=user_name,
                          password=password,
-                         collector_details=collector_details,
                          os_type=OsTypeEnum.OS_X)
         self._process_id = self.get_current_process_id()
 
@@ -51,10 +48,10 @@ class OsXCollector(Collector):
     def copy_version_files_to_local_machine(self, version: str):
         pass
 
-    def get_collector_status(self):
+    def get_agent_status(self):
         pass
 
-    def is_status_running_in_cli(self):
+    def is_agent_running(self):
         pass
 
     def install_collector(self, version: str, aggregator_ip: str, organization: str = None, aggregator_port: int = 8081,

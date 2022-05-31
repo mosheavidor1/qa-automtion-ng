@@ -7,7 +7,7 @@ import requests
 import third_party_details
 from infra.allure_report_handler.reporter import Reporter
 from infra.system_components.aggregator import Aggregator
-from infra.system_components.collector import Collector
+from infra.system_components.collector import CollectorAgent
 from infra.system_components.core import Core
 from infra.system_components.management import Management
 
@@ -78,7 +78,7 @@ class JiraXrayHandler:
         return self._collector
 
     @collector.setter
-    def collector(self, collector: Collector):
+    def collector(self, collector: CollectorAgent):
         self._collector = collector
 
     def publish_test_result(self, test_key, status: TestStatusEnum):

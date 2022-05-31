@@ -1,12 +1,12 @@
 import allure
 import pytest
-from infra.system_components.collector import Collector
+from infra.system_components.collector import CollectorAgent
 
 
 @allure.epic("Management")
 @allure.feature("Security policies")
 class SecurityPoliciesTests:
-    collector: Collector = None
+    collector: CollectorAgent = None
 
     @pytest.mark.xray('EN-73632')
     def test_security_policies_simulation_mode(self, security_events_function_fixture):

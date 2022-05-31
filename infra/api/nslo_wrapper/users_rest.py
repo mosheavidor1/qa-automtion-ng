@@ -6,7 +6,7 @@ from ensilo.platform.rest.nslo_management_rest import NsloRest
 
 from infra.allure_report_handler.reporter import Reporter
 from infra.containers.management_api_body_containers import UserRestData, CreateUserRestData
-from infra.rest.base_rest_functionality import BaseRestFunctionality
+from infra.api.nslo_wrapper.base_rest_functionality import BaseRestFunctionality
 
 
 class UsersRest(BaseRestFunctionality):

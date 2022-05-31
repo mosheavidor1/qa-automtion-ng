@@ -1,15 +1,19 @@
 from abc import abstractmethod
-from infra.containers.system_component_containers import CollectorDetails
+import logging
+import allure
 from infra.enums import SystemState
+from infra.system_components.collectors.default_values import COLLECTOR_KEEPALIVE_INTERVAL, MAX_WAIT_FOR_STATUS
+from infra.common_utils import wait_for_predict_condition
+logger = logging.getLogger(__name__)
 
 
-class Collector:
-
+class CollectorAgent:
+    """ An interface to implement collector agent on: Mac/Windows/Linux """
     def __init__(self, host_ip: str):
         self._host_ip = host_ip
 
     def __repr__(self):
-        return f"Collector  {self._host_ip}"
+        return f"Collector Agent on  {self._host_ip}"
 
     @property
     @abstractmethod
@@ -17,9 +21,8 @@ class Collector:
         pass
 
     @property
-    @abstractmethod
-    def details(self) -> CollectorDetails:
-        pass
+    def host_ip(self) -> str:
+        return self._host_ip
 
     @property
     @abstractmethod
@@ -48,17 +51,35 @@ class Collector:
         pass
 
     @abstractmethod
-    def get_collector_status(self) -> SystemState:
+    def get_agent_status(self) -> SystemState:
         pass
 
-    def is_status_running_in_cli(self):
-        return self.get_collector_status() == SystemState.RUNNING
+    def is_agent_running(self):
+        return self.get_agent_status() == SystemState.RUNNING
 
-    def is_status_down_in_cli(self):
-        return self.get_collector_status() == SystemState.DOWN
+    @allure.step("Wait until agent is running")
+    def wait_until_agent_running(self, timeout_sec=MAX_WAIT_FOR_STATUS, interval_sec=COLLECTOR_KEEPALIVE_INTERVAL):
+        logger.info(f"Wait until {self} is running")
+        wait_for_predict_condition(predict_condition_func=self.is_agent_running,
+                                   timeout_sec=timeout_sec, interval_sec=interval_sec)
 
-    def is_status_disabled_in_cli(self):
-        return self.get_collector_status() == SystemState.DISABLED
+    def is_agent_down(self):
+        return self.get_agent_status() == SystemState.DOWN
+
+    @allure.step("Wait until agent is down")
+    def wait_until_agent_down(self, timeout_sec=MAX_WAIT_FOR_STATUS, interval_sec=COLLECTOR_KEEPALIVE_INTERVAL):
+        logger.info(f"Wait until {self} is down")
+        wait_for_predict_condition(predict_condition_func=self.is_agent_down,
+                                   timeout_sec=timeout_sec, interval_sec=interval_sec)
+
+    def is_agent_disabled(self):
+        return self.get_agent_status() == SystemState.DISABLED
+
+    @allure.step("Wait until agent is disabled")
+    def wait_until_agent_disabled(self, timeout_sec=MAX_WAIT_FOR_STATUS, interval_sec=COLLECTOR_KEEPALIVE_INTERVAL):
+        logger.info(f"Wait until {self} is disabled")
+        wait_for_predict_condition(predict_condition_func=self.is_agent_disabled,
+                                   timeout_sec=timeout_sec, interval_sec=interval_sec)
 
     @abstractmethod
     def reboot(self):
@@ -100,9 +121,3 @@ class Collector:
     @abstractmethod
     def remove_all_crash_dumps_files(self):
         pass
-
-    def is_unix(self):
-        return 'linux' in self.details.os_family.lower()
-
-    def is_windows(self):
-        return 'windows' in self.details.os_family.lower()
