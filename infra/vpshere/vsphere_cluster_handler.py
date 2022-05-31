@@ -38,7 +38,7 @@ class VsphereClusterHandler(object):
         if self._service_instance is not None:
             return self._service_instance
         else:
-            raise Exception("Service instance not initiated.")
+            self.connect_to_vsphere()
 
     def _get_resource_pool_object(self) -> object:
         resourse_pool = self._get_all_resource_pools_objects()

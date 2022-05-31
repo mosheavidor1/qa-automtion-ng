@@ -1,6 +1,8 @@
 import allure
 
-from infra.vpshere.vsphere_cluster_details import ENSILO_VCSA_10, ENSILO_VCSA_20, ENSILO_VCSA_30, ENSILO_VCSA_40
+from infra.enums import CollectorTemplateNames, AutomationServicesTemplates
+from infra.vpshere.vsphere_cluster_details import ENSILO_VCSA_10, ENSILO_VCSA_20, ENSILO_VCSA_30, ENSILO_VCSA_40, \
+    ClusterDetails
 from infra.vpshere.vsphere_cluster_handler import VmSearchTypeEnum, VsphereClusterHandler
 from infra.vpshere.vsphere_vm_operations import VsphereMachineOperations
 from third_party_details import USER_NAME_DOMAIN, PASSWORD
@@ -36,3 +38,20 @@ class VsphereUtils:
                 return vm_ops
 
         return None
+
+    @staticmethod
+    @allure.step("Clone VM from template '{template_name}'")
+    def clone_vm_from_template(cluster_details: ClusterDetails, template_name: CollectorTemplateNames | AutomationServicesTemplates, desired_name: str):
+        """Clone VM by given template name.
+
+        :param cluster_details: the cluster details object, will search template inside this cluster.
+        :param template_name: the template name which will be cloned into the VM.
+        :param user_name: optional, this is provided from sut_details.py file, defaults to USER_NAME_DOMAIN
+        :param password: optional, this is provided from sut_details.py file, defaults to PASSWORD
+        :return: VM object after successful creation
+        """
+        vsphere_cluster_handler = VsphereClusterHandler(cluster_details=cluster_details)
+
+        vm_obj = vsphere_cluster_handler.create_vm(template_name, desired_name)
+
+        return vm_obj

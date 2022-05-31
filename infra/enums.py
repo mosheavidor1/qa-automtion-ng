@@ -82,6 +82,10 @@ class CollectorTemplateNames(Enum):
     LINUX_SUSE = 'TEMPLATE_VT41_SUSE'
 
 
+class AutomationServicesTemplates(Enum):
+    AUTOMATION_SERVICES_MACHINE_TEMPLATE = 'AUTOMATION_SERVICES_MACHINE_TEMPLATE'
+
+
 class HttpRequestMethodsEnum(Enum):
     GET = 'GET'
     HEAD = 'HEAD'
