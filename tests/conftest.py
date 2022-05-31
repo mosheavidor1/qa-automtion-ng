@@ -1,14 +1,14 @@
+import uuid
 from typing import List
 import logging
 import allure
-
 
 import sut_details
 from infra.allure_report_handler.reporter import Reporter
 from infra.assertion.assertion import Assertion
 from infra.containers.management_api_body_containers import CreateOrganizationRestData, CreateUserRestData, \
     OrganizationRestData
-from infra.enums import CollectorTypes, SystemState, UserRoles
+from infra.enums import CollectorTypes, SystemState, UserRoles, AutomationServicesTemplates
 from infra.environment_creation.environment_creation_handler import EnvironmentCreationHandler
 from infra.system_components.aggregator import Aggregator
 from infra.system_components.collector import CollectorAgent
@@ -29,6 +29,9 @@ from datetime import datetime
 import pytest
 
 from infra.jira_handler.jira_xray_handler import JiraXrayHandler, TestStatusEnum
+from infra.vpshere.vsphere_cluster_details import ENSILO_VCSA_40
+from infra.vpshere.vsphere_utils import VsphereUtils, VsphereClusterHandler
+from infra.vpshere.vsphere_vm_operations import VsphereMachineOperations
 
 logger = logging.getLogger(__name__)
 tests_results = dict()
@@ -57,6 +60,28 @@ def create_environment_properties_file_for_allure_report(management: Management,
         os_details = f'Os Name:{collector.os_station.os_name}, OS Version: {collector.os_station.os_version}, OS Artchitecture: {collector.os_station.os_architecture}'
         f.write(
             f'Collector IP {collector.os_station.host_ip}, Version: {collector.get_version()}, OS Details: {os_details}\r\n')
+
+
+@pytest.fixture(scope="session")
+def create_service_machine_for_session():
+    desired_name = f"{uuid.uuid4().hex[::-5]}__{AutomationServicesTemplates.AUTOMATION_SERVICES_MACHINE_TEMPLATE.value}"
+    cluster_details = ENSILO_VCSA_40
+
+    logger.info("Creating service VM")
+    vm_obj = VsphereUtils.clone_vm_from_template(
+        cluster_details=cluster_details,
+        template_name=AutomationServicesTemplates.AUTOMATION_SERVICES_MACHINE_TEMPLATE,
+        desired_name=desired_name)
+
+    yield vm_obj.guest.ipAddress
+
+    cluster_handler = VsphereClusterHandler(cluster_details=cluster_details)
+    vm_operations = VsphereMachineOperations(
+        service_instance=cluster_handler.service_instance,
+        vm_obj=vm_obj)
+
+    logger.info("Remove services VM")
+    vm_operations.remove_vm()
 
 
 def pytest_configure(config):
