@@ -10,7 +10,7 @@ from infra.containers.postgresql_over_ssh_details import PostgresqlOverSshDetail
 from infra.containers.ssh_details import SshDetails
 from infra.multi_tenancy.tenant import Tenant
 from infra.posgresql_db.postgresql_db import PostgresqlOverSshDb
-from infra.rest.rest_commands import RestCommands
+from infra.api.nslo_wrapper.rest_commands import RestCommands
 
 import sut_details
 from infra.containers.system_component_containers import ManagementDetails
@@ -20,7 +20,7 @@ from infra.system_components.forti_edr_linux_station import FortiEdrLinuxStation
 
 from infra.test_im.management_ui_client import ManagementUiClient
 from infra.utils.utils import StringUtils
-
+from infra.api.management_api.collector import RestCollector
 logger = logging.getLogger(__name__)
 
 
@@ -58,14 +58,14 @@ class Management(FortiEdrLinuxStation):
                                                    organization=None)
 
         self._details: ManagementDetails = self._get_management_details()
-
+        self._tenants = []
         self._tenant: Tenant = Tenant(management_host_ip=self.host_ip,
                                       user_name=sut_details.collector_type,
                                       user_password=sut_details.collector_type,
                                       registration_password=sut_details.collector_type,
                                       organization=sut_details.collector_type,
                                       collector=None)
-
+        self._tenants.append(self._tenant)
         self._ui_client = ManagementUiClient(management_ui_ip=self.host_ip,
                                              tenant=self._tenant)
 
@@ -298,3 +298,14 @@ class Management(FortiEdrLinuxStation):
                 time.sleep(5)
 
         assert aggregators is not None, f"REST API is not available within timeout of {timeout}"
+
+    def get_collectors_from_default_org(self):
+        """ Returning collectors that don't have organization """
+        logger.info(f"Find all rest collectors that are in the default organization")
+        rest_collectors = []
+        all_collectors_fields = self.admin_rest_api_client.system_inventory.get_collector_info()
+        for collector_fields in all_collectors_fields:
+            rest_collector = RestCollector(rest_client=self.admin_rest_api_client, initial_data=collector_fields)
+            rest_collectors.append(rest_collector)
+        logger.info(f"These are the collectors in the default org: {rest_collectors}")
+        return rest_collectors

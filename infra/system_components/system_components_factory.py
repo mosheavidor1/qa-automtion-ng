@@ -2,10 +2,10 @@ import logging
 from typing import List
 
 import sut_details
-from infra.containers.system_component_containers import AggregatorDetails, CoreDetails, CollectorDetails
+from infra.containers.system_component_containers import AggregatorDetails, CoreDetails
 from infra.enums import CollectorTypes
 from infra.system_components.aggregator import Aggregator
-from infra.system_components.collector import Collector
+from infra.system_components.collector import CollectorAgent
 from infra.system_components.collectors.linux_os.linux_collector import LinuxCollector
 from infra.system_components.collectors.windows_os.windows_collector import WindowsCollector
 from infra.system_components.core import Core
@@ -63,61 +63,37 @@ class SystemComponentsFactory:
         return core_list
 
     @staticmethod
-    def get_collectors(management: Management,
-                       collector_type: CollectorTypes) -> List[Collector]:
+    def get_collectors_agents(management: Management,
+                              collector_type: CollectorTypes) -> List[CollectorAgent]:
 
-        collector_list = []
-        collectors = management.admin_rest_api_client.system_inventory.get_collector_info()
-
+        agents_list = []
+        rest_collectors = management.get_collectors_from_default_org()
         if management.admin_rest_api_client.organizations.is_organization_exist(management.tenant.organization):
-            collectors += management.admin_rest_api_client.system_inventory.get_collector_info(organization=management.tenant.organization)
+            rest_collectors += management.tenant.rest_components.collectors.get_all()
 
-        for single_collector in collectors:
-            collector_details = CollectorDetails(system_id=single_collector.get('id'),
-                                                 name=single_collector.get('name'),
-                                                 collector_group_name=single_collector.get('collectorGroupName'),
-                                                 operating_system=single_collector.get('operatingSystem'),
-                                                 ip_address=single_collector.get('ipAddress'),
-                                                 last_seen_time=single_collector.get('lastSeenTime'),
-                                                 mac_addresses=single_collector.get('macAddresses'),
-                                                 account_name=single_collector.get('accountName'),
-                                                 organization=single_collector.get('organization'),
-                                                 state=single_collector.get('state'),
-                                                 os_family=single_collector.get('osFamily'),
-                                                 state_additional_info=single_collector.get('stateAdditionalInfo'),
-                                                 version=single_collector.get('version'),
-                                                 logged_users=single_collector.get('loggedUsers'),
-                                                 system_information=single_collector.get('systemInformation'))
-
-            if 'windows' in collector_type.value.lower() and 'windows' in collector_details.os_family.lower():
-
+        for rest_collector in rest_collectors:
+            if 'windows' in collector_type.value.lower() and 'windows' in rest_collector.get_os_family(from_cache=True).lower():
                 user_name = sut_details.win_user_name
                 password = sut_details.win_password
+                if collector_type.value.lower() not in rest_collector.get_operating_system(from_cache=True).lower():
+                    continue
+                collector_agent = WindowsCollector(host_ip=rest_collector.get_ip(from_cache=True), user_name=user_name,
+                                                   password=password)
 
-                if collector_type.value.lower() not in collector_details.operating_system.lower():
+                if '64' in collector_type.name and '64' not in collector_agent.os_station.os_architecture:
                     continue
 
-                collector = WindowsCollector(host_ip=collector_details.ip_address,
-                                             user_name=user_name,
-                                             password=password,
-                                             collector_details=collector_details)
+                if '32' in collector_type.name and '32' not in collector_agent.os_station.os_architecture:
+                    continue
+                agents_list.append(collector_agent)
 
-                if '64' in collector_type.name and '64' not in collector.os_station.os_architecture:
+            elif 'linux' in collector_type.name.lower() and 'linux' in rest_collector.get_os_family(from_cache=True).lower():
+                if collector_type.value.lower() not in rest_collector.get_operating_system(from_cache=True).lower():
                     continue
 
-                if '32' in collector_type.name and '32' not in collector.os_station.os_architecture:
-                    continue
+                collector_agent = LinuxCollector(host_ip=rest_collector.get_ip(from_cache=True),
+                                                 user_name=sut_details.linux_user_name,
+                                                 password=sut_details.linux_password)
 
-                collector_list.append(collector)
-
-            elif 'linux' in collector_type.name.lower() and 'linux' in collector_details.os_family.lower():
-
-                if collector_type.value.lower() not in collector_details.operating_system.lower():
-                    continue
-
-                collector = LinuxCollector(host_ip=collector_details.ip_address, user_name=sut_details.linux_user_name,
-                                           password=sut_details.linux_password, collector_details=collector_details)
-
-                collector_list.append(collector)
-
-        return collector_list
+                agents_list.append(collector_agent)
+        return agents_list

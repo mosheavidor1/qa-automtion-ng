@@ -1,22 +1,22 @@
 from ensilo.platform.rest.nslo_management_rest import NsloManagementConnection, NsloRest
-from infra.rest.administrator_rest import AdministratorRest
-from infra.rest.communication_control_rest import CommunicationControlRest
-from infra.rest.events_rest import EventsRest
-from infra.rest.exceptions_rest import ExceptionsRest
-from infra.rest.exclusions_rest import ExclusionsRest
-from infra.rest.forensics_rest import ForensicsRest
-from infra.rest.hash_rest import HashRest
-from infra.rest.integrations_rest import IntegrationRest
-from infra.rest.iot_rest import IoTRest
-from infra.rest.ip_sets_rest import IpSetsRest
-from infra.rest.organizations_rest import OrganizationsRest
-from infra.rest.playbooks_rest import PlaybooksRest
-from infra.rest.policies_rest import PoliciesRest
-from infra.rest.system_events_rest import SystemEventsRest
-from infra.rest.system_inventory_rest import SystemInventoryRest
-from infra.rest.threat_hunting_rest import ThreatHuntingRest
-from infra.rest.threat_hunting_settings_rest import ThreatHuntingSettingsRest
-from infra.rest.users_rest import UsersRest
+from infra.api.nslo_wrapper.administrator_rest import AdministratorRest
+from infra.api.nslo_wrapper.communication_control_rest import CommunicationControlRest
+from infra.api.nslo_wrapper.events_rest import EventsRest
+from infra.api.nslo_wrapper.exceptions_rest import ExceptionsRest
+from infra.api.nslo_wrapper.exclusions_rest import ExclusionsRest
+from infra.api.nslo_wrapper.forensics_rest import ForensicsRest
+from infra.api.nslo_wrapper.hash_rest import HashRest
+from infra.api.nslo_wrapper.integrations_rest import IntegrationRest
+from infra.api.nslo_wrapper.iot_rest import IoTRest
+from infra.api.nslo_wrapper.ip_sets_rest import IpSetsRest
+from infra.api.nslo_wrapper.organizations_rest import OrganizationsRest
+from infra.api.nslo_wrapper.playbooks_rest import PlaybooksRest
+from infra.api.nslo_wrapper.policies_rest import PoliciesRest
+from infra.api.nslo_wrapper.system_events_rest import SystemEventsRest
+from infra.api.nslo_wrapper.system_inventory_rest import SystemInventoryRest
+from infra.api.nslo_wrapper.threat_hunting_rest import ThreatHuntingRest
+from infra.api.nslo_wrapper.threat_hunting_settings_rest import ThreatHuntingSettingsRest
+from infra.api.nslo_wrapper.users_rest import UsersRest
 
 
 class RestCommands(object):

@@ -17,8 +17,9 @@ class AuditTests:
         4. click on generate audit button
         5. Verify that file was downloaded
         """
+        rest_collector = management.tenant.rest_components.collectors.get_by_ip(ip=collector.host_ip)
         test_im_params = {
             "eventName": "DynamicCodeTests.exe",
-            "collectorName": collector.details.name
+            "collectorName": rest_collector.get_name(from_cache=True)
         }
         management.ui_client.audit.export_report(test_im_params)

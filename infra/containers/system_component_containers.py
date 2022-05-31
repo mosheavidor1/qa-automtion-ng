@@ -56,39 +56,3 @@ class CoreDetails:
         self.status = status
         self.organization = organization
         self.functionality = functionality
-
-
-class CollectorDetails:
-
-    def __init__(self,
-                 system_id: int,
-                 name: str,
-                 collector_group_name: str,
-                 operating_system: str,
-                 ip_address: str,
-                 last_seen_time: str,
-                 mac_addresses: [str],
-                 account_name: str,
-                 organization: str,
-                 state: str,
-                 os_family: str,
-                 state_additional_info: str,
-                 version: str,
-                 logged_users: [str],
-                 system_information: dict):
-
-        self.system_id = system_id
-        self.name = name
-        self.collector_group_name = collector_group_name
-        self.operating_system = operating_system
-        self.ip_address = ip_address
-        self.last_seen_time = last_seen_time
-        self.mac_addresses = mac_addresses
-        self.account_name = account_name
-        self.organization = organization
-        self.state = state
-        self.os_family = os_family
-        self.state_additional_info = state_additional_info
-        self.version = version
-        self.logged_users = logged_users
-        self.system_information = system_information

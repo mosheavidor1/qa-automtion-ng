@@ -1,5 +1,6 @@
-from infra.rest.rest_commands import RestCommands
-from infra.system_components.collector import Collector
+from infra.api.nslo_wrapper.rest_commands import RestCommands
+from infra.system_components.collector import CollectorAgent
+from infra.api.api_objects_factory import RestCollectorsFactory
 
 
 class Tenant:
@@ -10,7 +11,7 @@ class Tenant:
                  user_password: str,
                  registration_password: str,
                  organization: str,
-                 collector: Collector | None,
+                 collector: CollectorAgent | None,
                  collector_group: str = "Default Collector Group"):
 
         self._user_name = user_name
@@ -23,6 +24,8 @@ class Tenant:
                                              management_user=user_name,
                                              management_password=user_password,
                                              organization=organization)
+        self.rest_components: TenantRestComponents = TenantRestComponents(organization_name=organization,
+                                                                          rest_client=self._rest_api_client)
 
     @property
     def user_name(self) -> str:
@@ -41,11 +44,11 @@ class Tenant:
         return self._organization
 
     @property
-    def collector(self) -> Collector:
+    def collector(self) -> CollectorAgent:
         return self._collector
 
     @collector.setter
-    def collector(self, collector: Collector):
+    def collector(self, collector: CollectorAgent):
         self._collector = collector
 
     @property
@@ -56,3 +59,9 @@ class Tenant:
     def rest_api_client(self) -> RestCommands:
         return self._rest_api_client
 
+
+class TenantRestComponents:
+    def __init__(self, organization_name: str, rest_client: RestCommands):
+        self._organization_name = organization_name
+        self.collectors: RestCollectorsFactory = RestCollectorsFactory(organization_name=organization_name,
+                                                                       rest_client=rest_client)
