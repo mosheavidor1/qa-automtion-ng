@@ -20,9 +20,10 @@ def test_validate_env_ready_for_run(setup_environment):
             env_file.write(f"SSH_ADMIN_PASSWORD={system_components.admin_password}\n")
             env_file.write(f"ENVIRONMENT_ID={system_components.env_id}\n")
             env_file.write(f"DEFAULT_REGISTRATION_PASSWORD={system_components.registration_password}\n")
-            env_file.write(f"ADMIN_REST_API_USER={system_components.admin_user}\n")
-            env_file.write(f"ADMIN_REST_API_PASSWORD={system_components.admin_password}\n")
+            env_file.write(f"ADMIN_REST_API_USER={system_components.rest_api_user}\n")
+            env_file.write(f"ADMIN_REST_API_PASSWORD={system_components.rest_api_password}\n")
             env_file.write(f"MANAGEMENT_HOST_IP={system_components.management_ip}\n")
+            env_file.write(f"ORGANIZATION={system_components.customer_name}\n")
 
     with allure.step("Environment details"):
         Reporter.attach_str_as_file(file_name="System components", file_content=json.dumps(system_components.get_as_dict(), indent=4))

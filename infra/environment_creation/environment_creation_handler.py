@@ -89,7 +89,7 @@ class EnvironmentCreationHandler:
                                rest_api_user=content.get('RestAPIUser'),
                                rest_api_password=content.get('RestAPIPassword'),
                                location=content.get('Location'),
-                               environment_name=content.get('CustomerName'),
+                               customer_name=content.get('CustomerName'),
                                timezone=content.get('Timezone'),
                                installation_type=content.get('InstallationType'),
                                environment_pool=content.get('EnvironmentPool'),
