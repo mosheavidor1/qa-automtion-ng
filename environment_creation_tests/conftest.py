@@ -316,7 +316,7 @@ def setup_environment():
     deployed_collectors_info = deploy_collectors(env_name=f'{environment_name}_{deployed_env_info.env_id}',
                                                  aggregator_ip=aggregator_ips[0],
                                                  registration_password=deployed_env_info.registration_password,
-                                                 organization=deployed_env_info.environment_name)
+                                                 organization=deployed_env_info.customer_name)
 
     ret_dict = {
         'system_components': deployed_env_info,

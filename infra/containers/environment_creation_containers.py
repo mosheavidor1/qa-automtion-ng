@@ -36,7 +36,7 @@ class DeployedEnvInfo:
                  rest_api_user: str,
                  rest_api_password: str,
                  location: str,
-                 environment_name: str,
+                 customer_name: str,
                  timezone: str,
                  installation_type: str,
                  environment_pool: str,
@@ -49,7 +49,7 @@ class DeployedEnvInfo:
         self._rest_api_user = rest_api_user
         self._rest_api_password = rest_api_password
         self._location = location
-        self._environment_name = environment_name
+        self._customer_name = customer_name
         self._timezone = timezone
         self._installation_type = installation_type
         self._environment_pool = environment_pool
@@ -65,7 +65,7 @@ class DeployedEnvInfo:
             'rest_api_user': self._rest_api_user,
             'rest_api_password': self._rest_api_password,
             'location': self._location,
-            'environment_name': self._environment_name,
+            'customer_name': self._customer_name,
             'timezone': self._timezone,
             'installation_type': self._installation_type,
             'environment_pool': self._environment_pool,
@@ -134,8 +134,8 @@ class DeployedEnvInfo:
         return self._location
 
     @property
-    def environment_name(self):
-        return self._environment_name
+    def customer_name(self):
+        return self._customer_name
 
     @property
     def timezone(self):
