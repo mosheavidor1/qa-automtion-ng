@@ -14,6 +14,10 @@ pipeline {
                 defaultValue: 'main',
                 description: 'Automation branch')
 
+        booleanParam( name: 'run_automation',
+                    defaultValue: false,
+                    description: 'Set true in order to run automation in parallel on all collectors that was created')
+
         string( name: 'environment_name',
                 defaultValue: '',
                 description: 'Desired environment name')
@@ -113,6 +117,7 @@ pipeline {
 //         string( name: 'ubuntu_20',
 //                 defaultValue: '0',
 //                 description: '')
+
     }
     agent {
       node {
@@ -152,7 +157,7 @@ pipeline {
                     sh '[ -f ./myenv.txt ] && rm -f ./myenv.txt || echo "env file truncated"'
                     params.each{
                         echo "Variable set $it.key = ${it.value}"
-                        env."${it.key}" = it.value.replace(" ", "_");
+                        env."${it.key}" = "${it.value}".replace(" ", "_");
                         sh "echo $it.key=${it.value} >> ./myenv.txt"
                     }
                     sh "echo BUILD_URL=${BUILD_URL} >> ./myenv.txt"
@@ -263,6 +268,7 @@ pipeline {
 
         stage('Set updated environment variables from myenv.txt file'){
             steps{
+
                 script {
 
                     // reading myenv.txt file which the automation updates during environment creation with new env details
@@ -277,8 +283,40 @@ pipeline {
                 }
             }
         }
-    }
 
+        stage('Trigger automation job on environment'){
+            when { expression { return "${env.run_automation}" == 'true'} }
+            parallel {
+                stage ("Automation tests on windows 11 64 bit"){
+                    // when { expression { return "${env.windows_11_64_bit}".toInteger() > 0} }
+                    steps{
+                        build job: 'forti_edr_automation', parameters: [
+                            string(name: 'branchName', value: "${branchName}"),
+                            string(name:'management_host_ip', value: "${MANAGEMENT_HOST_IP}"),
+                            string(name:'tests_discover_type', value: 'suite'),
+                            string(name:'tests', value: 'sanity'),
+                            booleanParam(name:'retry_on_failure', value: true),
+                            string(name:'collector_type', value: 'WINDOWS_11_64'),
+                            booleanParam(name:'report_results_to_jira', value: false),
+                            string(name:'email_list', value: ''),
+                            string(name:'platfom_rest_branch', value: 'master'),
+                            string(name:'testim_branch', value: 'master'),
+                            booleanParam(name:'use_test_im_proxy', value: true),
+                            booleanParam(name:'debug_mode', value: true),
+                            booleanParam(name:'upgrade_management_to_latest_build', value: false),
+                            booleanParam(name:'upgrade_aggregator_to_latest_build', value: false),
+                            booleanParam(name:'upgrade_core_to_latest_build', value: false),
+                            booleanParam(name:'upgrade_collector_to_latest_build', value: false),
+                            string(name:'rest_api_user', value: "${ADMIN_REST_API_USER}"),
+                            string(name:'rest_api_password', value: "${ADMIN_REST_API_PASSWORD}"),
+                            string(name:'registration_password', value: "${DEFAULT_REGISTRATION_PASSWORD}"),
+                            string(name:'default_organization', value: "${ORGANIZATION}")
+                        ]
+                    }
+                }
+            }
+        }
+    }
     post {
         always {
             script {
@@ -302,7 +340,7 @@ pipeline {
                 //     to: recipients.join(", "),
                 //     recipientProviders: [[$class: 'DevelopersRecipientProvider'], [$class: 'RequesterRecipientProvider']],
                 // )
-			}
+            }
         }
     }
 }
