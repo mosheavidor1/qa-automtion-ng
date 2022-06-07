@@ -286,9 +286,11 @@ pipeline {
 
         stage('Trigger automation job on environment'){
             when { expression { return "${env.run_automation}" == 'true'} }
+
             parallel {
+
                 stage ("Automation tests on windows 11 64 bit"){
-                    // when { expression { return "${env.windows_11_64_bit}".toInteger() > 0} }
+                    when { expression { return "${env.windows_11_64_bit}".toInteger() > 0} }
                     steps{
                         build job: 'forti_edr_automation', parameters: [
                             string(name: 'branchName', value: "${branchName}"),
@@ -314,6 +316,288 @@ pipeline {
                         ]
                     }
                 }
+
+                stage ("Automation tests on windows 10 64 bit"){
+                    when { expression { return "${env.windows_10_64_bit}".toInteger() > 0} }
+                    steps{
+                        build job: 'forti_edr_automation', parameters: [
+                            string(name: 'branchName', value: "${branchName}"),
+                            string(name:'management_host_ip', value: "${MANAGEMENT_HOST_IP}"),
+                            string(name:'tests_discover_type', value: 'suite'),
+                            string(name:'tests', value: 'sanity'),
+                            booleanParam(name:'retry_on_failure', value: true),
+                            string(name:'collector_type', value: 'WINDOWS_10_64'),
+                            booleanParam(name:'report_results_to_jira', value: false),
+                            string(name:'email_list', value: ''),
+                            string(name:'platfom_rest_branch', value: 'master'),
+                            string(name:'testim_branch', value: 'master'),
+                            booleanParam(name:'use_test_im_proxy', value: true),
+                            booleanParam(name:'debug_mode', value: true),
+                            booleanParam(name:'upgrade_management_to_latest_build', value: false),
+                            booleanParam(name:'upgrade_aggregator_to_latest_build', value: false),
+                            booleanParam(name:'upgrade_core_to_latest_build', value: false),
+                            booleanParam(name:'upgrade_collector_to_latest_build', value: false),
+                            string(name:'rest_api_user', value: "${ADMIN_REST_API_USER}"),
+                            string(name:'rest_api_password', value: "${ADMIN_REST_API_PASSWORD}"),
+                            string(name:'registration_password', value: "${DEFAULT_REGISTRATION_PASSWORD}"),
+                            string(name:'default_organization', value: "${ORGANIZATION}")
+                        ]
+                    }
+                }
+
+                stage ("Automation tests on windows 10 32 bit"){
+                    when { expression { return "${env.windows_10_32_bit}".toInteger() > 0} }
+                    steps{
+                        build job: 'forti_edr_automation', parameters: [
+                            string(name: 'branchName', value: "${branchName}"),
+                            string(name:'management_host_ip', value: "${MANAGEMENT_HOST_IP}"),
+                            string(name:'tests_discover_type', value: 'suite'),
+                            string(name:'tests', value: 'sanity'),
+                            booleanParam(name:'retry_on_failure', value: true),
+                            string(name:'collector_type', value: 'WINDOWS_10_32'),
+                            booleanParam(name:'report_results_to_jira', value: false),
+                            string(name:'email_list', value: ''),
+                            string(name:'platfom_rest_branch', value: 'master'),
+                            string(name:'testim_branch', value: 'master'),
+                            booleanParam(name:'use_test_im_proxy', value: true),
+                            booleanParam(name:'debug_mode', value: true),
+                            booleanParam(name:'upgrade_management_to_latest_build', value: false),
+                            booleanParam(name:'upgrade_aggregator_to_latest_build', value: false),
+                            booleanParam(name:'upgrade_core_to_latest_build', value: false),
+                            booleanParam(name:'upgrade_collector_to_latest_build', value: false),
+                            string(name:'rest_api_user', value: "${ADMIN_REST_API_USER}"),
+                            string(name:'rest_api_password', value: "${ADMIN_REST_API_PASSWORD}"),
+                            string(name:'registration_password', value: "${DEFAULT_REGISTRATION_PASSWORD}"),
+                            string(name:'default_organization', value: "${ORGANIZATION}")
+                        ]
+                    }
+                }
+
+                stage ("Automation tests on windows 8 64 bit"){
+                    when { expression { return "${env.windows_8_64_bit}".toInteger() > 0} }
+                    steps{
+                        build job: 'forti_edr_automation', parameters: [
+                            string(name: 'branchName', value: "${branchName}"),
+                            string(name:'management_host_ip', value: "${MANAGEMENT_HOST_IP}"),
+                            string(name:'tests_discover_type', value: 'suite'),
+                            string(name:'tests', value: 'sanity'),
+                            booleanParam(name:'retry_on_failure', value: true),
+                            string(name:'collector_type', value: 'WINDOWS_8_64'),
+                            booleanParam(name:'report_results_to_jira', value: false),
+                            string(name:'email_list', value: ''),
+                            string(name:'platfom_rest_branch', value: 'master'),
+                            string(name:'testim_branch', value: 'master'),
+                            booleanParam(name:'use_test_im_proxy', value: true),
+                            booleanParam(name:'debug_mode', value: true),
+                            booleanParam(name:'upgrade_management_to_latest_build', value: false),
+                            booleanParam(name:'upgrade_aggregator_to_latest_build', value: false),
+                            booleanParam(name:'upgrade_core_to_latest_build', value: false),
+                            booleanParam(name:'upgrade_collector_to_latest_build', value: false),
+                            string(name:'rest_api_user', value: "${ADMIN_REST_API_USER}"),
+                            string(name:'rest_api_password', value: "${ADMIN_REST_API_PASSWORD}"),
+                            string(name:'registration_password', value: "${DEFAULT_REGISTRATION_PASSWORD}"),
+                            string(name:'default_organization', value: "${ORGANIZATION}")
+                        ]
+                    }
+                }
+
+                stage ("Automation tests on windows 8 32 bit"){
+                    when { expression { return "${env.windows_8_32_bit}".toInteger() > 0} }
+                    steps{
+                        build job: 'forti_edr_automation', parameters: [
+                            string(name: 'branchName', value: "${branchName}"),
+                            string(name:'management_host_ip', value: "${MANAGEMENT_HOST_IP}"),
+                            string(name:'tests_discover_type', value: 'suite'),
+                            string(name:'tests', value: 'sanity'),
+                            booleanParam(name:'retry_on_failure', value: true),
+                            string(name:'collector_type', value: 'WINDOWS_8_32'),
+                            booleanParam(name:'report_results_to_jira', value: false),
+                            string(name:'email_list', value: ''),
+                            string(name:'platfom_rest_branch', value: 'master'),
+                            string(name:'testim_branch', value: 'master'),
+                            booleanParam(name:'use_test_im_proxy', value: true),
+                            booleanParam(name:'debug_mode', value: true),
+                            booleanParam(name:'upgrade_management_to_latest_build', value: false),
+                            booleanParam(name:'upgrade_aggregator_to_latest_build', value: false),
+                            booleanParam(name:'upgrade_core_to_latest_build', value: false),
+                            booleanParam(name:'upgrade_collector_to_latest_build', value: false),
+                            string(name:'rest_api_user', value: "${ADMIN_REST_API_USER}"),
+                            string(name:'rest_api_password', value: "${ADMIN_REST_API_PASSWORD}"),
+                            string(name:'registration_password', value: "${DEFAULT_REGISTRATION_PASSWORD}"),
+                            string(name:'default_organization', value: "${ORGANIZATION}")
+                        ]
+                    }
+                }
+
+                stage ("Automation tests on windows 7 64 bit"){
+                    when { expression { return "${env.windows_7_64_bit}".toInteger() > 0} }
+                    steps{
+                        build job: 'forti_edr_automation', parameters: [
+                            string(name: 'branchName', value: "${branchName}"),
+                            string(name:'management_host_ip', value: "${MANAGEMENT_HOST_IP}"),
+                            string(name:'tests_discover_type', value: 'suite'),
+                            string(name:'tests', value: 'sanity'),
+                            booleanParam(name:'retry_on_failure', value: true),
+                            string(name:'collector_type', value: 'WINDOWS_7_64'),
+                            booleanParam(name:'report_results_to_jira', value: false),
+                            string(name:'email_list', value: ''),
+                            string(name:'platfom_rest_branch', value: 'master'),
+                            string(name:'testim_branch', value: 'master'),
+                            booleanParam(name:'use_test_im_proxy', value: true),
+                            booleanParam(name:'debug_mode', value: true),
+                            booleanParam(name:'upgrade_management_to_latest_build', value: false),
+                            booleanParam(name:'upgrade_aggregator_to_latest_build', value: false),
+                            booleanParam(name:'upgrade_core_to_latest_build', value: false),
+                            booleanParam(name:'upgrade_collector_to_latest_build', value: false),
+                            string(name:'rest_api_user', value: "${ADMIN_REST_API_USER}"),
+                            string(name:'rest_api_password', value: "${ADMIN_REST_API_PASSWORD}"),
+                            string(name:'registration_password', value: "${DEFAULT_REGISTRATION_PASSWORD}"),
+                            string(name:'default_organization', value: "${ORGANIZATION}")
+                        ]
+                    }
+                }
+
+                stage ("Automation tests on windows 7 32 bit"){
+                    when { expression { return "${env.windows_7_32_bit}".toInteger() > 0} }
+                    steps{
+                        build job: 'forti_edr_automation', parameters: [
+                            string(name: 'branchName', value: "${branchName}"),
+                            string(name:'management_host_ip', value: "${MANAGEMENT_HOST_IP}"),
+                            string(name:'tests_discover_type', value: 'suite'),
+                            string(name:'tests', value: 'sanity'),
+                            booleanParam(name:'retry_on_failure', value: true),
+                            string(name:'collector_type', value: 'WINDOWS_7_32'),
+                            booleanParam(name:'report_results_to_jira', value: false),
+                            string(name:'email_list', value: ''),
+                            string(name:'platfom_rest_branch', value: 'master'),
+                            string(name:'testim_branch', value: 'master'),
+                            booleanParam(name:'use_test_im_proxy', value: true),
+                            booleanParam(name:'debug_mode', value: true),
+                            booleanParam(name:'upgrade_management_to_latest_build', value: false),
+                            booleanParam(name:'upgrade_aggregator_to_latest_build', value: false),
+                            booleanParam(name:'upgrade_core_to_latest_build', value: false),
+                            booleanParam(name:'upgrade_collector_to_latest_build', value: false),
+                            string(name:'rest_api_user', value: "${ADMIN_REST_API_USER}"),
+                            string(name:'rest_api_password', value: "${ADMIN_REST_API_PASSWORD}"),
+                            string(name:'registration_password', value: "${DEFAULT_REGISTRATION_PASSWORD}"),
+                            string(name:'default_organization', value: "${ORGANIZATION}")
+                        ]
+                    }
+                }
+
+                stage ("Automation tests on windows serve 2016"){
+                    when { expression { return "${env.windows_server_2016}".toInteger() > 0} }
+                    steps{
+                        build job: 'forti_edr_automation', parameters: [
+                            string(name: 'branchName', value: "${branchName}"),
+                            string(name:'management_host_ip', value: "${MANAGEMENT_HOST_IP}"),
+                            string(name:'tests_discover_type', value: 'suite'),
+                            string(name:'tests', value: 'sanity'),
+                            booleanParam(name:'retry_on_failure', value: true),
+                            string(name:'collector_type', value: 'WIN_SERVER_2016'),
+                            booleanParam(name:'report_results_to_jira', value: false),
+                            string(name:'email_list', value: ''),
+                            string(name:'platfom_rest_branch', value: 'master'),
+                            string(name:'testim_branch', value: 'master'),
+                            booleanParam(name:'use_test_im_proxy', value: true),
+                            booleanParam(name:'debug_mode', value: true),
+                            booleanParam(name:'upgrade_management_to_latest_build', value: false),
+                            booleanParam(name:'upgrade_aggregator_to_latest_build', value: false),
+                            booleanParam(name:'upgrade_core_to_latest_build', value: false),
+                            booleanParam(name:'upgrade_collector_to_latest_build', value: false),
+                            string(name:'rest_api_user', value: "${ADMIN_REST_API_USER}"),
+                            string(name:'rest_api_password', value: "${ADMIN_REST_API_PASSWORD}"),
+                            string(name:'registration_password', value: "${DEFAULT_REGISTRATION_PASSWORD}"),
+                            string(name:'default_organization', value: "${ORGANIZATION}")
+                        ]
+                    }
+                }
+
+                stage ("Automation tests on windows server 2019"){
+                    when { expression { return "${env.windows_server_2019}".toInteger() > 0} }
+                    steps{
+                        build job: 'forti_edr_automation', parameters: [
+                            string(name: 'branchName', value: "${branchName}"),
+                            string(name:'management_host_ip', value: "${MANAGEMENT_HOST_IP}"),
+                            string(name:'tests_discover_type', value: 'suite'),
+                            string(name:'tests', value: 'sanity'),
+                            booleanParam(name:'retry_on_failure', value: true),
+                            string(name:'collector_type', value: 'WIN_SERVER_2019'),
+                            booleanParam(name:'report_results_to_jira', value: false),
+                            string(name:'email_list', value: ''),
+                            string(name:'platfom_rest_branch', value: 'master'),
+                            string(name:'testim_branch', value: 'master'),
+                            booleanParam(name:'use_test_im_proxy', value: true),
+                            booleanParam(name:'debug_mode', value: true),
+                            booleanParam(name:'upgrade_management_to_latest_build', value: false),
+                            booleanParam(name:'upgrade_aggregator_to_latest_build', value: false),
+                            booleanParam(name:'upgrade_core_to_latest_build', value: false),
+                            booleanParam(name:'upgrade_collector_to_latest_build', value: false),
+                            string(name:'rest_api_user', value: "${ADMIN_REST_API_USER}"),
+                            string(name:'rest_api_password', value: "${ADMIN_REST_API_PASSWORD}"),
+                            string(name:'registration_password', value: "${DEFAULT_REGISTRATION_PASSWORD}"),
+                            string(name:'default_organization', value: "${ORGANIZATION}")
+                        ]
+                    }
+                }
+
+                stage ("Automation tests on centos 7"){
+                    when { expression { return "${env.centOS_7}".toInteger() > 0} }
+                    steps{
+                        build job: 'forti_edr_automation', parameters: [
+                            string(name: 'branchName', value: "${branchName}"),
+                            string(name:'management_host_ip', value: "${MANAGEMENT_HOST_IP}"),
+                            string(name:'tests_discover_type', value: 'suite'),
+                            string(name:'tests', value: 'sanity'),
+                            booleanParam(name:'retry_on_failure', value: true),
+                            string(name:'collector_type', value: 'LINUX_CENTOS_7'),
+                            booleanParam(name:'report_results_to_jira', value: false),
+                            string(name:'email_list', value: ''),
+                            string(name:'platfom_rest_branch', value: 'master'),
+                            string(name:'testim_branch', value: 'master'),
+                            booleanParam(name:'use_test_im_proxy', value: true),
+                            booleanParam(name:'debug_mode', value: true),
+                            booleanParam(name:'upgrade_management_to_latest_build', value: false),
+                            booleanParam(name:'upgrade_aggregator_to_latest_build', value: false),
+                            booleanParam(name:'upgrade_core_to_latest_build', value: false),
+                            booleanParam(name:'upgrade_collector_to_latest_build', value: false),
+                            string(name:'rest_api_user', value: "${ADMIN_REST_API_USER}"),
+                            string(name:'rest_api_password', value: "${ADMIN_REST_API_PASSWORD}"),
+                            string(name:'registration_password', value: "${DEFAULT_REGISTRATION_PASSWORD}"),
+                            string(name:'default_organization', value: "${ORGANIZATION}")
+                        ]
+                    }
+                }
+
+                // place holder for another OS types
+                // stage ("Automation tests on "){
+                //     when { expression { return "${env.}".toInteger() > 0} }
+                //     steps{
+                //         build job: 'forti_edr_automation', parameters: [
+                //             string(name: 'branchName', value: "${branchName}"),
+                //             string(name:'management_host_ip', value: "${MANAGEMENT_HOST_IP}"),
+                //             string(name:'tests_discover_type', value: 'suite'),
+                //             string(name:'tests', value: 'sanity'),
+                //             booleanParam(name:'retry_on_failure', value: true),
+                //             string(name:'collector_type', value: 'WINDOWS_11_64'),
+                //             booleanParam(name:'report_results_to_jira', value: false),
+                //             string(name:'email_list', value: ''),
+                //             string(name:'platfom_rest_branch', value: 'master'),
+                //             string(name:'testim_branch', value: 'master'),
+                //             booleanParam(name:'use_test_im_proxy', value: true),
+                //             booleanParam(name:'debug_mode', value: true),
+                //             booleanParam(name:'upgrade_management_to_latest_build', value: false),
+                //             booleanParam(name:'upgrade_aggregator_to_latest_build', value: false),
+                //             booleanParam(name:'upgrade_core_to_latest_build', value: false),
+                //             booleanParam(name:'upgrade_collector_to_latest_build', value: false),
+                //             string(name:'rest_api_user', value: "${ADMIN_REST_API_USER}"),
+                //             string(name:'rest_api_password', value: "${ADMIN_REST_API_PASSWORD}"),
+                //             string(name:'registration_password', value: "${DEFAULT_REGISTRATION_PASSWORD}"),
+                //             string(name:'default_organization', value: "${ORGANIZATION}")
+                //         ]
+                //     }
+                // }
+
             }
         }
     }
