@@ -43,10 +43,10 @@ class ManagementUiClient:
             "organization": "Default"
         }
         if self._tenant is not None:
-            base_data['loginUser'] = self._tenant.user_name
-            base_data['loginPassword'] = self._tenant.user_password
-            base_data['loginOrganization'] = self._tenant.organization
-            base_data['organization'] = self._tenant.organization
+            base_data['loginUser'] = self._tenant.default_local_admin.get_username()
+            base_data['loginPassword'] = self._tenant.default_local_admin.password
+            base_data['loginOrganization'] = self._tenant.organization.get_name()
+            base_data['organization'] = self._tenant.organization.get_name()
 
         if data is not None:
             base_data.update(data)

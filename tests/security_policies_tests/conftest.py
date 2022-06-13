@@ -5,10 +5,10 @@ import pytest
 def security_events_function_fixture(management, collector):
     malware_name = "DynamicCodeTests.exe"
     test_im_params = {
-        "loginUser": management.tenant.user_name,
-        "loginPassword": management.tenant.user_password,
-        "loginOrganization": management.tenant.organization,
-        "organization": management.tenant.organization,
+        "loginUser": management.tenant.default_local_admin.get_username(),
+        "loginPassword": management.tenant.default_local_admin.password,
+        "loginOrganization": management.tenant.organization.get_name(),
+        "organization": management.tenant.organization.get_name(),
         "eventName": malware_name,
         "collectorName": str(collector.os_station.get_hostname())
     }

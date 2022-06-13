@@ -1,32 +1,18 @@
 import json
 from typing import List
-
+import logging
 import allure
 from ensilo.platform.rest.nslo_management_rest import NsloRest
-
 from infra.allure_report_handler.reporter import Reporter
-from infra.containers.management_api_body_containers import CreateOrganizationRestData, OrganizationRestData
 from infra.api.nslo_wrapper.base_rest_functionality import BaseRestFunctionality
-from infra.utils.utils import JsonUtils
+
+logger = logging.getLogger(__name__)
 
 
 class OrganizationsRest(BaseRestFunctionality):
 
     def __init__(self, nslo_rest: NsloRest):
         super().__init__(nslo_rest=nslo_rest)
-
-    @allure.step("Get specific organization data: {organization_name}")
-    def get_specific_organization_data(self,
-                                       organization_name: str) -> dict | None:
-        all_orgs = self.get_all_organizations(expected_status_code=200)
-        for single_org in all_orgs:
-            if single_org.get('name') == organization_name:
-                Reporter.attach_str_as_file(file_name='organization data',
-                                            file_content=json.dumps(single_org,
-                                                                    indent=4))
-                return single_org
-
-        return None
 
     @allure.step("Get all organizations")
     def get_all_organizations(self, expected_status_code: int = 200) -> List[dict]:
@@ -40,40 +26,25 @@ class OrganizationsRest(BaseRestFunctionality):
         return as_dict
 
     @allure.step("Create organization")
-    def create_organization(self,
-                            organization_data: CreateOrganizationRestData,
-                            expected_status_code: int = 200):
-
-        data = json.loads(JsonUtils.object_to_json(obj=organization_data,
-                                                   null_sensitive=True))
-
+    def create_organization(self, org_data: dict, expected_status_code=200):
+        logger.info(f"Create new org with this data :\n {org_data} \n expect: {expected_status_code}")
         status, response = self._rest.passthrough.ExecuteRequest(url='/organizations/create-organization',
                                                                  mode='post',
-                                                                 body=data,
+                                                                 body=org_data,
                                                                  inputParams=None)
-
+        err_msg = f"Failed to create new organization, got {response.status_code} instead of {expected_status_code}"
         self._validate_expected_status_code(expected_status_code=expected_status_code,
-                                            actual_status_code=response.status_code,
-                                            error_message=f"Create-organization - expected response code: {expected_status_code}, actual: {response.status_code}")
+                                            actual_status_code=response.status_code, error_message=err_msg)
 
     @allure.step("Update organization")
-    def update_organization(self,
-                            organization_data: OrganizationRestData,
-                            expected_status_code: int = 200):
-
-        json_as_str = JsonUtils.object_to_json(obj=organization_data,
-                                               null_sensitive=True)
-        data = json.loads(json_as_str)
-
+    def update_organization(self, current_org_name, data: dict, expected_status_code=200):
+        logger.info(f"Update org '{current_org_name}' with this data :\n {data} \n expected: {expected_status_code}")
         status, response = self._rest.passthrough.ExecuteRequest(
-            url=f'/organizations/update-organization?organization={organization_data.name}',
-            mode='put',
-            body=data,
+            url=f'/organizations/update-organization?organization={current_org_name}', mode='put', body=data,
             inputParams=None)
-
+        err_msg = f"Failed to update organization, got {response.status_code} instead of {expected_status_code}"
         self._validate_expected_status_code(expected_status_code=expected_status_code,
-                                            actual_status_code=response.status_code,
-                                            error_message=f"Update-organization - expected response code: {expected_status_code}, actual: {response.status_code}")
+                                            actual_status_code=response.status_code, error_message=err_msg)
 
     @allure.step("Delete organization")
     def delete_organization(self,
@@ -90,13 +61,3 @@ class OrganizationsRest(BaseRestFunctionality):
                                             actual_status_code=response.status_code,
                                             error_message=f"Delete-organization - expected response code: {expected_status_code}, actual: {response.status_code}")
 
-    @allure.step("Check if organization with the name {organization_name} exist")
-    def is_organization_exist(self, organization_name: str) -> bool:
-        organizations = self.get_all_organizations()
-
-        for org in organizations:
-            if organization_name == org.get('name'):
-                Reporter.report("The organization exist!")
-                return True
-        Reporter.report("The does not organization exist")
-        return False

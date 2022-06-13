@@ -167,14 +167,3 @@ class SystemInventoryRest(BaseRestFunctionality):
 
         as_list_of_dicts = json.loads(response.content)
         return as_list_of_dicts
-
-    @allure.step("Check if collector is in organization: {organization_name}")
-    def is_collector_in_organization(self, collector: CollectorAgent, organization_name: str):
-        all_collectors = self.get_collector_info(organization=organization_name)
-        for single_collector in all_collectors:
-            if single_collector.get('ipAddress') == collector.os_station.host_ip:
-                Reporter.report("Collector found in the organization")
-                return True
-
-        Reporter.report("Collector does not found in the organization")
-        return False

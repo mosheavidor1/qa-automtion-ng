@@ -30,7 +30,7 @@ def _process_list(ob):
 class StringUtils:
 
     @staticmethod
-    def generate_random_string(length: int):
+    def generate_random_string(length=10):
         characters = string.ascii_letters + string.digits#+ string.punctuation
         rand_str = ''.join(random.choice(characters) for i in range(length))
         return rand_str
