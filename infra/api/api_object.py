@@ -2,65 +2,78 @@ from abc import abstractmethod
 from infra.api.nslo_wrapper.rest_commands import RestCommands
 import logging
 from typing import List
-import sut_details
+from infra.api import ADMIN_REST
 
 logger = logging.getLogger(__name__)
 
 
 class BaseApiObj:
-    """ Abstract class for working with objects that are api wrappers """
-    admin_rest = RestCommands(sut_details.management_host, sut_details.management_ui_admin_user_name,
-                              sut_details.management_ui_admin_password)
+    """ Abstract class for working with objects that are api wrappers of real components """
 
-    def __init__(self, rest_client):
+    def __init__(self, rest_client, initial_data):
         self._rest_client = rest_client
+        self._cache = initial_data
+        self._use_cache = False  # By default, always get the updated data from server
 
     @property
     def rest_client(self) -> RestCommands:
         return self._rest_client
 
+    @property
+    def cache(self) -> dict:
+        return self._cache
+
+    @cache.setter
+    def cache(self, new_cache: dict):
+        self._cache = new_cache
+
+    @property
+    def use_cache(self) -> bool:
+        return self._use_cache
+
+    @use_cache.setter
+    def use_cache(self, to_use: bool):
+        self._use_cache = to_use
+
     @classmethod
     @abstractmethod
     def create(cls):
-        """ A class factory that create the object in management via api calls """
+        """ Create new component in management (via api) and return this component's rest api wrapper """
         pass
 
     @abstractmethod
-    def get_fields(self, safe=False):
-        """ Get object's fields from management , raise exception if not found """
+    def get_fields(self, safe=False, rest_client=None):
+        """ Get object's fields from management by id, raise exception if not found """
         pass
 
     @abstractmethod
-    def update(self, safe=False):
+    def update_fields(self, safe=False):
         """ Update object's fields in management , raise exception if not found """
         pass
 
     @abstractmethod
-    def delete(self):
-        """ Delete object from management """
+    def _delete(self):
+        """ Private because there are objects that need higher credentials for deletion (like users,
+        should not present public delete method, users deleted via tenant credentials: 'tenant.delete_user()') """
         pass
 
     def is_exist(self) -> bool:
         """ Check if object exists in management """
         logger.info(f"Check if {self} exists")
-        return self.get_fields(safe=True) is not None
+        return self.get_fields(safe=True, rest_client=ADMIN_REST) is not None
 
-    def validate_creation(self, expected_status_code):
-        """ Validate that api call really worked: created the object"""
-        is_created = self.is_exist()
-        if expected_status_code == 200:
-            assert is_created, f"Api returned OK but actually {self} was NOT created"
-
-    def validate_deletion(self, expected_status_code):
+    def _validate_deletion(self):
         """ Validate that api call really worked: deleted the object"""
         is_deleted = not self.is_exist()
-        if expected_status_code == 200:
-            assert is_deleted, f"Api returned OK but actually {self} was NOT deleted"
+        assert is_deleted, f"Api returned OK but actually {self} was NOT deleted"
 
-    def validate_update(self, fields_new_values: List[tuple], expected_status_code):
-        """ Validate that api call really worked: updated the object's field"""
-        updated_fields = self.get_fields()
-        for field_name, expected_value in fields_new_values:
-            if expected_status_code == 200:
-                assert updated_fields[field_name] == expected_value, \
-                    f"Api returned OK but actually {field_name} was NOT updated"
+    def update_all_cache(self):
+        """ Update all cached fields with new values from server"""
+        self.get_fields(update_cache_data=True)
+
+    def _validate_updated_fields(self, new_fields: List[tuple]):
+        self.update_all_cache()
+        current_data = self.cache
+        for field_name, new_value in new_fields:
+            assert current_data[field_name] == new_value, \
+                f"{field_name} is {current_data[field_name]} instead of {new_value}"

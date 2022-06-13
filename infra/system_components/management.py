@@ -11,7 +11,8 @@ from infra.containers.ssh_details import SshDetails
 from infra.multi_tenancy.tenant import Tenant
 from infra.posgresql_db.postgresql_db import PostgresqlOverSshDb
 from infra.api.nslo_wrapper.rest_commands import RestCommands
-
+from infra.api.api_objects_factory import get_default_organization
+from infra.api.management_api.organization import DEFAULT_LICENSE_CAPACITY
 import sut_details
 from infra.containers.system_component_containers import ManagementDetails
 from infra.enums import ComponentType, SystemState, ManagementUserRoles
@@ -20,7 +21,6 @@ from infra.system_components.forti_edr_linux_station import FortiEdrLinuxStation
 
 from infra.test_im.management_ui_client import ManagementUiClient
 from infra.utils.utils import StringUtils
-from infra.api.management_api.collector import RestCollector
 logger = logging.getLogger(__name__)
 
 
@@ -35,19 +35,20 @@ class Management(FortiEdrLinuxStation):
     _DB_TBL_ADM_ROLES = 'adm_roles'
 
     def __init__(self):
+        self._config = sut_details
         logger.info(
-            f"Trying to init management object with user_name: {sut_details.management_ssh_user_name},"
-            f" password: {sut_details.management_ssh_password}")
+            f"Trying to init management object with user_name: {self._config.management_ssh_user_name},"
+            f" password: {self._config.management_ssh_password}")
 
         super().__init__(
-            host_ip=sut_details.management_host,
-            user_name=sut_details.management_ssh_user_name,
-            password=sut_details.management_ssh_password,
+            host_ip=self._config.management_host,
+            user_name=self._config.management_ssh_user_name,
+            password=self._config.management_ssh_password,
             component_type=ComponentType.MANAGEMENT)
 
-        self._ui_admin_user_name = sut_details.management_ui_admin_user_name
-        self._ui_admin_password = sut_details.management_ui_admin_password
-        self._registration_password = sut_details.management_registration_password
+        self._ui_admin_user_name = self._config.management_ui_admin_user_name
+        self._ui_admin_password = self._config.management_ui_admin_password
+        self._registration_password = self._config.management_registration_password
 
         self._postgresql_db: PostgresqlOverSshDb = self._get_postgresql_db_obj()
         self.enable_rest_api_for_user_via_db(user_name=self._ui_admin_user_name)
@@ -58,16 +59,11 @@ class Management(FortiEdrLinuxStation):
                                                    organization=None)
 
         self._details: ManagementDetails = self._get_management_details()
-        self._tenants = []
-        self._tenant: Tenant = Tenant(management_host_ip=self.host_ip,
-                                      user_name=sut_details.collector_type,
-                                      user_password=sut_details.collector_type,
-                                      registration_password=sut_details.collector_type,
-                                      organization=sut_details.collector_type,
-                                      collector=None)
-        self._tenants.append(self._tenant)
+        reduce_default_org_license_capacity()
+        self._temp_tenants = []
+        self._default_tenant: Tenant = self._create_default_tenant()
         self._ui_client = ManagementUiClient(management_ui_ip=self.host_ip,
-                                             tenant=self._tenant)
+                                             tenant=self._default_tenant)
 
     @property
     def ui_admin_user_name(self) -> str:
@@ -108,7 +104,13 @@ class Management(FortiEdrLinuxStation):
 
     @property
     def tenant(self) -> Tenant:
-        return self._tenant
+        """ Return the default tenant: The main tenant that is under test, can't be deleted """
+        return self._default_tenant
+
+    @property
+    def temp_tenants(self):
+        """ Return the temporary tenants, that created during test and should be deleted at the end """
+        return self._temp_tenants
 
     def __repr__(self):
         return f"Management {self._host_ip}"
@@ -242,50 +244,6 @@ class Management(FortiEdrLinuxStation):
         role_id = users_roles_results[0].get('id')
         return role_id
 
-    @allure.step("Get collector {collector_ip} state")
-    def get_collector_status(self, collector_ip: str) -> SystemState:
-        """
-        This method return collector state via REST API
-        :param collector_ip: collector ip
-        :return: SystemState
-        """
-        all_collectors_info = self.admin_rest_api_client.system_inventory.get_collector_info(
-            organization=self.tenant.organization)
-        relevant_collector_info = None
-        for collector_info in all_collectors_info:
-            if collector_info.get('ipAddress') == collector_ip:
-                relevant_collector_info = collector_info
-                break
-
-        if relevant_collector_info is None:
-            assert False, f"Did not found info about collector with the IP: {collector_ip} in Management"
-
-        Reporter.report(f"Collector state is: {relevant_collector_info.get('state')}")
-
-        if relevant_collector_info.get('state') == 'Running':
-            return SystemState.RUNNING
-
-        elif relevant_collector_info.get('state') == 'Disconnected':
-            return SystemState.DISCONNECTED
-
-        elif relevant_collector_info.get('state') == 'Disabled':
-            return SystemState.DISABLED
-
-        return SystemState.NOT_RUNNING
-
-    def is_collector_status_running_in_mgmt(self, collector):
-        Reporter.report(f"Validate {collector} status is running in {self}")
-        collector_ip = collector.os_station.host_ip
-        return self.get_collector_status(collector_ip) == SystemState.RUNNING
-
-    def is_collector_status_disconnected_in_mgmt(self, collector):
-        collector_ip = collector.os_station.host_ip
-        return self.get_collector_status(collector_ip) == SystemState.DISCONNECTED
-
-    def is_collector_status_disabled_in_mgmt(self, collector):
-        collector_ip = collector.os_station.host_ip
-        return self.get_collector_status(collector_ip) == SystemState.DISABLED
-
     @allure.step("Wait until rest api available")
     def wait_until_rest_api_available(self, timeout: int = 60):
         start_time = time.time()
@@ -299,13 +257,43 @@ class Management(FortiEdrLinuxStation):
 
         assert aggregators is not None, f"REST API is not available within timeout of {timeout}"
 
-    def get_collectors_from_default_org(self):
-        """ Returning collectors that don't have organization """
-        logger.info(f"Find all rest collectors that are in the default organization")
-        rest_collectors = []
-        all_collectors_fields = self.admin_rest_api_client.system_inventory.get_collector_info()
-        for collector_fields in all_collectors_fields:
-            rest_collector = RestCollector(rest_client=self.admin_rest_api_client, initial_data=collector_fields)
-            rest_collectors.append(rest_collector)
-        logger.info(f"These are the collectors in the default org: {rest_collectors}")
-        return rest_collectors
+    def _create_default_tenant(self) -> Tenant:
+        """ This is the main tenant in the test session, can't be deleted """
+        logger.info("Create the default tenant")
+        collector_type_name = self._config.collector_type
+        default_tenant = Tenant.create(username=collector_type_name, user_password=collector_type_name,
+                                       organization_name=collector_type_name, registration_password=collector_type_name)
+        return default_tenant
+
+    def create_temp_tenant(self, user_name, user_password, organization_name, registration_password) -> Tenant:
+        """ Create tenant for testing that should be deleted afterwards """
+        logger.info(f"Create temp tenant with user {user_name} and organization {organization_name}")
+        for tenant in self._temp_tenants:
+            if organization_name == tenant.organization.get_name():
+                raise Exception(f"Temp tenant with org name {organization_name} already created")
+        tenant = Tenant.create(username=user_name, user_password=user_password, organization_name=organization_name,
+                               registration_password=registration_password)
+        self._temp_tenants.append(tenant)
+        return tenant
+
+    def delete_tenant(self, temp_tenant: Tenant, expected_status_code=200):
+        """ Use management admin credentials to delete the default user and the organization of a temp tenant"""
+        logger.info(f"Delete temp tenant: {temp_tenant}")
+        if temp_tenant == self.tenant:
+            raise Exception(f"{temp_tenant} is the default tenant of management so can't be deleted")
+        temp_tenant.default_local_admin._delete(rest_client=self.admin_rest_api_client,
+                                                expected_status_code=expected_status_code)
+        temp_tenant.organization._delete(expected_status_code=expected_status_code)
+        self.temp_tenants.remove(temp_tenant)
+
+
+def reduce_default_org_license_capacity():
+    """ The default organization occupies all the available licence capacity (~10,000).
+        Therefore, we don't have free licence capacity to create collectors in other organizations.
+        So, in order to create collectors in other organizations, first we need to free some licence capacity.
+        Therefore, we must reduce the default organization's licence capacity to smaller capacity """
+    default_organization = get_default_organization()
+    default_organization_license_capacity = default_organization.get_servers_licences_capacity(from_cache=True)
+    if default_organization_license_capacity > DEFAULT_LICENSE_CAPACITY:
+        logger.info("Reduce the licence capacity of the default organization")
+        default_organization.update_license_capacity(new_license_capacity=DEFAULT_LICENSE_CAPACITY)

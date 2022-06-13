@@ -3,13 +3,6 @@ from enum import Enum
 import aenum as aenum
 
 
-class UserRoles(Enum):
-    USER = 'User'
-    ADMIN = 'Admin'
-    LOCAL_ADMIN = 'Local Admin'
-    REST_API = 'Rest API'
-
-
 class SystemState(Enum):
     RUNNING = 'Running'  # Status name from management
     NOT_RUNNING = 'NOT_RUNNING'

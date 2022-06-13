@@ -1,6 +1,7 @@
 import logging
 from enum import Enum
 from infra.api.api_object import BaseApiObj
+from infra.api.nslo_wrapper.rest_commands import RestCommands
 from infra.enums import SystemState
 from infra.common_utils import wait_for_predict_condition
 from infra.system_components.collectors.default_values import COLLECTOR_KEEPALIVE_INTERVAL, MAX_WAIT_FOR_STATUS
@@ -30,41 +31,23 @@ class CollectorFieldsNames(Enum):
 class RestCollector(BaseApiObj):
     """ A wrapper for our internal nslo wrapper that holds all the collector's data from the server
     (cached and option to get updated fields) and contains all capabilities that we can
-    perform on the collector from server (via our internal rest client that is wrapper of the nslo client).
-    1. A rest collector object should not have any setters because the only way to update an attribute is only
-    via rest api to server, we don't want to maintain objects that containing data that is not aligned with
-    the data on the server.
-    2. Collector can't be created/edite fields via mgmt, that's why we don't have 'update fields'/ 'create'.
-    3. We can only update the local auth credentials, should not use hoster admin auth
+    perform on the collector from server.
+    1. Collector can't be created/edit fields via mgmt, that's why we don't have 'update fields'/ 'create' methods.
+    3. The rest credentials are user's rest (that passed via collectors factory) because actions on collectors
+    are done via different users.
     4. Collector has a unique identifier = the device id (host ip & name can be changed during test) so we can monitor
     this object's life cycle with this unique id"""
 
-    def __init__(self, rest_client, initial_data: dict):
-        super().__init__(rest_client=rest_client)
+    def __init__(self, rest_client: RestCommands, initial_data: dict):  # Need to pass rest client because each user have its own
+        super().__init__(rest_client=rest_client, initial_data=initial_data)
         self._id = initial_data[CollectorFieldsNames.ID.value]  # Static, unique identifier
-        self._name = initial_data[CollectorFieldsNames.COLLECTOR_NAME.value]  # Only for __repr__
-        self._ip = initial_data[CollectorFieldsNames.IP.value]  # Only for __repr__
-        self._cache = initial_data
-        self._use_cache = False  # By default, always get the updated data from server
 
     def __repr__(self):
-        return f"Management Collector {self.id}: '{self._name}' on host '{self._ip}'"
+        return f"Rest Collector {self.id}: '{self.get_name(from_cache=True)}' on host '{self.get_ip(from_cache=True)}'"
 
     @property
     def id(self) -> int:
         return self._id
-
-    @property
-    def cache(self) -> dict:
-        return self._cache
-
-    @property
-    def use_cache(self) -> bool:
-        return self._use_cache
-
-    @use_cache.setter
-    def use_cache(self, to_use: bool):
-        self._use_cache = to_use
 
     def get_name(self, from_cache=None, update_cache=True):
         field_name = CollectorFieldsNames.COLLECTOR_NAME.value
@@ -120,7 +103,7 @@ class RestCollector(BaseApiObj):
     def create(self):
         raise NotImplemented("Collector can't be created via management")
 
-    def update(self):
+    def update_fields(self):
         raise NotImplemented("Collector can't be updated via management")
 
     def get_fields(self, safe=False, update_cache_data=False) -> dict:
@@ -128,23 +111,22 @@ class RestCollector(BaseApiObj):
         if len(collectors_fields):
             assert len(collectors_fields) == 1
             collector_fields = collectors_fields[0]
-            self._update_repr(collector_fields)
             logger.debug(f"Collector {self} updated data from management: \n {collector_fields}")
             if update_cache_data:
                 self._cache = collector_fields
             return collector_fields
         if not safe:
             raise Exception(f"Collector with id {self.id} was not found in MGMT")
-        logger.warning(f"Collector with id {self.id} was not found in MGMT")
+        logger.debug(f"Collector with id {self.id} was not found in MGMT")
         return None
 
-    def update_all_cache(self):
-        """ Update collector's all cached fields with new values from server"""
-        self.get_fields(update_cache_data=True)
-
     def delete(self):
+        """ Delete collector from management using user credentials """
         # Validate that uninstalled before delete ?
         # Afterwards validate deletion via the inherited method
+        self._delete()
+
+    def _delete(self):
         raise NotImplemented("Should be implemented")
 
     def uninstall(self):
@@ -158,17 +140,6 @@ class RestCollector(BaseApiObj):
 
     def enable_or_disable(self):
         raise NotImplemented("Should be implemented")
-
-    def move_to_other_organization(self):
-        raise NotImplemented("Should be implemented")
-
-    def move_to_other_group_in_current_org(self):
-        raise NotImplemented("Should be implemented")
-
-    def _update_repr(self, updated_fields):
-        """ Update object's repr """
-        self._name = updated_fields[CollectorFieldsNames.COLLECTOR_NAME.value]
-        self._ip = updated_fields[CollectorFieldsNames.IP.value]
 
     def is_disconnected(self):
         return self.get_status(from_cache=False) == SystemState.DISCONNECTED.value

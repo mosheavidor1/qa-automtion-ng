@@ -11,6 +11,8 @@ from infra.system_components.collectors.windows_os.windows_collector import Wind
 from infra.system_components.core import Core
 from infra.system_components.management import Management
 from infra.utils.utils import StringUtils
+from infra.api.management_api.organization import is_organization_exist_by_name
+from infra.api.api_objects_factory import get_collectors_without_org
 
 logger = logging.getLogger(__name__)
 
@@ -67,9 +69,12 @@ class SystemComponentsFactory:
                               collector_type: CollectorTypes) -> List[CollectorAgent]:
 
         agents_list = []
-        rest_collectors = management.get_collectors_from_default_org()
-        if management.admin_rest_api_client.organizations.is_organization_exist(management.tenant.organization):
-            rest_collectors += management.tenant.rest_components.collectors.get_all()
+        collectors_without_org = get_collectors_without_org(safe=True)
+        rest_collectors = collectors_without_org if collectors_without_org is not None else []
+        if is_organization_exist_by_name(organization_name=management.tenant.organization.get_name()):
+            organization_rest_collectors = management.tenant.rest_components.collectors.get_all(safe=True)
+            if organization_rest_collectors is not None:
+                rest_collectors += organization_rest_collectors
 
         for rest_collector in rest_collectors:
             if 'windows' in collector_type.value.lower() and 'windows' in rest_collector.get_os_family(from_cache=True).lower():

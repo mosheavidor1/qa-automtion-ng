@@ -54,7 +54,7 @@ def exception_function_fixture(management, collector, request):
              ExceptionTestType.CREATE_PARTIALLY_COVERED_EXCEPTION_EVENT_CREATED:
 
             management.tenant.rest_api_client.system_inventory.create_group(name=group_name,
-                                                                            organization=management.tenant.organization)
+                                                                            organization=management.tenant.organization.get_name())
 
     test_resources = {
         'management': management,
@@ -82,9 +82,9 @@ def exception_function_fixture(management, collector, request):
                 case ExceptionTestType.CREATE_PARTIALLY_COVERED_EXCEPTION:
                     test_im_params = {
                         "groupName": [group_name],
-                        "loginUser": management.tenant.user_name,
-                        "loginPassword": management.tenant.user_password,
-                        "loginOrganization": management.tenant.user_password,
-                        "organization": management.tenant.organization
+                        "loginUser": management.tenant.default_local_admin.get_username(),
+                        "loginPassword": management.tenant.default_local_admin.password,
+                        "loginOrganization": management.tenant.default_local_admin.password,
+                        "organization": management.tenant.organization.get_name()
                     }
                     management.ui_client.inventory.delete_group(data=test_im_params)
