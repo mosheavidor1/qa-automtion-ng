@@ -42,7 +42,7 @@ class CollectorTypes(aenum.Enum):
     LINUX_UBUNTU_20 = 'Ubuntu 20'
 
 
-class CollectorTemplateNames(Enum):
+class AutomationVmTemplates(Enum):
     # A Confluence page with updated template names should be followed:
     # http://confluence.ensilo.local/display/QA/Templates+and+preinstalled+application
     WIN_11X64 = 'TEMPLATE_WIN_11_64'
@@ -74,9 +74,8 @@ class CollectorTemplateNames(Enum):
     LINUX_ORACLE_83 = 'TEMPLATE_VT41_ORACLE_8.3'
     LINUX_SUSE = 'TEMPLATE_VT41_SUSE'
 
-
-class AutomationServicesTemplates(Enum):
     AUTOMATION_SERVICES_MACHINE_TEMPLATE = 'AUTOMATION_SERVICES_MACHINE_TEMPLATE'
+    CENTOS7_SYSTEM_COMPONENT_TEMPLATE = 'TEMPLATE_CENTOS7_COMPONENT'
 
 
 class HttpRequestMethodsEnum(Enum):

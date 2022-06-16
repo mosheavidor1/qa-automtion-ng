@@ -9,7 +9,7 @@ from pyVmomi import vim
 
 from infra.allure_report_handler.reporter import Reporter
 from infra.vpshere.vsphere_cluster_details import ClusterDetails
-from infra.enums import CollectorTemplateNames
+from infra.enums import AutomationVmTemplates
 from infra.vpshere.vsphere_vm_operations import VsphereMachineOperations
 from third_party_details import USER_NAME_DOMAIN, PASSWORD
 
@@ -82,12 +82,16 @@ class VsphereClusterHandler(object):
 
         assert is_ip, f"The new machine {vm_obj.guest.hostName} did not get IP address within {timeout}"
 
-    def create_vm(self,
-                  vm_template: CollectorTemplateNames,
-                  desired_vm_name: str,
-                  wait_until_machine_get_ip: bool = True):
+    @allure.step("Clone VM from template {vm_template}")
+    def clone_vm_from_template(self,
+                               vm_template: AutomationVmTemplates,
+                               desired_vm_name: str,
+                               wait_until_machine_get_ip: bool = True):
 
-        vm_to_clone_from_obj = self.get_specific_vm_from_cluster(vm_search_type=VmSearchTypeEnum.VM_NAME, txt_to_search=vm_template.value)
+        vm_to_clone_from_obj = self.get_specific_vm_from_cluster(
+            vm_search_type=VmSearchTypeEnum.VM_NAME,
+            txt_to_search=vm_template.value
+        )
         resource_pool = self._get_resource_pool_object()
         folders_dict = self._get_all_folders_objects()
 
@@ -272,7 +276,7 @@ if __name__ == '__main__':
     vsphere_cluster_handler = VsphereClusterHandler(cluster_details=cluster_details)
 
     vms = []
-    all_enums = [e.value for e in CollectorTemplateNames]
+    all_enums = [e.value for e in AutomationVmTemplates]
     all_enums.remove('')
     for template_name in all_enums:
         print(template_name)
