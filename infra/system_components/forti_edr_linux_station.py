@@ -6,9 +6,9 @@ from typing import List
 import allure
 
 import third_party_details
+from forti_edr_versions_service_handler.forti_edr_versions_service_handler import FortiEdrVersionsServiceHandler
 from infra.allure_report_handler.reporter import Reporter
 from infra.enums import SystemState, ComponentType
-from infra.environment_creation.environment_creation_handler import EnvironmentCreationHandler
 from infra.os_stations.linux_station import LinuxStation
 from infra.utils.utils import StringUtils
 
@@ -287,7 +287,7 @@ class FortiEdrLinuxStation(LinuxStation):
         current_build = StringUtils.get_txt_by_regex(text=current_version, regex="\d+.\d+.\d+.(\d+)", group=1)
 
         if desired_build is None:
-            latest_versions = EnvironmentCreationHandler.get_latest_versions(base_version=base_version)
+            latest_versions = FortiEdrVersionsServiceHandler.get_latest_versions(base_version=base_version)
             match self.__component_type:
                 case ComponentType.MANAGEMENT:
                     desired_build = latest_versions.get('management')

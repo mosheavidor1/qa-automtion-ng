@@ -1,6 +1,6 @@
 import allure
 
-from infra.enums import CollectorTemplateNames, AutomationServicesTemplates
+from infra.enums import AutomationVmTemplates
 from infra.vpshere.vsphere_cluster_details import ENSILO_VCSA_10, ENSILO_VCSA_20, ENSILO_VCSA_30, ENSILO_VCSA_40, \
     ClusterDetails
 from infra.vpshere.vsphere_cluster_handler import VmSearchTypeEnum, VsphereClusterHandler
@@ -41,7 +41,7 @@ class VsphereUtils:
 
     @staticmethod
     @allure.step("Clone VM from template '{template_name}'")
-    def clone_vm_from_template(cluster_details: ClusterDetails, template_name: CollectorTemplateNames | AutomationServicesTemplates, desired_name: str):
+    def clone_vm_from_template(cluster_details: ClusterDetails, template_name: AutomationVmTemplates, desired_name: str):
         """Clone VM by given template name.
 
         :param cluster_details: the cluster details object, will search template inside this cluster.
@@ -52,6 +52,6 @@ class VsphereUtils:
         """
         vsphere_cluster_handler = VsphereClusterHandler(cluster_details=cluster_details)
 
-        vm_obj = vsphere_cluster_handler.create_vm(template_name, desired_name)
+        vm_obj = vsphere_cluster_handler.clone_vm_from_template(template_name, desired_name)
 
         return vm_obj

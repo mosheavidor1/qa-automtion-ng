@@ -7,7 +7,7 @@ class Aggregator(FortiEdrLinuxStation):
 
     def __init__(self,
                  host_ip: str,
-                 aggregator_details: AggregatorDetails,
+                 aggregator_details: AggregatorDetails | None,
                  ssh_user_name: str = 'root',
                  ssh_password: str = 'enSilo$$'):
 

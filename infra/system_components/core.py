@@ -7,14 +7,13 @@ from infra.allure_report_handler.reporter import Reporter
 from infra.containers.system_component_containers import CoreDetails
 from infra.enums import ComponentType
 from infra.system_components.forti_edr_linux_station import FortiEdrLinuxStation
-from infra.utils.utils import StringUtils
 
 
 class Core(FortiEdrLinuxStation):
 
     def __init__(self,
                  host_ip: str,
-                 core_details: CoreDetails,
+                 core_details: CoreDetails | None,
                  ssh_user_name: str = 'root',
                  ssh_password: str = 'enSilo$$'):
         super().__init__(host_ip=host_ip,

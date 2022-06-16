@@ -1,5 +1,4 @@
 import random
-import time
 from datetime import date
 from typing import List
 import concurrent.futures
@@ -8,16 +7,17 @@ import allure
 import pytest
 
 from environment_creation_tests import desired_env_details
+from forti_edr_versions_service_handler.forti_edr_versions_service_handler import FortiEdrVersionsServiceHandler
 from infra.allure_report_handler.reporter import Reporter
 from infra.containers.environment_creation_containers import MachineType, EnvironmentSystemComponent, DeployedEnvInfo
-from infra.enums import ComponentType, CollectorTemplateNames
+from infra.enums import ComponentType, AutomationVmTemplates
 from infra.environment_creation.environment_creation_handler import EnvironmentCreationHandler
 from infra.utils.utils import StringUtils
 from infra.vpshere import vsphere_cluster_details
 from infra.vpshere.vsphere_cluster_handler import VsphereClusterHandler
 
 
-def get_collector_latest_version(version: str, last_versions_dict: dict, collector_template_name: CollectorTemplateNames):
+def get_collector_latest_version(version: str, last_versions_dict: dict, collector_template_name: AutomationVmTemplates):
     build = StringUtils.get_txt_by_regex(text=version, regex="\d+.\d+.\d+.(\w+)", group=1)
     base_version = StringUtils.get_txt_by_regex(text=version, regex="(\d+.\d+.\d+).\w+", group=1)
     desired_version = None
@@ -28,51 +28,51 @@ def get_collector_latest_version(version: str, last_versions_dict: dict, collect
     if build == 'x':
         key_to_use = None
         match collector_template_name:
-            case CollectorTemplateNames.WIN_11X64 | \
-                 CollectorTemplateNames.WIN10_X64 | \
-                 CollectorTemplateNames.WIN81_X64 | \
-                 CollectorTemplateNames.WIN7_X64 | \
-                 CollectorTemplateNames.WIN_SERV_2022 | \
-                 CollectorTemplateNames.WIN_SERV_2020 | \
-                 CollectorTemplateNames.WIN_SERV_2019 | \
-                 CollectorTemplateNames.WIN_SERV_2016 | \
-                 CollectorTemplateNames.WIN_SERV_2012:
+            case AutomationVmTemplates.WIN_11X64 | \
+                 AutomationVmTemplates.WIN10_X64 | \
+                 AutomationVmTemplates.WIN81_X64 | \
+                 AutomationVmTemplates.WIN7_X64 | \
+                 AutomationVmTemplates.WIN_SERV_2022 | \
+                 AutomationVmTemplates.WIN_SERV_2020 | \
+                 AutomationVmTemplates.WIN_SERV_2019 | \
+                 AutomationVmTemplates.WIN_SERV_2016 | \
+                 AutomationVmTemplates.WIN_SERV_2012:
                 key_to_use = 'windows_64_collector'
 
-            case CollectorTemplateNames.WIN10_X32 | CollectorTemplateNames.WIN81_X32 | CollectorTemplateNames.WIN7_X86:
+            case AutomationVmTemplates.WIN10_X32 | AutomationVmTemplates.WIN81_X32 | AutomationVmTemplates.WIN7_X86:
                 key_to_use = 'windows_32_collector'
 
-            case CollectorTemplateNames.LINUX_CENTOS_6:
+            case AutomationVmTemplates.LINUX_CENTOS_6:
                 key_to_use = 'centos_6_collector'
 
-            case CollectorTemplateNames.LINUX_CENTOS_7:
+            case AutomationVmTemplates.LINUX_CENTOS_7:
                 key_to_use = 'centos_7_collector'
 
-            case CollectorTemplateNames.LINUX_CENTOS_8:
+            case AutomationVmTemplates.LINUX_CENTOS_8:
                 key_to_use = 'centos_8_collector'
 
-            case CollectorTemplateNames.LINUX_UBUNTU_20:
+            case AutomationVmTemplates.LINUX_UBUNTU_20:
                 key_to_use = 'ubuntu_20_collector'
 
-            case CollectorTemplateNames.LINUX_UBUNTU_18:
+            case AutomationVmTemplates.LINUX_UBUNTU_18:
                 key_to_use = 'ubuntu_18_collector'
 
-            case CollectorTemplateNames.LINUX_UBUNTU_16:
+            case AutomationVmTemplates.LINUX_UBUNTU_16:
                 key_to_use = 'ubuntu_16_collector'
 
-            case CollectorTemplateNames.LINUX_AMAZON:
+            case AutomationVmTemplates.LINUX_AMAZON:
                 key_to_use = 'amazonlinux'
 
-            case CollectorTemplateNames.LINUX_SUSE:
+            case AutomationVmTemplates.LINUX_SUSE:
                 key_to_use = 'openSUSE_collector'
 
-            case CollectorTemplateNames.LINUX_ORACLE_83 | \
-                 CollectorTemplateNames.LINUX_ORACLE_82 | \
-                 CollectorTemplateNames.LINUX_ORACLE_81 | \
-                 CollectorTemplateNames.LINUX_ORACLE_80:
+            case AutomationVmTemplates.LINUX_ORACLE_83 | \
+                 AutomationVmTemplates.LINUX_ORACLE_82 | \
+                 AutomationVmTemplates.LINUX_ORACLE_81 | \
+                 AutomationVmTemplates.LINUX_ORACLE_80:
                 key_to_use = 'oracle_8_collector'
 
-            case CollectorTemplateNames.LINUX_ORACLE_77:
+            case AutomationVmTemplates.LINUX_ORACLE_77:
                 key_to_use = 'oracle_7_collector'
 
         desired_version = last_versions_dict.get(base_version).get(key_to_use)
@@ -129,7 +129,7 @@ def get_base_versions_of_all_sys_components_as_dict():
 def get_latest_versions_of_all_base_versions_dict(base_versions_dict: dict):
     last_versions_dict = {}
     for key in base_versions_dict.keys():
-        tmp = EnvironmentCreationHandler.get_latest_versions(base_version=key)
+        tmp = FortiEdrVersionsServiceHandler.get_latest_versions(base_version=key)
         last_versions_dict[key] = tmp
 
     return last_versions_dict
@@ -181,7 +181,7 @@ def deploy_system_components(env_name='automation_env'):
                                           machine_type=machine_type)
         sys_comp_list.append(core)
 
-    env_id = EnvironmentCreationHandler.deploy_system_components(
+    env_id = EnvironmentCreationHandler.deploy_system_components_external_service(
         environment_name=env_name.replace(" ", "_"),
         system_components=sys_comp_list,
         installation_type='qa')
@@ -194,26 +194,26 @@ def deploy_system_components(env_name='automation_env'):
     return deployed_env_info
 
 
-def get_list_of_desired_collectors() -> List[CollectorTemplateNames]:
+def get_list_of_desired_collectors() -> List[AutomationVmTemplates]:
     deployment_list = []
-    deployment_list += [CollectorTemplateNames.WIN_11X64 for i in range(desired_env_details.windows_11_64_bit)]
-    deployment_list += [CollectorTemplateNames.WIN10_X64 for i in range(desired_env_details.windows_10_64_bit)]
-    deployment_list += [CollectorTemplateNames.WIN10_X32 for i in range(desired_env_details.windows_10_32_bit)]
-    deployment_list += [CollectorTemplateNames.WIN81_X64 for i in range(desired_env_details.windows_8_64_bit)]
-    deployment_list += [CollectorTemplateNames.WIN81_X32 for i in range(desired_env_details.windows_8_32_bit)]
-    deployment_list += [CollectorTemplateNames.WIN7_X64 for i in range(desired_env_details.windows_7_64_bit)]
-    deployment_list += [CollectorTemplateNames.WIN7_X86 for i in range(desired_env_details.windows_7_32_bit)]
+    deployment_list += [AutomationVmTemplates.WIN_11X64 for i in range(desired_env_details.windows_11_64_bit)]
+    deployment_list += [AutomationVmTemplates.WIN10_X64 for i in range(desired_env_details.windows_10_64_bit)]
+    deployment_list += [AutomationVmTemplates.WIN10_X32 for i in range(desired_env_details.windows_10_32_bit)]
+    deployment_list += [AutomationVmTemplates.WIN81_X64 for i in range(desired_env_details.windows_8_64_bit)]
+    deployment_list += [AutomationVmTemplates.WIN81_X32 for i in range(desired_env_details.windows_8_32_bit)]
+    deployment_list += [AutomationVmTemplates.WIN7_X64 for i in range(desired_env_details.windows_7_64_bit)]
+    deployment_list += [AutomationVmTemplates.WIN7_X86 for i in range(desired_env_details.windows_7_32_bit)]
     # deployment_list += [CollectorTemplateNames.WIN_SERV_2022 for i in range(desired_env_details.)]
     # deployment_list += [CollectorTemplateNames.WIN_SERV_2020 for i in range(desired_env_details.)]
-    deployment_list += [CollectorTemplateNames.WIN_SERV_2019 for i in range(desired_env_details.windows_server_2019)]
-    deployment_list += [CollectorTemplateNames.WIN_SERV_2016 for i in range(desired_env_details.windows_server_2016)]
+    deployment_list += [AutomationVmTemplates.WIN_SERV_2019 for i in range(desired_env_details.windows_server_2019)]
+    deployment_list += [AutomationVmTemplates.WIN_SERV_2016 for i in range(desired_env_details.windows_server_2016)]
     # deployment_list += [CollectorTemplateNames.WIN_SERV_2012 for i in range(desired_env_details.)]
-    deployment_list += [CollectorTemplateNames.LINUX_CENTOS_8 for i in range(desired_env_details.centOS_8)]
-    deployment_list += [CollectorTemplateNames.LINUX_CENTOS_7 for i in range(desired_env_details.centOS_7)]
-    deployment_list += [CollectorTemplateNames.LINUX_CENTOS_6 for i in range(desired_env_details.centOS_6)]
-    deployment_list += [CollectorTemplateNames.LINUX_UBUNTU_20 for i in range(desired_env_details.ubuntu_20)]
-    deployment_list += [CollectorTemplateNames.LINUX_UBUNTU_18 for i in range(desired_env_details.ubuntu_18)]
-    deployment_list += [CollectorTemplateNames.LINUX_UBUNTU_16 for i in range(desired_env_details.ubuntu_16)]
+    deployment_list += [AutomationVmTemplates.LINUX_CENTOS_8 for i in range(desired_env_details.centOS_8)]
+    deployment_list += [AutomationVmTemplates.LINUX_CENTOS_7 for i in range(desired_env_details.centOS_7)]
+    deployment_list += [AutomationVmTemplates.LINUX_CENTOS_6 for i in range(desired_env_details.centOS_6)]
+    deployment_list += [AutomationVmTemplates.LINUX_UBUNTU_20 for i in range(desired_env_details.ubuntu_20)]
+    deployment_list += [AutomationVmTemplates.LINUX_UBUNTU_18 for i in range(desired_env_details.ubuntu_18)]
+    deployment_list += [AutomationVmTemplates.LINUX_UBUNTU_16 for i in range(desired_env_details.ubuntu_16)]
     # deployment_list += [CollectorTemplateNames.LINUX_AMAZON for i in range(desired_env_details.windows_11_64_bit)]
     # deployment_list += [CollectorTemplateNames.LINUX_SUSE for i in range(desired_env_details.windows_11_64_bit)]
     # deployment_list += [CollectorTemplateNames.LINUX_ORACLE_83 for i in range(desired_env_details.windows_11_64_bit)]
