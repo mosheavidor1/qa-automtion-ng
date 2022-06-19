@@ -6,7 +6,7 @@ from typing import List
 import allure
 
 import third_party_details
-from forti_edr_versions_service_handler.forti_edr_versions_service_handler import FortiEdrVersionsServiceHandler
+from infra.forti_edr_versions_service_handler.forti_edr_versions_service_handler import FortiEdrVersionsServiceHandler
 from infra.allure_report_handler.reporter import Reporter
 from infra.enums import SystemState, ComponentType
 from infra.os_stations.linux_station import LinuxStation

@@ -6,7 +6,7 @@ import allure
 import sut_details
 from infra.allure_report_handler.reporter import Reporter
 from infra.assertion.assertion import Assertion
-from infra.enums import CollectorTypes, SystemState, AutomationServicesTemplates
+from infra.enums import CollectorTypes, SystemState, AutomationVmTemplates
 from infra.environment_creation.environment_creation_handler import EnvironmentCreationHandler
 from infra.system_components.aggregator import Aggregator
 from infra.system_components.collector import CollectorAgent
@@ -63,13 +63,13 @@ def create_environment_properties_file_for_allure_report(management: Management,
 
 @pytest.fixture(scope="session")
 def create_service_machine_for_session():
-    desired_name = f"{uuid.uuid4().hex[::-5]}__{AutomationServicesTemplates.AUTOMATION_SERVICES_MACHINE_TEMPLATE.value}"
+    desired_name = f"{uuid.uuid4().hex[::-5]}__{AutomationVmTemplates.AUTOMATION_SERVICES_MACHINE_TEMPLATE.value}"
     cluster_details = ENSILO_VCSA_40
 
     logger.info("Creating service VM")
     vm_obj = VsphereUtils.clone_vm_from_template(
         cluster_details=cluster_details,
-        template_name=AutomationServicesTemplates.AUTOMATION_SERVICES_MACHINE_TEMPLATE,
+        template_name=AutomationVmTemplates.AUTOMATION_SERVICES_MACHINE_TEMPLATE,
         desired_name=desired_name)
 
     yield vm_obj.guest.ipAddress

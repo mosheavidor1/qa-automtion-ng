@@ -7,7 +7,7 @@ import allure
 import pytest
 
 from environment_creation_tests import desired_env_details
-from forti_edr_versions_service_handler.forti_edr_versions_service_handler import FortiEdrVersionsServiceHandler
+from infra.forti_edr_versions_service_handler.forti_edr_versions_service_handler import FortiEdrVersionsServiceHandler
 from infra.allure_report_handler.reporter import Reporter
 from infra.containers.environment_creation_containers import MachineType, EnvironmentSystemComponent, DeployedEnvInfo
 from infra.enums import ComponentType, AutomationVmTemplates
