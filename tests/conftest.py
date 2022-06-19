@@ -8,6 +8,7 @@ from infra.allure_report_handler.reporter import Reporter
 from infra.assertion.assertion import Assertion
 from infra.enums import CollectorTypes, SystemState, AutomationVmTemplates
 from infra.environment_creation.environment_creation_handler import EnvironmentCreationHandler
+from infra.forti_edr_versions_service_handler.forti_edr_versions_service_handler import FortiEdrVersionsServiceHandler
 from infra.system_components.aggregator import Aggregator
 from infra.system_components.collector import CollectorAgent
 from infra.system_components.collectors.linux_os.linux_collector import LinuxCollector
@@ -666,7 +667,7 @@ def revert_to_first_snapshot_for_all_collectors(management: Management, collecto
 def get_collector_latest_version(collector: CollectorAgent) -> str:
     collector_version = collector.get_version()
     collector_base_version = StringUtils.get_txt_by_regex(text=collector_version, regex='(\d+.\d+.\d+).\d+', group=1)
-    latest_versions = EnvironmentCreationHandler.get_latest_versions(base_version=collector_base_version)
+    latest_versions = FortiEdrVersionsServiceHandler.get_latest_versions(base_version=collector_base_version)
 
     latest_version = None
     if isinstance(collector, WindowsCollector):
