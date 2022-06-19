@@ -122,13 +122,9 @@ class WindowsCollector(CollectorAgent):
     def stop_collector(self, password=None):
         logger.info(f"Stop {self}")
         password = password or REGISTRATION_PASS
-        try:
-            cmd = f'"{self.__collector_service_exe}" --stop -rp:{password}'
-            self.os_station.execute_cmd(cmd=cmd, fail_on_err=True)
-        except:
 
-            cmd = f'"{self.__collector_service_exe}" --stop -rp:{sut_details.management_registration_password}'
-            self.os_station.execute_cmd(cmd=cmd, fail_on_err=True)
+        cmd = f'"{self.__collector_service_exe}" --stop -rp:{password}'
+        self.os_station.execute_cmd(cmd=cmd, fail_on_err=True)
 
         wait_until_collector_pid_disappears(self)
         self.update_process_id()
