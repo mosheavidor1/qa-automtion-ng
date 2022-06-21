@@ -5,6 +5,7 @@ import time
 from typing import List
 
 import logging
+import sut_details
 import allure
 
 import third_party_details
