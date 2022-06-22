@@ -18,7 +18,7 @@ from infra.system_components.forti_edr_linux_station import FortiEdrLinuxStation
 from infra.system_components.management import Management
 from infra.system_components.system_components_factory import SystemComponentsFactory
 from infra.utils.utils import StringUtils
-from infra.api.api_objects_factory import get_collectors_without_org
+from infra.api.api_object_factory.rest_collectors_factory import get_collectors_without_org
 from infra.system_components.collectors.collectors_agents_utils import check_if_collectors_has_crashed
 import json
 import os

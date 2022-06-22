@@ -1,10 +1,10 @@
 import logging
 import time
-
-import allure
 from enum import Enum
 from infra.api.api_object import BaseApiObj
 from infra.api.nslo_wrapper.rest_commands import RestCommands
+from infra.api.api_object_factory.exceptions_factory import ExceptionsFactory
+from infra.api.api_object_factory.rest_collectors_factory import RestCollectorsFactory
 import sut_details
 
 logger = logging.getLogger(__name__)
@@ -39,6 +39,15 @@ class UserFieldsNames(Enum):
     TITLE = 'title'
 
 
+class UserRestComponentsFactory:
+    """ Create rest factory for each component that is under the user, with the user's auth """
+    def __init__(self, organization_name: str, rest_client: RestCommands):
+        self.exceptions: ExceptionsFactory = ExceptionsFactory(organization_name=organization_name,
+                                                               factory_rest_client=rest_client)
+        self.collectors: RestCollectorsFactory = RestCollectorsFactory(organization_name=organization_name,
+                                                                       factory_rest_client=rest_client)
+
+
 class User(BaseApiObj):
     """ A wrapper of our internal rest client for working with user capabilities.
     Each user will have its own rest credentials based on user password and name (that passed from users factory)"""
@@ -52,10 +61,18 @@ class User(BaseApiObj):
                                                   management_password=self._password,
                                                   organization=self._organization_name),
                          initial_data=initial_data)
+        self._rest_components = UserRestComponentsFactory(organization_name=self._organization_name,
+                                                          rest_client=self._rest_client)
 
     @property
     def id(self) -> int:
         return self._id
+
+    @property
+    def rest_components(self) -> UserRestComponentsFactory:
+        """ Factory for creating/finding user's components like exceptions, collectors, etc.
+            With the user's rest credentials """
+        return self._rest_components
 
     @property
     def password(self) -> str:

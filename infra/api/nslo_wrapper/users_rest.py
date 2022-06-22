@@ -1,11 +1,8 @@
 import json
 import logging
 from typing import List
-
 import allure
 from ensilo.platform.rest.nslo_management_rest import NsloRest
-
-from infra.allure_report_handler.reporter import Reporter
 from infra.api.nslo_wrapper.base_rest_functionality import BaseRestFunctionality
 
 logger = logging.getLogger(__name__)
@@ -30,7 +27,6 @@ class UsersRest(BaseRestFunctionality):
     def create_user(self, user_data: dict, expected_status_code: int = 200):
         logger.info(f"Create new user with this data :\n {user_data} \n expected: {expected_status_code}")
         status, response = self._rest.users.CreateUser(**user_data)
-        # Does response contains data about the new object ????
         err_msg = f"Failed to create user, got {response.status_code} instead of {expected_status_code}"
         self._validate_expected_status_code(expected_status_code=expected_status_code,
                                             actual_status_code=response.status_code, error_message=err_msg)

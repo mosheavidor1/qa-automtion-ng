@@ -11,7 +11,7 @@ from infra.containers.ssh_details import SshDetails
 from infra.multi_tenancy.tenant import Tenant
 from infra.posgresql_db.postgresql_db import PostgresqlOverSshDb
 from infra.api.nslo_wrapper.rest_commands import RestCommands
-from infra.api.api_objects_factory import get_default_organization
+from infra.api.api_object_factory.organizations_factory import get_default_organization
 from infra.api.management_api.organization import DEFAULT_LICENSE_CAPACITY
 import sut_details
 from infra.containers.system_component_containers import ManagementDetails
