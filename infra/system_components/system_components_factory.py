@@ -12,7 +12,7 @@ from infra.system_components.core import Core
 from infra.system_components.management import Management
 from infra.utils.utils import StringUtils
 from infra.api.management_api.organization import is_organization_exist_by_name
-from infra.api.api_objects_factory import get_collectors_without_org
+from infra.api.api_object_factory.rest_collectors_factory import get_collectors_without_org
 
 logger = logging.getLogger(__name__)
 

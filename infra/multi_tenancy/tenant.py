@@ -1,7 +1,9 @@
 import logging
 import time
 from infra.api.nslo_wrapper.rest_commands import RestCommands
-from infra.api.api_objects_factory import RestCollectorsFactory, UsersFactory, OrganizationsFactory
+from infra.api.api_object_factory.organizations_factory import OrganizationsFactory
+from infra.api.api_object_factory.users_factory import UsersFactory
+from infra.api.api_object_factory.rest_collectors_factory import RestCollectorsFactory
 from infra.api.management_api.user import User
 from infra.api.management_api.organization import Organization
 from infra.api import ADMIN_REST

@@ -35,9 +35,8 @@ class ExceptionsTests:
         collector = exception_function_fixture.get('collector')
         malware_name = exception_function_fixture.get('malware_name')
         event_id = exception_function_fixture.get("event_id")
-
-        management.admin_rest_api_client.exceptions.create_exception(eventId=event_id,
-                                                                     organization=management.tenant.organization.get_name())
+        user = management.tenant.default_local_admin
+        user.rest_components.exceptions.create_exception_for_event(event_id=event_id)
         ManagementUtils.create_excepted_event_and_check(management, collector, malware_name, expected_result=False)
 
     @pytest.mark.parametrize('xray, exception_function_fixture',
@@ -62,10 +61,8 @@ class ExceptionsTests:
         malware_name = exception_function_fixture.get('malware_name')
         event_id = exception_function_fixture.get("event_id")
         group_name = exception_function_fixture.get("group_name")
-
-        management.admin_rest_api_client.exceptions.create_exception(eventId=event_id,
-                                                                     groups=[group_name],
-                                                                     organization=management.tenant.organization.get_name())
+        user = management.tenant.default_local_admin
+        user.rest_components.exceptions.create_exception_for_event(event_id=event_id, groups=[group_name])
         CollectorUtils.move_collector_and_assign_group_policies(management=management,
                                                                 collector=collector,
                                                                 group_name=group_name)
@@ -91,10 +88,8 @@ class ExceptionsTests:
         malware_name = exception_function_fixture.get('malware_name')
         event_id = exception_function_fixture.get("event_id")
         group_name = exception_function_fixture.get("group_name")
-
-        management.admin_rest_api_client.exceptions.create_exception(eventId=event_id,
-                                                                     groups=[group_name],
-                                                                     organization=management.tenant.organization.get_name())
+        user = management.tenant.default_local_admin
+        user.rest_components.exceptions.create_exception_for_event(event_id=event_id, groups=[group_name])
         ManagementUtils.create_excepted_event_and_check(management, collector, malware_name, expected_result=True)
 
     @pytest.mark.parametrize('xray, exception_function_fixture',
@@ -119,9 +114,8 @@ class ExceptionsTests:
         group_name = exception_function_fixture.get("group_name")
         destination = exception_function_fixture.get("destination")
         malware_name = exception_function_fixture.get('malware_name')
-
-        management.admin_rest_api_client.exceptions.create_exception(eventId=event_id,
-                                                                     organization=management.tenant.organization.get_name())
+        user = management.tenant.default_local_admin
+        user.rest_components.exceptions.create_exception_for_event(event_id=event_id)
         test_im_data = {
             "groupName": [group_name],
             "loginUser": management.tenant.default_local_admin.get_username(),
@@ -161,10 +155,8 @@ class ExceptionsTests:
         group_name = exception_function_fixture.get("group_name")
         destination = exception_function_fixture.get("destination")
         malware_name = exception_function_fixture.get('malware_name')
-
-        management.admin_rest_api_client.exceptions.create_exception(eventId=event_id,
-                                                                     groups=[group_name],
-                                                                     organization=management.tenant.organization.get_name())
+        user = management.tenant.default_local_admin
+        user.rest_components.exceptions.create_exception_for_event(event_id=event_id, groups=[group_name])
         exception_id = ManagementUtils.validate_exception(management, process=malware_name, group=group_name)
         assert exception_id, "exception validation failed,exception wasn't created properly"
 
@@ -200,9 +192,8 @@ class ExceptionsTests:
         management: Management = exception_function_fixture.get('management')
         malware_name = exception_function_fixture.get('malware_name')
         event_id = exception_function_fixture.get("event_id")
-
-        management.admin_rest_api_client.exceptions.create_exception(eventId=event_id,
-                                                                     organization=management.tenant.organization.get_name())
+        user = management.tenant.default_local_admin
+        user.rest_components.exceptions.create_exception_for_event(event_id=event_id)
         exception_id = ManagementUtils.validate_exception(management, process=malware_name, event_id=event_id)
         assert exception_id, "exception validation failed,exception wasn't created properly"
 
@@ -233,9 +224,8 @@ class ExceptionsTests:
         group_name = exception_function_fixture.get("group_name")
         malware_name = exception_function_fixture.get('malware_name')
         comment = "test edit exception comments"
-
-        management.admin_rest_api_client.exceptions.create_exception(eventId=event_id,
-                                                                     organization=management.tenant.organization.get_name())
+        user = management.tenant.default_local_admin
+        user.rest_components.exceptions.create_exception_for_event(event_id=event_id)
 
         testim_data = {
             "groupName": [group_name],
@@ -271,10 +261,8 @@ class ExceptionsTests:
         event_id = exception_function_fixture.get("event_id")
         group_name = "Default Collector Group"
         malware_name = exception_function_fixture.get('malware_name')
-
-        management.admin_rest_api_client.exceptions.create_exception(eventId=event_id,
-                                                                     groups=group_name,
-                                                                     organization=management.tenant.organization.get_name())
+        user = management.tenant.default_local_admin
+        user.rest_components.exceptions.create_exception_for_event(event_id=event_id, groups=group_name)
         testim_data = {
             "groupName": [group_name],
             "loginUser": management.tenant.default_local_admin.get_username(),

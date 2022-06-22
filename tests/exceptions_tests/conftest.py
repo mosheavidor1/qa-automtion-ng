@@ -31,17 +31,15 @@ def setup_method(management):
 
 @pytest.fixture(scope="function")
 def exception_function_fixture(management, collector, request):
+    user = management.tenant.default_local_admin
     test_flow = request.param
     malware_name = LINUX_MALWARE_NAME if isinstance(collector, LinuxCollector) else WINDOWS_MALWARE_NAME
     group_name = "empty"
     destination = "Internal Destinations"
-
-    management.tenant.rest_api_client.exceptions.delete_all_exceptions(timeout=1)
+    user.rest_components.exceptions.delete_all(safe=True, wait_sec=1)
     management.tenant.rest_api_client.events.delete_all_events()
-    rest_collector = management.tenant.rest_components.collectors.get_by_ip(ip=collector.host_ip)
+    rest_collector = user.rest_components.collectors.get_by_ip(ip=collector.host_ip)
     start_group = rest_collector.get_group_name(from_cache=True)
-    exceptions = management.tenant.rest_api_client.exceptions.get_exceptions()
-    assert len(exceptions) == 0, f"Exceptions were not deleted, {exceptions}"
     collector.create_event(malware_name=malware_name)
     events = management.tenant.rest_api_client.events.get_security_events(validation_data={"process": malware_name},
                                                                           timeout=120)
@@ -67,7 +65,7 @@ def exception_function_fixture(management, collector, request):
     }
     yield test_resources
 
-    management.tenant.rest_api_client.exceptions.delete_all_exceptions(timeout=1)
+    user.rest_components.exceptions.delete_all(safe=True, wait_sec=1)
     management.tenant.rest_api_client.events.delete_all_events(timeout=1)
 
     match test_flow:
