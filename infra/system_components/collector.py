@@ -3,7 +3,7 @@ import logging
 import allure
 from infra.enums import FortiEdrSystemState
 from infra.system_components.collectors.default_values import COLLECTOR_KEEPALIVE_INTERVAL, MAX_WAIT_FOR_STATUS
-from infra.common_utils import wait_for_predict_condition
+from infra.common_utils import wait_for_condition
 logger = logging.getLogger(__name__)
 
 
@@ -67,8 +67,8 @@ class CollectorAgent:
     @allure.step("Wait until agent is running")
     def wait_until_agent_running(self, timeout_sec=MAX_WAIT_FOR_STATUS, interval_sec=COLLECTOR_KEEPALIVE_INTERVAL):
         logger.info(f"Wait until {self} is running")
-        wait_for_predict_condition(predict_condition_func=self.is_agent_running,
-                                   timeout_sec=timeout_sec, interval_sec=interval_sec)
+        wait_for_condition(condition_func=self.is_agent_running,
+                           timeout_sec=timeout_sec, interval_sec=interval_sec)
 
     def is_agent_down(self):
         return self.get_agent_status() == FortiEdrSystemState.DOWN
@@ -76,8 +76,8 @@ class CollectorAgent:
     @allure.step("Wait until agent is down")
     def wait_until_agent_down(self, timeout_sec=MAX_WAIT_FOR_STATUS, interval_sec=COLLECTOR_KEEPALIVE_INTERVAL):
         logger.info(f"Wait until {self} is down")
-        wait_for_predict_condition(predict_condition_func=self.is_agent_down,
-                                   timeout_sec=timeout_sec, interval_sec=interval_sec)
+        wait_for_condition(condition_func=self.is_agent_down,
+                           timeout_sec=timeout_sec, interval_sec=interval_sec)
 
     def is_agent_disabled(self):
         return self.get_agent_status() == FortiEdrSystemState.DISABLED
@@ -85,8 +85,8 @@ class CollectorAgent:
     @allure.step("Wait until agent is disabled")
     def wait_until_agent_disabled(self, timeout_sec=MAX_WAIT_FOR_STATUS, interval_sec=COLLECTOR_KEEPALIVE_INTERVAL):
         logger.info(f"Wait until {self} is disabled")
-        wait_for_predict_condition(predict_condition_func=self.is_agent_disabled,
-                                   timeout_sec=timeout_sec, interval_sec=interval_sec)
+        wait_for_condition(condition_func=self.is_agent_disabled,
+                           timeout_sec=timeout_sec, interval_sec=interval_sec)
 
     @abstractmethod
     def reboot(self):

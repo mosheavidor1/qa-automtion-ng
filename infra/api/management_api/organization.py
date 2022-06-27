@@ -48,6 +48,7 @@ class Organization(BaseApiObj):
         return self._registration_password
 
     @classmethod
+    @allure.step("Create organization")
     def create(cls, rest_client: RestCommands, name, password, expected_status_code=200, **optional_data):
         """ Create new organization in management and return its api wrapper """
         assert not is_organization_exist_by_name(organization_name=name), f"Organization {name} already exist in MGMT"
@@ -109,6 +110,7 @@ class Organization(BaseApiObj):
                       (OrgFieldsNames.IOT_LICENCES.value, new_license_capacity)]
         self.update_fields(new_fields=new_fields, expected_status_code=expected_status_code)
 
+    @allure.step("Delete organization")
     def _delete(self, expected_status_code=200):
         """ Organization that is actually a tenant can be deleted via management only """
         logger.info(f"Delete {self}")
@@ -136,8 +138,7 @@ class Organization(BaseApiObj):
                 if update_cache_data:
                     self.cache = org_fields
                 return org_fields
-        if not safe:
-            raise Exception(f"Organization with id {self.id} was not found")
+        assert safe, f"Organization with id {self.id} was not found"
         logger.debug(f"Organization with id {self.id} was not found")
         return None
 
@@ -157,8 +158,8 @@ class Organization(BaseApiObj):
         for field_name, new_value in new_fields:
             logger.info(f"Update {field_name} from {updated_data[field_name]} to {new_value}")
             updated_data[field_name] = new_value
-        self.rest_client.organizations.update_organization(current_org_name=current_name, data=updated_data,
-                                                           expected_status_code=expected_status_code)
+        self._rest_client.organizations.update_organization(current_org_name=current_name, data=updated_data,
+                                                            expected_status_code=expected_status_code)
         if expected_status_code == 200:
             self._validate_updated_fields(new_fields=new_fields)
 
@@ -181,8 +182,7 @@ def get_organization_fields_by_name(organization_name, safe=False) -> dict:
         if org_fields[OrgFieldsNames.ORG_NAME.value] == organization_name:
             logger.debug(f"Organization '{organization_name}' updated data from management: \n {org_fields}")
             return org_fields
-    if not safe:
-        raise Exception(f"Organization {organization_name} was not found")
+    assert safe, f"Organization {organization_name} was not found"
     logger.debug(f"Organization {organization_name} was not found")
     return None
 

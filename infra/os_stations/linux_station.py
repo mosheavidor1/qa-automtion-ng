@@ -10,7 +10,7 @@ from infra.allure_report_handler.reporter import Reporter
 from infra.decorators import retry
 from infra.os_stations.os_station_base import OsStation
 from infra.utils.utils import StringUtils
-from infra.common_utils import wait_for_predict_condition
+from infra.common_utils import wait_for_condition
 from .linux_distros import LinuxDistroDetails
 import logging
 logger = logging.getLogger(__name__)
@@ -185,15 +185,15 @@ class LinuxStation(OsStation):
             result = not self.is_reachable()
             return result
 
-        wait_for_predict_condition(predict_condition_func=predict,
-                                   timeout_sec=timeout, interval_sec=INTERVAL_STATION_KEEPALIVE)
+        wait_for_condition(condition_func=predict,
+                           timeout_sec=timeout, interval_sec=INTERVAL_STATION_KEEPALIVE)
 
     @allure.step("Wait until machine is reachable")
     def wait_until_machine_is_reachable(self, timeout=None):
         timeout = timeout or WAIT_FOR_STATION_UP_TIMEOUT
         predict_condition_func = self.is_reachable
-        wait_for_predict_condition(predict_condition_func=predict_condition_func,
-                                   timeout_sec=timeout, interval_sec=INTERVAL_STATION_KEEPALIVE)
+        wait_for_condition(condition_func=predict_condition_func,
+                           timeout_sec=timeout, interval_sec=INTERVAL_STATION_KEEPALIVE)
 
     @allure.step("Get current linux machine date time")
     def get_current_machine_datetime(self, date_format="%d/%m/%Y %H:%M:%S"):

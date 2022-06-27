@@ -1,9 +1,11 @@
 import logging
 import time
+import allure
 from enum import Enum
 from infra.api.api_object import BaseApiObj
 from infra.api.nslo_wrapper.rest_commands import RestCommands
 from infra.api.api_object_factory.exceptions_factory import ExceptionsFactory
+from infra.api.api_object_factory.events_factory import EventsFactory
 from infra.api.api_object_factory.rest_collectors_factory import RestCollectorsFactory
 import sut_details
 
@@ -46,6 +48,8 @@ class UserRestComponentsFactory:
                                                                factory_rest_client=rest_client)
         self.collectors: RestCollectorsFactory = RestCollectorsFactory(organization_name=organization_name,
                                                                        factory_rest_client=rest_client)
+        self.events: EventsFactory = EventsFactory(organization_name=organization_name,
+                                                   factory_rest_client=rest_client)
 
 
 class User(BaseApiObj):
@@ -86,6 +90,7 @@ class User(BaseApiObj):
         return self._organization_name
 
     @classmethod
+    @allure.step("Create User")
     def create(cls, rest_client: RestCommands, username, user_password, organization_name, roles,
                expected_status_code=200, **optional_data):
         """ Create user with a temp password in order to afterwards to reset to the desired password.
@@ -134,7 +139,7 @@ class User(BaseApiObj):
         return value
 
     def get_fields(self, safe=False, update_cache_data=False, rest_client=None) -> dict:
-        rest_client = rest_client or self.rest_client
+        rest_client = rest_client or self._rest_client
         users_fields = rest_client.users_rest.get_users(organization_name=self.organization_name)
         for user_fields in users_fields:
             if user_fields[UserFieldsNames.ID.value] == self.id:
@@ -142,14 +147,14 @@ class User(BaseApiObj):
                 if update_cache_data:
                     self.cache = user_fields
                 return user_fields
-        if not safe:
-            raise Exception(f"User with id {self.id} was not found in organization {self.organization_name}")
+        assert safe, f"User with id {self.id} was not found in organization {self.organization_name}"
         logger.debug(f"User with id {self.id} was not found in organization {self.organization_name}")
         return None
 
     def update_fields(self):
         raise NotImplemented("Should be implemented")
 
+    @allure.step("Delete user")
     def _delete(self, rest_client: RestCommands, expected_status_code=200):
         """ User can't delete itself, delete from tenant """
         logger.info(f"Delete {self}")
@@ -170,8 +175,7 @@ def get_user_fields_by_username(rest_client: RestCommands, username, organizatio
         if user_fields[UserFieldsNames.USERNAME.value] == username:
             logger.debug(f"User '{username}' updated data from management: \n {user_fields}")
             return user_fields
-    if not safe:
-        raise Exception(f"User {username} was not found in organization {organization_name}")
+    assert safe, f"User {username} was not found in organization {organization_name}"
     logger.debug(f"User {username} was not found in organization {organization_name}")
     return None
 

@@ -4,6 +4,7 @@ from infra.api.management_api.organization import (
     Organization, OrgFieldsNames, DEFAULT_ORGANIZATION_NAME, MANAGEMENT_REGISTRATION_PASSWORD
 )
 import logging
+import allure
 from infra.api import ADMIN_REST
 logger = logging.getLogger(__name__)
 
@@ -24,8 +25,7 @@ class OrganizationsFactory(BaseApiObjFactory):
         organizations = self.get_by_field(field_name=OrgFieldsNames.ORG_NAME.value, value=org_name,
                                           registration_password=registration_password)
         if organizations is None:
-            if not safe:
-                raise Exception(f"Organizations with name '{org_name}' were not found")
+            assert safe, f"Organizations with name '{org_name}' were not found"
             logger.debug(f"Organizations with name '{org_name}' were not found")
             return None
         assert len(organizations) == 1, f"These organizations have the same name ! \n {organizations}"
@@ -46,6 +46,7 @@ class OrganizationsFactory(BaseApiObjFactory):
             return organizations
         return None
 
+    @allure.step("Create new organization")
     def create_organization(self, organization_name, password,
                             expected_status_code=200, **optional_data) -> Organization:
         """ Create new organization with the given password and the factory's rest credentials """

@@ -1,5 +1,6 @@
 import logging
 import time
+import allure
 from infra.api.nslo_wrapper.rest_commands import RestCommands
 from infra.api.api_object_factory.organizations_factory import OrganizationsFactory
 from infra.api.api_object_factory.users_factory import UsersFactory
@@ -30,7 +31,7 @@ class Tenant:
     def __init__(self, local_admin: User, organization: Organization):
         self._organization = organization
         self._default_local_admin = local_admin
-        self._rest_api_client = self._default_local_admin.rest_client
+        self._rest_api_client = self._default_local_admin._rest_client
         self._rest_components = TenantRestComponentsFactory(organization_name=organization.get_name(from_cache=False),
                                                             rest_client=self._rest_api_client)
 
@@ -53,6 +54,7 @@ class Tenant:
         return self._rest_api_client
 
     @classmethod
+    @allure.step("Create new tenant")
     def create(cls, username, user_password, organization_name, registration_password, prevention_mode=True):
         """ Create tenant from an existing/create new organization and existing/create new local admin user """
         is_new_org = False
@@ -81,15 +83,15 @@ class Tenant:
             logger.info(f"Default Local admin {username} already exist in org {organization_name}")
         if prevention_mode and is_new_org:
             logger.info("Set prevention mode to the new organization")
-            default_local_admin.rest_client.policies.turn_on_prevention_mode()
+            default_local_admin._rest_client.policies.turn_on_prevention_mode()
 
         return cls(local_admin=default_local_admin, organization=organization)
 
     def delete_user(self, user: User, expected_status_code=200):
         """ Use tenant's default local admin user credentials to delete other users in this tenant """
-        if user.id == self.default_local_admin.id:
-            raise Exception(f"{user} is tenant's default user so can't be deleted, only when delete all the tenant")
-        user._delete(rest_client=self.default_local_admin.rest_client, expected_status_code=expected_status_code)
+        assert user.id != self.default_local_admin.id, \
+            f"{user} is tenant's default user so can't be deleted, only when delete all the tenant"
+        user._delete(rest_client=self.default_local_admin._rest_client, expected_status_code=expected_status_code)
 
     def require_ownership_over_collector(self, source_collector: RestCollector,
                                          target_group_name=None, safe=False) -> RestCollector:
@@ -100,11 +102,9 @@ class Tenant:
         collector_org_name = source_collector.get_organization_name()
         tenant_org_name = self.organization.get_name()
         if collector_org_name == tenant_org_name:
-            if not safe:
-                raise Exception(f"{source_collector} already in desired organization '{tenant_org_name}'")
-            else:
-                logger.info(f"{source_collector} already in desired organization '{tenant_org_name}', no need to move")
-                return source_collector
+            assert safe, f"{source_collector} already in desired organization '{tenant_org_name}'"
+            logger.info(f"{source_collector} already in desired organization '{tenant_org_name}', no need to move")
+            return source_collector
         logger.info(f"Move {source_collector} from org {collector_org_name} to {self} and wait few seconds")
         ADMIN_REST.system_inventory.move_collectors(collectors_names=[source_collector.get_name()],
                                                     target_group_name=target_group_name,

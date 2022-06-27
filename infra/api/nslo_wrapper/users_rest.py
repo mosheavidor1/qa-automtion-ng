@@ -13,7 +13,6 @@ class UsersRest(BaseRestFunctionality):
     def __init__(self, nslo_rest: NsloRest):
         super().__init__(nslo_rest=nslo_rest)
 
-    @allure.step("Get users in organization")
     def get_users(self, organization_name: str = None, expected_status_code: int = 200) -> List[dict]:
         status, response = self._rest.users.ListUsers(organization=organization_name)
         self._validate_expected_status_code(expected_status_code=expected_status_code,

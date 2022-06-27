@@ -63,6 +63,7 @@ class ExceptionsFactory(BaseApiObjFactory):
             remaining_exceptions = self.get_all(rest_client=rest_client, safe=safe)
             assert len(remaining_exceptions) == 0, f"These exceptions were not deleted: {remaining_exceptions}"
 
+    @allure.step("Create exception for event")
     def create_exception_for_event(self, event_id, groups=None, expected_status_code=200, **kwargs) -> ExceptionManager:
         """ Create new exception """
         logger.info(f"Create new exception for event {event_id} in organization {self._organization_name}")
