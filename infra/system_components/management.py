@@ -15,7 +15,7 @@ from infra.api.api_object_factory.organizations_factory import get_default_organ
 from infra.api.management_api.organization import DEFAULT_LICENSE_CAPACITY
 import sut_details
 from infra.containers.system_component_containers import ManagementDetails
-from infra.enums import ComponentType, SystemState, ManagementUserRoles
+from infra.enums import ComponentType, FortiEdrSystemState, ManagementUserRoles
 from infra.singleton import Singleton
 from infra.system_components.forti_edr_linux_station import FortiEdrLinuxStation
 
@@ -199,7 +199,7 @@ class Management(FortiEdrLinuxStation):
 
     @allure.step("Wait till the service is up with timeout set to {timeout} sec.")
     def wait_till_service_up(self, timeout: int = 60, interval: int = 5):
-        predict_condition_func = functools.partial(self.is_system_in_desired_state, SystemState.RUNNING)
+        predict_condition_func = functools.partial(self.is_system_in_desired_state, FortiEdrSystemState.RUNNING)
 
         common_utils.wait_for_predict_condition(
             predict_condition_func=predict_condition_func,

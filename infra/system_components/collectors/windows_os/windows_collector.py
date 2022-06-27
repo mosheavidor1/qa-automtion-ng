@@ -4,7 +4,6 @@ from typing import List
 import logging
 import allure
 
-import sut_details
 import third_party_details
 from infra.os_stations.windows_station import WindowsStation
 from infra.system_components.collectors.collectors_agents_utils import (
@@ -12,7 +11,7 @@ from infra.system_components.collectors.collectors_agents_utils import (
     wait_until_collector_pid_appears
 )
 from infra.allure_report_handler.reporter import Reporter
-from infra.enums import SystemState
+from infra.enums import FortiEdrSystemState
 from infra.system_components.collector import CollectorAgent
 from infra.utils.utils import StringUtils
 from sut_details import management_registration_password
@@ -235,7 +234,7 @@ class WindowsCollector(CollectorAgent):
                 self.os_station.remove_file(file_path=file)
 
     @allure.step("{0} - Get collector status via cli")
-    def get_agent_status(self) -> SystemState:
+    def get_agent_status(self) -> FortiEdrSystemState:
         cmd = f'"{self.__collector_service_exe}" --status'
         response = self.os_station.execute_cmd(cmd=cmd, return_output=True, fail_on_err=False)
 
@@ -243,20 +242,20 @@ class WindowsCollector(CollectorAgent):
         forti_edr_driver_status = StringUtils.get_txt_by_regex(text=response, regex='FortiEDR\s+Driver:\s+(\w+)', group=1)
         forti_edr_status = StringUtils.get_txt_by_regex(text=response, regex='FortiEDR\s+Status:\s+(\w+)', group=1)
 
-        system_state = SystemState.NOT_RUNNING
+        system_state = FortiEdrSystemState.NOT_RUNNING
         if forti_edr_service_status == 'Up' and forti_edr_driver_status == 'Up' and forti_edr_status == 'Running':
-            system_state = SystemState.RUNNING
+            system_state = FortiEdrSystemState.RUNNING
         elif forti_edr_service_status == 'Down' and forti_edr_driver_status is None and forti_edr_status is None:
-            system_state = SystemState.DOWN
+            system_state = FortiEdrSystemState.DOWN
         elif forti_edr_service_status == 'Up' and forti_edr_driver_status == 'Up' and forti_edr_status == 'Disabled':
-            system_state = SystemState.DISABLED
+            system_state = FortiEdrSystemState.DISABLED
         return system_state
 
     @allure.step('{0} - Start health mechanism')
     def start_health_mechanism(self):
         self.start_collector()
         state = self.get_agent_status()
-        if state == SystemState.RUNNING:
+        if state == FortiEdrSystemState.RUNNING:
             Reporter.report("Health monitor successfully helped to bring collector service up")
         else:
             assert False, "Failed to start collector service, check what happens in logs"

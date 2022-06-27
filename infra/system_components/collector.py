@@ -1,7 +1,7 @@
 from abc import abstractmethod
 import logging
 import allure
-from infra.enums import SystemState
+from infra.enums import FortiEdrSystemState
 from infra.system_components.collectors.default_values import COLLECTOR_KEEPALIVE_INTERVAL, MAX_WAIT_FOR_STATUS
 from infra.common_utils import wait_for_predict_condition
 logger = logging.getLogger(__name__)
@@ -51,11 +51,18 @@ class CollectorAgent:
         pass
 
     @abstractmethod
-    def get_agent_status(self) -> SystemState:
+    def get_agent_status(self) -> FortiEdrSystemState:
         pass
 
+    def is_agent_installed(self) -> bool:
+        pid = self.get_current_process_id()
+        if pid is None and not self.is_collector_files_exist():
+            return False
+
+        return True
+
     def is_agent_running(self):
-        return self.get_agent_status() == SystemState.RUNNING
+        return self.get_agent_status() == FortiEdrSystemState.RUNNING
 
     @allure.step("Wait until agent is running")
     def wait_until_agent_running(self, timeout_sec=MAX_WAIT_FOR_STATUS, interval_sec=COLLECTOR_KEEPALIVE_INTERVAL):
@@ -64,7 +71,7 @@ class CollectorAgent:
                                    timeout_sec=timeout_sec, interval_sec=interval_sec)
 
     def is_agent_down(self):
-        return self.get_agent_status() == SystemState.DOWN
+        return self.get_agent_status() == FortiEdrSystemState.DOWN
 
     @allure.step("Wait until agent is down")
     def wait_until_agent_down(self, timeout_sec=MAX_WAIT_FOR_STATUS, interval_sec=COLLECTOR_KEEPALIVE_INTERVAL):
@@ -73,7 +80,7 @@ class CollectorAgent:
                                    timeout_sec=timeout_sec, interval_sec=interval_sec)
 
     def is_agent_disabled(self):
-        return self.get_agent_status() == SystemState.DISABLED
+        return self.get_agent_status() == FortiEdrSystemState.DISABLED
 
     @allure.step("Wait until agent is disabled")
     def wait_until_agent_disabled(self, timeout_sec=MAX_WAIT_FOR_STATUS, interval_sec=COLLECTOR_KEEPALIVE_INTERVAL):

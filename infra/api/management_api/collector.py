@@ -2,7 +2,7 @@ import logging
 from enum import Enum
 from infra.api.api_object import BaseApiObj
 from infra.api.nslo_wrapper.rest_commands import RestCommands
-from infra.enums import SystemState
+from infra.enums import FortiEdrSystemState
 from infra.common_utils import wait_for_predict_condition
 from infra.system_components.collectors.default_values import COLLECTOR_KEEPALIVE_INTERVAL, MAX_WAIT_FOR_STATUS
 import allure
@@ -127,7 +127,8 @@ class RestCollector(BaseApiObj):
         self._delete()
 
     def _delete(self):
-        raise NotImplemented("Should be implemented")
+        name = self.get_name()
+        self.rest_client.system_inventory.delete_collectors(collector_names=[name])
 
     def uninstall(self):
         raise NotImplemented("Should be implemented")
@@ -142,7 +143,7 @@ class RestCollector(BaseApiObj):
         raise NotImplemented("Should be implemented")
 
     def is_disconnected(self):
-        return self.get_status(from_cache=False) == SystemState.DISCONNECTED.value
+        return self.get_status(from_cache=False) == FortiEdrSystemState.DISCONNECTED.value
 
     @allure.step("Wait until is Disconnected in management")
     def wait_until_disconnected(self, timeout_sec=MAX_WAIT_FOR_STATUS, interval_sec=COLLECTOR_KEEPALIVE_INTERVAL):
@@ -153,10 +154,10 @@ class RestCollector(BaseApiObj):
     def enable(self):
         self.rest_client.system_inventory.toggle_collector(collector_name=self.get_name(from_cache=False),
                                                            organization_name=self.get_organization_name(from_cache=False),
-                                                           toggle_status=SystemState.ENABLED)
+                                                           toggle_status=FortiEdrSystemState.ENABLED)
 
     def is_running(self):
-        return self.get_status(from_cache=False) == SystemState.RUNNING.value
+        return self.get_status(from_cache=False) == FortiEdrSystemState.RUNNING.value
 
     @allure.step("Wait until running in management")
     def wait_until_running(self, timeout_sec=MAX_WAIT_FOR_STATUS, interval_sec=COLLECTOR_KEEPALIVE_INTERVAL):
@@ -167,10 +168,10 @@ class RestCollector(BaseApiObj):
     def disable(self):
         self.rest_client.system_inventory.toggle_collector(collector_name=self.get_name(from_cache=False),
                                                            organization_name=self.get_organization_name(from_cache=False),
-                                                           toggle_status=SystemState.DISABLED)
+                                                           toggle_status=FortiEdrSystemState.DISABLED)
 
     def is_disabled(self):
-        return self.get_status(from_cache=False) == SystemState.DISABLED.value
+        return self.get_status(from_cache=False) == FortiEdrSystemState.DISABLED.value
 
     @allure.step("Wait until disabled in management")
     def wait_until_disabled(self, timeout_sec=MAX_WAIT_FOR_STATUS, interval_sec=COLLECTOR_KEEPALIVE_INTERVAL):

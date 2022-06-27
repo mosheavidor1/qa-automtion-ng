@@ -6,7 +6,8 @@ import allure
 import sut_details
 from infra.allure_report_handler.reporter import Reporter
 from infra.assertion.assertion import Assertion
-from infra.enums import CollectorTypes, SystemState, AutomationVmTemplates
+from infra.enums import CollectorTypes, FortiEdrSystemState, AutomationVmTemplates, \
+    CleanVMsReadyForCollectorInstallation
 from infra.environment_creation.environment_creation_handler import EnvironmentCreationHandler
 from infra.forti_edr_versions_service_handler.forti_edr_versions_service_handler import FortiEdrVersionsServiceHandler
 from infra.system_components.aggregator import Aggregator
@@ -359,6 +360,20 @@ def _find_rest_collector(host_ip: str, tenant):
         raise Exception(f"Collector {host_ip} was not found")
 
 
+def _wait_util_rest_collector_appear(host_ip: str, tenant, timeout: int = 60):
+    start_time = time.time()
+    rest_collector = None
+    while time.time() - start_time < timeout and rest_collector is None:
+        try:
+            rest_collector = _find_rest_collector(host_ip=host_ip, tenant=tenant)
+        except:
+            time.sleep(1)
+
+    assert rest_collector is not None, f"Can not find the collector with the ip: {host_ip} in the UI within timeout of {timeout} sec"
+
+    return rest_collector
+
+
 def create_snapshot_for_collector(snapshot_name: str,
                                   management: Management,
                                   collector: CollectorAgent):
@@ -487,7 +502,7 @@ def validate_all_system_components_are_running(management: Management,
     #                     """sed -i 's/"DeploymentMode":"OnPremise"/"DeploymentMode":"Cloud"/g' /opt/FortiEDR/core/Config/Core/CoreBootstrap.jsn""")
     #                 core.stop_service()
     #                 core.start_service()
-        sys_comp.validate_system_component_is_in_desired_state(desired_state=SystemState.RUNNING)
+        sys_comp.validate_system_component_is_in_desired_state(desired_state=FortiEdrSystemState.RUNNING)
 
     assert rest_collector.is_running(), f"{collector} is not running in {management}"
     Reporter.report(f"Assert that {collector} status is running in CLI")
@@ -722,3 +737,41 @@ def init_jira_xray_object(management, aggregator, core, collector):
     jira_xray_handler.aggregator = aggregator
     jira_xray_handler.core = core
     jira_xray_handler.collector = collector
+
+
+######################## dynamic system components fixtures ################################
+@pytest.fixture(scope="function")
+def dynamic_windows_collector(collector, management, aggregator) -> WindowsCollector:
+    vspere_details = ENSILO_VCSA_40
+    vsphere_handler = VsphereClusterHandler(vspere_details)
+    clean_vms_list = [CleanVMsReadyForCollectorInstallation.WIN_10_32_1,
+                      CleanVMsReadyForCollectorInstallation.WIN_10_64_1,
+                      CleanVMsReadyForCollectorInstallation.WIN_10_64_2,
+                      CleanVMsReadyForCollectorInstallation.WIN_10_64_3,
+                      CleanVMsReadyForCollectorInstallation.WIN_11_64_1,
+                      CleanVMsReadyForCollectorInstallation.WIN_11_64_2,
+                      CleanVMsReadyForCollectorInstallation.WIN_11_64_3,
+                      CleanVMsReadyForCollectorInstallation.WIN_SRV_2016_64_1,
+                      CleanVMsReadyForCollectorInstallation.WIN_SRV_2019_64_1]
+
+    collector = EnvironmentCreationHandler.add_random_collector_to_setup_from_collectors_pool(
+        vsphere_cluster_handler=vsphere_handler,
+        clean_vms_list=clean_vms_list,
+        version=collector.get_version(),
+        aggregator_ip=aggregator.host_ip,
+        registration_password=management.registration_password,
+        organization=sut_details.default_organization)
+
+    rest_collector = _wait_util_rest_collector_appear(host_ip=collector.host_ip, tenant=management.tenant, timeout=120)
+    rest_collector.wait_until_running()
+
+    yield collector
+
+    collector.os_station.vm_operations.revert_to_root_snapshot()
+    original_name = collector.os_station.vm_operations.vm_obj.name.replace(EnvironmentCreationHandler.BUSY_VM_COLLECTOR, '')
+    collector.os_station.vm_operations.rename_machine_in_vsphere(new_name=original_name)
+    collector.os_station.vm_operations.power_off()
+
+    rest_collector = _find_rest_collector(host_ip=collector.host_ip, tenant=management.tenant)
+    rest_collector.wait_until_disconnected()
+    rest_collector.delete()
