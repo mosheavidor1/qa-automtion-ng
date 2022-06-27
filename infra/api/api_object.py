@@ -16,10 +16,6 @@ class BaseApiObj:
         self._use_cache = False  # By default, always get the updated data from server
 
     @property
-    def rest_client(self) -> RestCommands:
-        return self._rest_client
-
-    @property
     def cache(self) -> dict:
         return self._cache
 

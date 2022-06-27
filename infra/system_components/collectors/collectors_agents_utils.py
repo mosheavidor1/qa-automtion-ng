@@ -1,7 +1,7 @@
 from contextlib import contextmanager
 import allure
 import logging
-from infra.common_utils import wait_for_predict_condition
+from infra.common_utils import wait_for_condition
 from infra.system_components.collector import CollectorAgent
 from .default_values import MAX_WAIT_FOR_PID, PID_INTERVAL
 
@@ -32,8 +32,8 @@ def _wait_for_process_id(collector: CollectorAgent, is_alive, timeout=None):
             is_correct_pid = current_pid is None
         return is_correct_pid
 
-    wait_for_predict_condition(predict_condition_func=is_expected_pid,
-                               timeout_sec=timeout, interval_sec=PID_INTERVAL)
+    wait_for_condition(condition_func=is_expected_pid,
+                       timeout_sec=timeout, interval_sec=PID_INTERVAL)
 
 
 @contextmanager

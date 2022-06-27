@@ -26,8 +26,7 @@ class RestCollectorsFactory(BaseApiObjFactory):
         if len(rest_collectors):
             assert len(rest_collectors) == 1, f"These collectors have same ip ! \n {rest_collectors}"
             return rest_collectors[0]
-        if not safe:
-            raise Exception(f"collectors with ip {ip} were not found in {self._organization_name}")
+        assert safe, f"collectors with ip {ip} were not found in {self._organization_name}"
         logger.debug(f"collectors with ip {ip} were not found in {self._organization_name}")
         return None
 
@@ -44,8 +43,7 @@ class RestCollectorsFactory(BaseApiObjFactory):
         logger.debug(f"Found collectors: {collectors}")
         if len(collectors):
             return collectors
-        if not safe:
-            raise Exception(f"collectors with field {field_name}={value} were not found in {org_name}")
+        assert safe, f"collectors with field {field_name}={value} were not found in {org_name}"
         logger.debug(f"collectors with field {field_name}={value} were not found in {org_name}")
         return None
 
@@ -60,8 +58,7 @@ class RestCollectorsFactory(BaseApiObjFactory):
             rest_collectors.append(rest_collector)
         if len(rest_collectors):
             return rest_collectors
-        if not safe:
-            raise Exception(f"Org '{org_name}' doesn't contain collectors")
+        assert safe, f"Org '{org_name}' doesn't contain collectors"
         logger.debug(f"Org '{org_name}' doesn't contain collectors")
         return None
 

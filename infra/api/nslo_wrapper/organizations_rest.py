@@ -14,7 +14,6 @@ class OrganizationsRest(BaseRestFunctionality):
     def __init__(self, nslo_rest: NsloRest):
         super().__init__(nslo_rest=nslo_rest)
 
-    @allure.step("Get all organizations")
     def get_all_organizations(self, expected_status_code: int = 200) -> List[dict]:
         status, response = self._rest.organizations.ListOrganizations()
 

@@ -37,13 +37,12 @@ def exception_function_fixture(management, collector, request):
     group_name = "empty"
     destination = "Internal Destinations"
     user.rest_components.exceptions.delete_all(safe=True, wait_sec=1)
-    management.tenant.rest_api_client.events.delete_all_events()
+    user.rest_components.events.delete_all(safe=True)
     rest_collector = user.rest_components.collectors.get_by_ip(ip=collector.host_ip)
     start_group = rest_collector.get_group_name(from_cache=True)
     collector.create_event(malware_name=malware_name)
-    events = management.tenant.rest_api_client.events.get_security_events(validation_data={"process": malware_name},
-                                                                          timeout=120)
-    event_id = events[0]['eventId']
+    events = user.rest_components.events.get_by_process_name(process_name=malware_name, wait_for=True)
+    event_id = events[0].id
 
     match test_flow:
         case ExceptionTestType.CREATE_PARTIALLY_COVERED_EXCEPTION | \
@@ -66,7 +65,7 @@ def exception_function_fixture(management, collector, request):
     yield test_resources
 
     user.rest_components.exceptions.delete_all(safe=True, wait_sec=1)
-    management.tenant.rest_api_client.events.delete_all_events(timeout=1)
+    user.rest_components.events.delete_all(safe=True, wait_sec=1)
 
     match test_flow:
         case ExceptionTestType.CREATE_PARTIALLY_COVERED_EXCEPTION | \

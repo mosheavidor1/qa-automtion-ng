@@ -201,8 +201,8 @@ class Management(FortiEdrLinuxStation):
     def wait_till_service_up(self, timeout: int = 60, interval: int = 5):
         predict_condition_func = functools.partial(self.is_system_in_desired_state, FortiEdrSystemState.RUNNING)
 
-        common_utils.wait_for_predict_condition(
-            predict_condition_func=predict_condition_func,
+        common_utils.wait_for_condition(
+            condition_func=predict_condition_func,
             timeout_sec=timeout,
             interval_sec=interval
         )
@@ -269,18 +269,19 @@ class Management(FortiEdrLinuxStation):
         """ Create tenant for testing that should be deleted afterwards """
         logger.info(f"Create temp tenant with user {user_name} and organization {organization_name}")
         for tenant in self._temp_tenants:
-            if organization_name == tenant.organization.get_name():
-                raise Exception(f"Temp tenant with org name {organization_name} already created")
+            assert organization_name != tenant.organization.get_name(), \
+                f"Temp tenant with org name {organization_name} already created"
         tenant = Tenant.create(username=user_name, user_password=user_password, organization_name=organization_name,
                                registration_password=registration_password)
         self._temp_tenants.append(tenant)
         return tenant
 
+    @allure.step("Delete temp tenant")
     def delete_tenant(self, temp_tenant: Tenant, expected_status_code=200):
         """ Use management admin credentials to delete the default user and the organization of a temp tenant"""
         logger.info(f"Delete temp tenant: {temp_tenant}")
-        if temp_tenant == self.tenant:
-            raise Exception(f"{temp_tenant} is the default tenant of management so can't be deleted")
+        assert temp_tenant.organization.id != self.tenant.organization.id, \
+            f"{temp_tenant} is the default tenant of management so can't be deleted"
         temp_tenant.default_local_admin._delete(rest_client=self.admin_rest_api_client,
                                                 expected_status_code=expected_status_code)
         temp_tenant.organization._delete(expected_status_code=expected_status_code)

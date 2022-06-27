@@ -352,12 +352,11 @@ def _find_rest_collector(host_ip: str, tenant):
     else:
         logger.debug(f"{tenant.organization} doesn't contain collector {host_ip}, look in management")
         rest_collectors_without_org = get_collectors_without_org(safe=True)
-        if rest_collectors_without_org is None:
-            raise Exception(f"Collector {host_ip} was not found at all")
+        assert rest_collectors_without_org is not None, f"Collector {host_ip} was not found at all"
         for rest_collector in rest_collectors_without_org:
             if rest_collector.get_ip(from_cache=True) == host_ip:
                 return rest_collector
-        raise Exception(f"Collector {host_ip} was not found")
+        assert False, f"Collector {host_ip} was not found"
 
 
 def _wait_util_rest_collector_appear(host_ip: str, tenant, timeout: int = 60):

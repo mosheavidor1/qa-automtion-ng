@@ -105,7 +105,7 @@ class ExceptionManager(BaseApiObj):
         return exception
 
     def get_fields(self, safe=False, update_cache_data=False, rest_client=None) -> dict:
-        rest_client = rest_client or self.rest_client
+        rest_client = rest_client or self._rest_client
         exceptions_fields = rest_client.exceptions.get_exceptions()
         for exception_fields in exceptions_fields:
             if exception_fields[ExceptionFieldsNames.ID.value] == self.id:
@@ -124,7 +124,7 @@ class ExceptionManager(BaseApiObj):
 
     def _delete(self, expected_status_code=200):
         logger.info(f"Delete {self}")
-        self.rest_client.exceptions.delete_exception(self.id)
+        self._rest_client.exceptions.delete_exception(self.id)
         if expected_status_code == 200:
             assert self.get_fields(safe=True) is None, f"{self} was not deleted"
 

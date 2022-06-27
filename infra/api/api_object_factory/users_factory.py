@@ -2,6 +2,7 @@ from infra.api.api_object_factory.base_api_obj import BaseApiObjFactory
 from infra.api.nslo_wrapper.rest_commands import RestCommands
 from infra.api.management_api.user import User, UserFieldsNames, LOCAL_ADMIN_ROLES
 import logging
+import allure
 logger = logging.getLogger(__name__)
 
 
@@ -19,8 +20,7 @@ class UsersFactory(BaseApiObjFactory):
         """ Find real user by username and return its rest api wrapper with the given password """
         users = self.get_by_field(field_name=UserFieldsNames.USERNAME.value, value=username, password=password)
         if users is None:
-            if not safe:
-                raise Exception(f"Org '{self._organization_name}' doesn't contain user {username}")
+            assert safe, f"Org '{self._organization_name}' doesn't contain user {username}"
             logger.debug(f"Org '{self._organization_name}' doesn't contain user {username}")
             return None
         assert len(users) == 1, f"These users have same username ! : \n {users}"
@@ -42,6 +42,7 @@ class UsersFactory(BaseApiObjFactory):
         logger.debug(f"Users with field {field_name}={value} were not found in {org_name}")
         return None
 
+    @allure.step("Create local admin user")
     def create_local_admin(self, username, user_password, organization_name,
                            expected_status_code=200, **optional_data) -> User:
         logger.info(f"Create local admin '{username}' in organization '{organization_name}'")
