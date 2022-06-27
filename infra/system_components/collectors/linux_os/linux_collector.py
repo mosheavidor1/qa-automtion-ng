@@ -3,7 +3,7 @@ import time
 from typing import List
 import third_party_details
 from infra.os_stations.linux_station import LinuxStation
-from infra.enums import SystemState, LinuxDistroTypes
+from infra.enums import FortiEdrSystemState, LinuxDistroTypes
 from infra.system_components.collector import CollectorAgent
 from infra.utils.utils import StringUtils
 from infra.allure_report_handler.reporter import Reporter
@@ -140,13 +140,13 @@ class LinuxCollector(CollectorAgent):
         forti_edr_service_status = StringUtils.get_txt_by_regex(text=response, regex='FortiEDR\s+Service:\s+(\w+)', group=1)
         forti_edr_driver_status = StringUtils.get_txt_by_regex(text=response, regex='FortiEDR\s+Driver:\s+(\w+)', group=1)
         forti_edr_status = StringUtils.get_txt_by_regex(text=response, regex='FortiEDR\s+Status:\s+(\w+)', group=1)
-        system_state = SystemState.NOT_RUNNING
+        system_state = FortiEdrSystemState.NOT_RUNNING
         if forti_edr_service_status == 'Up' and forti_edr_driver_status == 'Up' and forti_edr_status == 'Running':
-            system_state = SystemState.RUNNING
+            system_state = FortiEdrSystemState.RUNNING
         elif forti_edr_service_status == 'Down' and forti_edr_driver_status == 'Down' and forti_edr_status == 'Stopped':
-            system_state = SystemState.DOWN
+            system_state = FortiEdrSystemState.DOWN
         elif forti_edr_service_status == 'Up' and forti_edr_driver_status == 'NONE' and forti_edr_status == 'Disabled':
-            system_state = SystemState.DISABLED
+            system_state = FortiEdrSystemState.DISABLED
         return system_state
 
     @allure.step("Reboot linux Collector")

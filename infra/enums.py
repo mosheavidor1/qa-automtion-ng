@@ -3,7 +3,12 @@ from enum import Enum
 import aenum as aenum
 
 
-class SystemState(Enum):
+class OsPowerState(Enum):
+    RUNNING = 'Running'
+    NOT_RUNNING = 'NOT_RUNNING'
+
+
+class FortiEdrSystemState(Enum):
     RUNNING = 'Running'  # Status name from management
     NOT_RUNNING = 'NOT_RUNNING'
     DISCONNECTED = 'Disconnected'  # Status name from management
@@ -43,6 +48,14 @@ class CollectorTypes(aenum.Enum):
 
 
 class AutomationVmTemplates(Enum):
+    """
+    This enum holds the templates that the automation use in order to:
+    * create VM for collector installation
+    * create automation services machine with all preconditions
+    * create system components (manager, aggregator, core)
+
+    we are using it to clone VM from template
+    """
     # A Confluence page with updated template names should be followed:
     # http://confluence.ensilo.local/display/QA/Templates+and+preinstalled+application
     WIN_11X64 = 'TEMPLATE_WIN_11_64'
@@ -76,6 +89,22 @@ class AutomationVmTemplates(Enum):
 
     AUTOMATION_SERVICES_MACHINE_TEMPLATE = 'AUTOMATION_SERVICES_MACHINE_TEMPLATE'
     CENTOS7_SYSTEM_COMPONENT_TEMPLATE = 'TEMPLATE_CENTOS7_COMPONENT'
+
+
+class CleanVMsReadyForCollectorInstallation(Enum):
+    """
+    this enum holds VMs (not templates) that are ready for collector agent installations
+    just connect to machines and do whatever you want
+    """
+    WIN_SRV_2016_64_1 = 'WIN_SRV_2016_64_1'
+    WIN_SRV_2019_64_1 = 'WIN_SRV_2019_64_1'
+    WIN_10_32_1 = 'WIN_10_32_1'
+    WIN_10_64_1 = 'WIN_10_64_1'
+    WIN_10_64_2 = 'WIN_10_64_2'
+    WIN_10_64_3 = 'WIN_10_64_3'
+    WIN_11_64_1 = 'WIN_11_64_1'
+    WIN_11_64_2 = 'WIN_11_64_2'
+    WIN_11_64_3 = 'WIN_11_64_3'
 
 
 class HttpRequestMethodsEnum(Enum):

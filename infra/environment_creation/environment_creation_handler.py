@@ -4,14 +4,14 @@ import random
 import time
 from typing import List
 
-import logging
-import sut_details
 import allure
 
+import sut_details
 import third_party_details
 from infra.allure_report_handler.reporter import Reporter
 from infra.containers.environment_creation_containers import EnvironmentSystemComponent, DeployedEnvInfo
-from infra.enums import HttpRequestMethodsEnum, AutomationVmTemplates, ComponentType
+from infra.enums import HttpRequestMethodsEnum, AutomationVmTemplates, ComponentType, \
+    CleanVMsReadyForCollectorInstallation
 from infra.os_stations.linux_station import LinuxStation
 from infra.system_components.aggregator import Aggregator
 from infra.system_components.collectors.linux_os.linux_collector import LinuxCollector
@@ -19,8 +19,20 @@ from infra.system_components.collectors.windows_os.windows_collector import Wind
 from infra.system_components.core import Core
 from infra.system_components.forti_edr_linux_station import FortiEdrLinuxStation
 from infra.utils.utils import JsonUtils, HttpRequesterUtils, StringUtils
-from infra.vpshere.vsphere_cluster_handler import VsphereClusterHandler
+from infra.vpshere.vsphere_cluster_handler import VsphereClusterHandler, VmSearchTypeEnum
+from infra.vpshere.vsphere_vm_operations import VsphereMachineOperations
 
+
+def _is_vm_free_to_use(vm_ops: VsphereMachineOperations,
+                       collector_vm: CleanVMsReadyForCollectorInstallation):
+    """
+    we are using this method in order to understand of VM is free and can be allocated to specific management
+    :return: boolean
+    """
+    if vm_ops.is_power_off() and vm_ops.vm_obj.name == collector_vm.value:
+        return True
+
+    return False
 
 def _get_core_config_cmd(desired_hostname: str,
                          date_time: str,
@@ -83,6 +95,8 @@ def _get_management_config_cmd(desired_hostname: str,
 
 
 class EnvironmentCreationHandler:
+
+    BUSY_VM_COLLECTOR = 'busy_'
 
     @staticmethod
     @allure.step("Deploy system components using deployment service")
@@ -164,7 +178,7 @@ class EnvironmentCreationHandler:
 
     @staticmethod
     @allure.step('Delete environment')
-    def delete_env(env_ids: List[str]):
+    def delete_env_external_service(env_ids: List[str]):
         url = f'{third_party_details.ENVIRONMENT_SERVICE_URL}/api/v1/fedr/environment'
         data = {
             "ids": [{"id": env_id} for env_id in env_ids]
@@ -219,6 +233,13 @@ class EnvironmentCreationHandler:
                                            user_name=sut_details.linux_user_name,
                                            password=sut_details.linux_password)
 
+                # if snapshot with the name "clean_os" does not exist, create it before collector installation
+                if not collector.os_station.vm_operations.is_snapshot_name_exist(
+                        snapshot_name=collector.os_station.vm_operations.CLEAN_OS_SNAPSHOT_NAME):
+                    collector.os_station.vm_operations.snapshot_create(
+                        snapshot_name=collector.os_station.vm_operations.CLEAN_OS_SNAPSHOT_NAME,
+                        memory=True)
+
             collector.install_collector(version=version,
                                         aggregator_ip=aggregator_ip,
                                         registration_password=registration_password,
@@ -241,7 +262,7 @@ class EnvironmentCreationHandler:
             management_ip: str = None,
             management_registration_password: str = None,
             aggregator_ip: str = None) -> FortiEdrLinuxStation:
-        """This function creates a FortiEdr component from a template and adds it to an existing management. 
+        """This function creates a FortiEdr component from a template and adds it to an existing management.
         When creating a new component it will return a new component object.
 
         :param vsphere_cluster_handler: VsphereClusterHandler type needed for this component to be created from the template in the cluster.
@@ -323,7 +344,7 @@ class EnvironmentCreationHandler:
 
         result = linux_station.execute_cmd(cmd=config_cmd,
                                            return_output=True,
-                                           fail_on_err=False,
+                                           fail_on_err=True,
                                            timeout=10 * 60,
                                            attach_output_to_report=True)
 
@@ -344,24 +365,160 @@ class EnvironmentCreationHandler:
                             ssh_user_name=sut_details.linux_user_name,
                             core_details=None)
 
+    @staticmethod
+    @allure.step("Add random collector to organization: {organization}")
+    def add_random_collector_to_setup_from_collectors_pool(vsphere_cluster_handler: VsphereClusterHandler,
+                                                           clean_vms_list: [CleanVMsReadyForCollectorInstallation],
+                                                           version: str,
+                                                           aggregator_ip: str,
+                                                           registration_password: str,
+                                                           organization: str,
+                                                           timeout=15 * 60):
+
+        if clean_vms_list is None or len(clean_vms_list) == 0:
+            raise Exception("Can not choose random machine since the list provided is empty or None")
+
+        start_time = time.time()
+        while time.time() - start_time < timeout:
+
+            for vm_name in clean_vms_list:
+                vm_ops = vsphere_cluster_handler.get_specific_vm_from_cluster(
+                    vm_search_type=VmSearchTypeEnum.VM_NAME,
+                    txt_to_search=vm_name.value)
+
+                if vm_ops is None:
+                    continue
+
+                elif vm_ops.is_power_on():
+                    # if already in use
+                    continue
+                else:
+                    try:
+                        # first indication that not in use
+                        if _is_vm_free_to_use(vm_ops=vm_ops, collector_vm=vm_name):
+
+                            # inside "add_specific_collector_to_setup_from_collectors_pool" method logic,
+                            # we are checking if machine is powered off - if so, allocating it
+                            # will throw exception that it's already allocated, and will continue to next candidate
+                            collector = EnvironmentCreationHandler.add_specific_collector_to_setup_from_collectors_pool(
+                                vsphere_cluster_handler=vsphere_cluster_handler,
+                                vm_name=vm_name,
+                                version=version,
+                                aggregator_ip=aggregator_ip,
+                                registration_password=registration_password,
+                                organization=organization,
+                                max_timeout=0)
+
+                            return collector
+                    except:
+                        continue
+
+    @staticmethod
+    @allure.step("Add specific collector {vm_name} to organization: {organization}")
+    def add_specific_collector_to_setup_from_collectors_pool(vsphere_cluster_handler: VsphereClusterHandler,
+                                                             vm_name: CleanVMsReadyForCollectorInstallation,
+                                                             version: str,
+                                                             aggregator_ip: str,
+                                                             registration_password: str,
+                                                             organization: str,
+                                                             max_timeout: int = 15*60) -> WindowsCollector | LinuxCollector:
+
+        vsphere_machine_operations = vsphere_cluster_handler.get_specific_vm_from_cluster(
+            vm_search_type=VmSearchTypeEnum.VM_NAME,
+            txt_to_search=vm_name.value)
+
+        if vsphere_machine_operations is None:
+            assert False, f"Can not find machine with the name {vm_name.value} in vsphere"
+
+        if vsphere_machine_operations.is_power_on():
+            start_time = time.time()
+            while vsphere_machine_operations.is_power_on() and time.time() - start_time < max_timeout:
+                time.sleep(30)
+
+            assert vsphere_machine_operations.is_power_off(), f"Can not allocate {vm_name.value} since it's in use"
+
+        # double check lock
+        # check if vm free to use (is power off and name as in enum)
+        # random wait - if already allocated by someone else, renaming takes few millis while power on take ~ 3 seconds
+        # after allocating and powering on, return the name as it was
+        if _is_vm_free_to_use(vm_ops=vsphere_machine_operations, collector_vm=vm_name):
+            time.sleep(random.randint(1, 4))
+            if _is_vm_free_to_use(vm_ops=vsphere_machine_operations, collector_vm=vm_name):
+                vsphere_machine_operations.rename_machine_in_vsphere(f"{EnvironmentCreationHandler.BUSY_VM_COLLECTOR}{vsphere_machine_operations.vm_obj.name}")
+                vsphere_machine_operations.power_on()
+
+            # wait for ip appear
+            start_time = time.time()
+            get_ip_timeout = 2 * 60
+            while time.time() - start_time < get_ip_timeout and vsphere_machine_operations.vm_obj.guest.ipAddress is None:
+                time.sleep(1)
+
+            if vsphere_machine_operations.vm_obj.guest.ipAddress is None:
+                vsphere_machine_operations.rename_machine_in_vsphere(new_name=vm_name.value)
+                vsphere_machine_operations.power_off()
+                assert False, f"VM did not get IP within timeout of {get_ip_timeout}"
+
+        collector = None
+
+        try:
+            if 'win' in vm_name.value.lower():
+                collector = WindowsCollector(host_ip=vsphere_machine_operations.vm_obj.guest.ipAddress,
+                                             user_name=sut_details.win_user_name,
+                                             password=sut_details.win_password)
+
+            elif 'linux' in vm_name.value.lower():
+                collector = LinuxCollector(host_ip=vsphere_machine_operations.vm_obj.guest.ipAddress,
+                                           user_name=sut_details.win_user_name,
+                                           password=sut_details.win_password)
+
+            else:
+                raise Exception(f"Can not decide if {vm_name.value} is a windows or linux OS so can not proceed with the installation")
+
+            if collector.is_agent_installed():
+                assert False, "Can not install collector since there is already installed collector on this system"
+
+            if _is_vm_free_to_use(vm_ops=vsphere_machine_operations, collector_vm=vm_name):
+                assert False, "VM is not ready to use since it's busy"
+
+
+            # if snapshot with the name "clean_os" does not exist, create it before collector installation
+            if not collector.os_station.vm_operations.is_snapshot_name_exist(
+                    snapshot_name=collector.os_station.vm_operations.CLEAN_OS_SNAPSHOT_NAME):
+                collector.os_station.vm_operations.snapshot_create(
+                    snapshot_name=collector.os_station.vm_operations.CLEAN_OS_SNAPSHOT_NAME,
+                    memory=True)
+
+            collector.install_collector(version=version,
+                                        aggregator_ip=aggregator_ip,
+                                        registration_password=registration_password,
+                                        organization=organization)
+
+            return collector
+
+        except Exception as e:
+            vsphere_machine_operations.rename_machine_in_vsphere(vm_name.value)
+            vsphere_machine_operations.revert_to_root_snapshot()
+            vsphere_machine_operations.power_off()
+            raise e
+
+
 
 if __name__ == "__main__":
-    from infra.system_components.management import Management as mgmt
     import infra.vpshere.vsphere_cluster_details
     import sut_details
 
     vspere_details = infra.vpshere.vsphere_cluster_details.ENSILO_VCSA_40
     vsphere_handler = infra.vpshere.vsphere_cluster_handler.VsphereClusterHandler(vspere_details)
     date_random = random.random()
-    management = mgmt.instance()
+    # management = mgmt.instance()
 
     vm_aggregator = EnvironmentCreationHandler.deploy_system_component_from_template(
         vsphere_cluster_handler=vsphere_handler,
         component_type=ComponentType.AGGREGATOR,
         desired_component_name=f'test_deployment_component-{date_random}',
         desired_version='5.0.3.678',
-        management_ip=management.host_ip,
-        management_registration_password=management.registration_password,
+        management_ip=sut_details.management_host,
+        management_registration_password=sut_details.management_registration_password,
         aggregator_ip=None)
 
     vm_core = EnvironmentCreationHandler.deploy_system_component_from_template(
@@ -369,8 +526,8 @@ if __name__ == "__main__":
         component_type=ComponentType.CORE,
         desired_component_name=f'test_deployment_component-{date_random}',
         desired_version='5.0.3.678',
-        management_ip=management.host_ip,
-        management_registration_password=management.registration_password,
+        management_ip=sut_details.management_host,
+        management_registration_password=sut_details.management_registration_password,
         aggregator_ip=vm_aggregator.host_ip)
 
     vm_aggregator.vm_operations.remove_vm()

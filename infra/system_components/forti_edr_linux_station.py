@@ -8,7 +8,7 @@ import allure
 import third_party_details
 from infra.forti_edr_versions_service_handler.forti_edr_versions_service_handler import FortiEdrVersionsServiceHandler
 from infra.allure_report_handler.reporter import Reporter
-from infra.enums import SystemState, ComponentType
+from infra.enums import FortiEdrSystemState, ComponentType
 from infra.os_stations.linux_station import LinuxStation
 from infra.utils.utils import StringUtils
 
@@ -74,11 +74,11 @@ class FortiEdrLinuxStation(LinuxStation):
 
     @allure.step('Validate {0} service state is "{desired_state}"')
     def validate_system_component_is_in_desired_state(self,
-                                                      desired_state: SystemState):
+                                                      desired_state: FortiEdrSystemState):
 
         assert self.is_system_in_desired_state(desired_state), f"service is not {desired_state.name}"
 
-    def is_system_in_desired_state(self, desired_state: SystemState):
+    def is_system_in_desired_state(self, desired_state: FortiEdrSystemState):
         status = self.get_status()
 
         expected_running_cmd = f'[+] {self.__component_type.value} is running'
@@ -88,11 +88,11 @@ class FortiEdrLinuxStation(LinuxStation):
             expected_running_cmd = expected_running_cmd.replace(self.__component_type.value, 'webapp')
             expected_not_running_cmd = expected_not_running_cmd.replace(self.__component_type.value, 'webapp')
 
-        if desired_state == SystemState.RUNNING and expected_running_cmd in status:
+        if desired_state == FortiEdrSystemState.RUNNING and expected_running_cmd in status:
             Reporter.report(f"service is up and running as expected")
             return True
 
-        elif desired_state == SystemState.NOT_RUNNING and expected_not_running_cmd in status:
+        elif desired_state == FortiEdrSystemState.NOT_RUNNING and expected_not_running_cmd in status:
             Reporter.report(f"service is not up and running as expected")
             return True
 
@@ -102,7 +102,7 @@ class FortiEdrLinuxStation(LinuxStation):
 
     @allure.step('Wait until service will be in desired state: {desired_state}')
     def wait_until_service_will_be_in_desired_state(self,
-                                                    desired_state: SystemState,
+                                                    desired_state: FortiEdrSystemState,
                                                     timeout: int = 5*60,
                                                     check_interval: int = 10):
         start_time = time.time()
@@ -319,7 +319,7 @@ class FortiEdrLinuxStation(LinuxStation):
                 if 'FortiEDR patch installation finished successfully' not in result:
                     assert False, "Something went wrong during the upgrade"
 
-            self.wait_until_service_will_be_in_desired_state(desired_state=SystemState.RUNNING)
+            self.wait_until_service_will_be_in_desired_state(desired_state=FortiEdrSystemState.RUNNING)
 
         else:
             Reporter.report(f"Skipping upgrade since the current version is >= desired version, current build: {current_build}, desired build: {desired_build}")

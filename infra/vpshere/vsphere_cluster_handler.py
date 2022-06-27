@@ -1,5 +1,4 @@
 import atexit
-import collections.abc
 import time
 from enum import Enum
 
@@ -216,6 +215,7 @@ class VsphereClusterHandler(object):
 
         return vsphere_operations
 
+
     def _get_vsphere_objects(self, content, vim_type, folder=None, recurse=True):
         """
             Search the managed object for the name and type specified.
@@ -275,15 +275,19 @@ if __name__ == '__main__':
     cluster_details = vsphere_cluster_details.ENSILO_VCSA_40
     vsphere_cluster_handler = VsphereClusterHandler(cluster_details=cluster_details)
 
-    vms = []
-    all_enums = [e.value for e in AutomationVmTemplates]
-    all_enums.remove('')
-    for template_name in all_enums:
-        print(template_name)
-        vm = vsphere_cluster_handler.get_specific_vm_from_cluster(vm_search_type=VmSearchTypeEnum.VM_NAME,
-                                                                  txt_to_search=template_name)
-        if vm is None:
-            print(f"{template_name} is None")
+    vm: VsphereMachineOperations = vsphere_cluster_handler.get_specific_vm_from_cluster(
+        vm_search_type=VmSearchTypeEnum.VM_NAME,
+        txt_to_search="NightRunParallelCollectors64_HF1_Win11_10")
+
+    # vms = []
+    # all_enums = [e.value for e in AutomationVmTemplates]
+    # all_enums.remove('')
+    # for template_name in all_enums:
+    #     print(template_name)
+    #     vm = vsphere_cluster_handler.get_specific_vm_from_cluster(vm_search_type=VmSearchTypeEnum.VM_NAME,
+    #                                                               txt_to_search=template_name)
+    #     if vm is None:
+    #         print(f"{template_name} is None")
 
     # created_vm = vsphere_cluster_handler.create_vm(
     #     vm_template=CollectorTemplateNames.WIN_11X64,

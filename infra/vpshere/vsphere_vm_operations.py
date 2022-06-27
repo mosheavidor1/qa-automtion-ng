@@ -15,8 +15,12 @@ from infra.allure_report_handler.reporter import Reporter
 
 __author__ = "Dmitry Banny"
 
+from infra.enums import OsPowerState
+
 
 class VsphereMachineOperations:
+
+    CLEAN_OS_SNAPSHOT_NAME = 'clean_os'
 
     def __init__(self,
                  service_instance,
@@ -73,6 +77,10 @@ class VsphereMachineOperations:
 
     @allure.step("Create VM snapshot")
     def snapshot_create(self, snapshot_name, snapshot_description="", memory=True, quiesce=False):
+
+        if self.is_snapshot_name_exist(snapshot_name=snapshot_name):
+            assert False, f"Can not create snapshot with the name: {snapshot_name} since it's already exist"
+
         if self._vm_obj:
             task = self._vm_obj.CreateSnapshot_Task(name=snapshot_name,
                                                     description=snapshot_description,
@@ -88,6 +96,30 @@ class VsphereMachineOperations:
             return current_snapshot
         else:
             raise Exception("No VM object created")
+
+    def is_snapshot_name_exist(self, snapshot_name):
+        all_snapshots_objs = self.get_all_snapshots()
+        all_snapshot_names = [x.name for x in all_snapshots_objs]
+
+        if snapshot_name in all_snapshot_names:
+            return True
+
+        return False
+
+    @allure.step("Remove snapshot with the name: {snapshot_name}")
+    def snapshot_remove_by_name(self, snapshot_name):
+        if snapshot_name == self.CLEAN_OS_SNAPSHOT_NAME:
+            assert False, f"Can not remove snapshot with the name: {self.CLEAN_OS_SNAPSHOT_NAME}"
+
+        all_snapshots = self.get_all_snapshots()
+        is_found = False
+        for snapshot_tree in all_snapshots:
+            if snapshot_tree.name == snapshot_name:
+                is_found = True
+                task = snapshot_tree.snapshot.RemoveSnapshot_Task(False)
+                WaitForTask(task, self._service_instance)
+
+        assert is_found, f"did not found any snapshot with the name: {snapshot_name}"
 
     @allure.step("Revert to snapshot with the name: {snapshot_name}")
     def snapshot_revert_by_name(self,
@@ -137,7 +169,7 @@ class VsphereMachineOperations:
                 Reporter.report(str(e))
 
     @allure.step("Remove current VM snapshot")
-    def snapshot_remove(self, remove_children=False):
+    def snapshot_remove_current(self, remove_children=False):
         """This function removes a current snapshot.
 
         Usage
@@ -146,6 +178,9 @@ class VsphereMachineOperations:
             Use this when all the children of the snapshot should be removed.
         """
         try:
+            if self.vm_obj.snapshot.currentSnapshot.name == self.CLEAN_OS_SNAPSHOT_NAME:
+                assert False, f"Can not remove snapshot with the name: {self.CLEAN_OS_SNAPSHOT_NAME}"
+
             task = self.vm_obj.snapshot.currentSnapshot.RemoveSnapshot_Task(remove_children)
             WaitForTask(task, self._service_instance)
             Reporter.report(f"Snapshot removal status: {task}")
@@ -158,7 +193,7 @@ class VsphereMachineOperations:
             Reporter.report(str(e))
 
     @allure.step("Rename current VM snapshot")
-    def snapshot_rename(self, new_name: str):
+    def rename_current_snapshot(self, new_name: str):
         """This function renames a current snapshot.
 
         Parameters
@@ -172,24 +207,51 @@ class VsphereMachineOperations:
 
     @allure.step("Remove all snapshots")
     def remove_all_snapshots(self):
-        Reporter.report(f"Total snapshots: {len(self._snapshots_list)}, to be removed")
-        task = self._vm_obj.RemoveAllSnapshots()
+        all_snapshots = self.get_all_snapshots()
+        for snapshot_tree in all_snapshots:
+            if snapshot_tree.name != self.CLEAN_OS_SNAPSHOT_NAME:
+                task = snapshot_tree.snapshot.RemoveSnapshot_Task(False)
+                WaitForTask(task, self._service_instance)
+
+    # @allure.step("Remove all snapshots")
+    # def remove_all_snapshots(self):
+    #     Reporter.report(f"Total snapshots: {len(self._snapshots_list)}, to be removed")
+    #     task = self._vm_obj.RemoveAllSnapshots()
+    #     WaitForTask(task, self._service_instance)
+    #     # Reporter.report(f"All Snapshots removal status: {task}")
+    #
+    #     self._snapshots_list.clear()
+    #     Reporter.report(f"All Snapshots removal status: {task}")
+    #     Reporter.report(f"Snapshots list: {len(self._snapshots_list)}")
+
+    @allure.step("Get all snapshot objects")
+    def get_all_snapshots(self):
+        results = []
+        try:
+            root_snapshots = self.vm_obj.snapshot.rootSnapshotList
+        except:
+            root_snapshots = []
+
+        for snapshot in root_snapshots:
+            results.append(snapshot)
+            results += self._get_child_snapshots(snapshot)
+
+        return results
+
+    def _get_child_snapshots(self, snapshot):
+        results = []
+        snapshots = snapshot.childSnapshotList
+
+        for snapshot in snapshots:
+            results.append(snapshot)
+            results += self._get_child_snapshots(snapshot)
+
+        return results
+
+    @allure.step("Revert to root snapshot")
+    def revert_to_root_snapshot(self):
+        task = self._vm_obj.snapshot.rootSnapshotList[0].snapshot.RevertToSnapshot_Task(suppressPowerOn=False)
         WaitForTask(task, self._service_instance)
-        # Reporter.report(f"All Snapshots removal status: {task}")
-
-        self._snapshots_list.clear()
-        Reporter.report(f"All Snapshots removal status: {task}")
-        Reporter.report(f"Snapshots list: {len(self._snapshots_list)}")
-
-    @allure.step("Print all snapshots")
-    def get_all_snapshots(self, snapshots=None):
-        raise Exception("Not implemented yet.")
-        # TODO: get_all_snapshots
-        # Print all the snapshots names
-        # Print all the snapshots IDs ('vim.vm.Snapshot:snapshot-40013')
-        # for snapshot_object in self._snapshots_list:
-        #     snapshot_name, snapshot_object = self._snapshots_list
-        # raise Exception("Not implemented yet.")
 
     @allure.step("Get VM snapshot-id by name")
     def get_snapshot_by_name(self, snapshot_name=None):
@@ -212,12 +274,14 @@ class VsphereMachineOperations:
         task = self._vm_obj.PowerOnVM_Task()
         WaitForTask(task, self._service_instance)
         # Reporter.report(f"Machine power on: {task.info.state}")
+        self._wait_for_desired_power_state(desired_state=OsPowerState.RUNNING)
 
     @allure.step("VM power off")
     def power_off(self):
         task = self._vm_obj.PowerOffVM_Task()
         WaitForTask(task, self._service_instance)
         # Reporter.report(f"Machine power off: {task.info.state}")
+        self._wait_for_desired_power_state(desired_state=OsPowerState.NOT_RUNNING)
 
     @allure.step("VM suspend")
     def suspend(self):
@@ -255,7 +319,24 @@ class VsphereMachineOperations:
 
         return task.info.result
 
-    def _create_clone_spec(self, resource_pool_object, power_on=True):
+    def is_power_on(self):
+        if self._vm_obj.guest.guestState == 'running':
+            return True
+
+        return False
+
+    def is_power_off(self):
+        if self._vm_obj.guest.guestState == 'notRunning':
+            return True
+
+        return False
+
+    @allure.step("Renamge VM in vSphere")
+    def rename_machine_in_vsphere(self, new_name: str):
+        task = self._vm_obj.Rename(new_name)
+        WaitForTask(task, self._service_instance)
+
+    def _create_clone_spec(self, resource_pool_object, power_on: bool=True):
         clone_spec = vim.vm.CloneSpec()
 
         relocatespec = vim.vm.RelocateSpec()
@@ -264,3 +345,27 @@ class VsphereMachineOperations:
         clone_spec.powerOn = power_on
 
         return clone_spec
+
+    @allure.step("Wait until VM will be in power state: desired_state")
+    def _wait_for_desired_power_state(self,
+                                      desired_state: OsPowerState,
+                                      timeout: int = 60):
+        expected_string = None
+        if desired_state == OsPowerState.RUNNING:
+            expected_string = 'running'
+
+        elif desired_state == OsPowerState.NOT_RUNNING:
+            expected_string = 'notRunning'
+
+        else:
+            raise Exception(f'desired state: {desired_state} does not supported')
+
+        start_time = time.time()
+        is_in_desired_state = False
+        while time.time() - start_time < timeout and not is_in_desired_state:
+            if self._vm_obj.guest.guestState == expected_string:
+                is_in_desired_state = True
+            else:
+                time.sleep(1)
+
+        assert is_in_desired_state, f"VM is not in desired state within {timeout}"

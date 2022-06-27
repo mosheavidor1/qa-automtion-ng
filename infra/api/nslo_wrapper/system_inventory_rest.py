@@ -3,7 +3,7 @@ from typing import List
 import logging
 import allure
 from ensilo.platform.rest.nslo_management_rest import NsloRest
-from infra.enums import SystemState
+from infra.enums import FortiEdrSystemState
 from infra.allure_report_handler.reporter import Reporter
 from infra.api.nslo_wrapper.base_rest_functionality import BaseRestFunctionality
 from infra.system_components.collector import CollectorAgent
@@ -140,11 +140,11 @@ class SystemInventoryRest(BaseRestFunctionality):
         return True
 
     @allure.step("{toggle_status} collector via MGMT api")
-    def toggle_collector(self, collector_name: str, organization_name: str, toggle_status: SystemState,
+    def toggle_collector(self, collector_name: str, organization_name: str, toggle_status: FortiEdrSystemState,
                          expected_status_code: int = 200):
         """ Change collector status (disable/enable) via rest api to MGMT """
         logger.info(f"{toggle_status} collector via MGMT api")
-        enable = True if toggle_status == SystemState.ENABLED else False
+        enable = True if toggle_status == FortiEdrSystemState.ENABLED else False
         status, response = self._rest.inventory.ToggleCollectors(
             collectors=[collector_name],
             organization=organization_name,
@@ -155,7 +155,7 @@ class SystemInventoryRest(BaseRestFunctionality):
             actual_status_code=response.status_code,
             error_message=f"Failed to disable collector, got {response.status_code} instead {expected_status_code}")
 
-    @allure.step("Get Collector Groups in organization {organization_name}")
+    @allure.step("Get collector groups in organization {organization_name}")
     def get_collector_groups(self,
                              organization_name="Default",
                              expected_status_code: int = 200):
@@ -167,3 +167,13 @@ class SystemInventoryRest(BaseRestFunctionality):
 
         as_list_of_dicts = json.loads(response.content)
         return as_list_of_dicts
+
+    @allure.step("Delete collectors")
+    def delete_collectors(self,
+                          collector_names: List[str],
+                          expected_status_code: int = 200):
+
+        status, response = self._rest.inventory.DeleteCollectors(devices=collector_names)
+        self._validate_expected_status_code(expected_status_code=expected_status_code,
+                                            actual_status_code=response.status_code,
+                                            error_message=f"Reset user password - expected response code: {expected_status_code}, actual: {response.status_code}")
