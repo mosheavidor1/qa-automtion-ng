@@ -5,6 +5,7 @@ from infra.system_components.collectors.windows_os.windows_collector import Wind
 from tests.utils.linux_collector_utils import LinuxCollectorUtils
 from infra.allure_report_handler.reporter import Reporter, TEST_STEP, INFO
 from tests.utils.tenant_utils import new_tenant_context
+from tests.utils.collector_utils import CollectorUtils
 
 
 @allure.epic("Collectors")
@@ -180,37 +181,37 @@ def test_disable_enable_collector(management, collector):
         rest_collector.wait_until_running()
 
 
-# @allure.epic("Collectors")
-# @allure.feature("Basic Functionality")
-# @pytest.mark.sanity
-# @pytest.mark.linux_sanity
-# @pytest.mark.collector_sanity
-# @pytest.mark.collector_linux_sanity
-# def test_collector_with_new_org_registration_password(management, collector):
-#     """ Check that collector can work with the new registration password of the new tenant:
-#     1. Create new tenant with registration password that is different from the
-#     registration password of the current tenant.
-#     2. Move collector to the new tenant.
-#     3. Stop collector with the new registration password (of the new tenant) and validate that stopped successfully.
-#     4. Cleanup: start collector -> move collector back to source tenant -> delete the new tenant
-#     """
-#     collector_agent = collector
-#     rest_collector = management.tenant.rest_components.collectors.get_by_ip(ip=collector_agent.host_ip)
-#     old_registration_password = management.tenant.organization.registration_password
-#
-#     Reporter.report("Create a new tenant with a different registration password", INFO)
-#     with new_tenant_context(management=management, rest_collector=rest_collector) as tenant_with_collector:
-#         new_tenant, new_tenant_rest_collector = tenant_with_collector
-#
-#         with TEST_STEP(f"Stop {collector_agent} with the new registration password and validate that stopped"):
-#             new_registration_password = new_tenant.organization.registration_password
-#             assert new_registration_password != old_registration_password
-#             collector_agent.stop_collector(password=new_registration_password)
-#             Reporter.report(f"Validate {collector_agent} stopped successfully with new registration password", INFO)
-#             collector_agent.wait_until_agent_down()
-#             new_tenant_rest_collector.wait_until_disconnected()
-#
-#         with TEST_STEP(f"Turn back on the {collector_agent}"):
-#             collector_agent.start_collector()
-#             collector_agent.wait_until_agent_running()
-#             new_tenant_rest_collector.wait_until_running()
+@allure.epic("Collectors")
+@allure.feature("Basic Functionality")
+@pytest.mark.sanity
+@pytest.mark.linux_sanity
+@pytest.mark.collector_sanity
+@pytest.mark.collector_linux_sanity
+def test_collector_with_new_org_registration_password(management, collector):
+    """ Check that collector can work with the new registration password of the new tenant:
+    1. Create new tenant with registration password that is different from the
+    registration password of the current tenant.
+    2. Move collector to the new tenant.
+    3. Stop collector with the new registration password (of the new tenant) and validate that stopped successfully.
+    4. Cleanup: start collector -> move collector back to source tenant -> delete the new tenant
+    """
+    collector_agent = collector
+    old_registration_password = management.tenant.organization.registration_password
+
+    Reporter.report("Create a new tenant with a different registration password", INFO)
+    with new_tenant_context(management=management, collector_agent=collector_agent) as tenant_with_collector:
+        new_tenant, new_tenant_rest_collector = tenant_with_collector
+
+        with TEST_STEP(f"Stop {collector_agent} with the new registration password and validate that stopped"):
+            new_registration_password = new_tenant.organization.registration_password
+            assert new_registration_password != old_registration_password
+            CollectorUtils.wait_for_configuration(collector_agent=collector_agent, tenant=new_tenant,
+                                                  start_collector=False)
+            Reporter.report(f"Validate {collector_agent} stopped successfully with new registration password", INFO)
+            collector_agent.wait_until_agent_down()
+            new_tenant_rest_collector.wait_until_disconnected()
+
+        with TEST_STEP(f"Turn back on the {collector_agent}"):
+            collector_agent.start_collector()
+            collector_agent.wait_until_agent_running()
+            new_tenant_rest_collector.wait_until_running()
