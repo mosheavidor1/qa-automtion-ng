@@ -407,6 +407,7 @@ class WindowsStation(OsStation):
         self.execute_cmd(cmd=cmd_builder, fail_on_err=True)
 
     @allure.step("Copy files from shared folder to local machine")
+    @retry
     def copy_files_from_shared_folder(self,
                                       target_path_in_local_machine: str,
                                       shared_drive_path: str,
