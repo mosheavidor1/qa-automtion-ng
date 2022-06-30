@@ -240,6 +240,9 @@ class EnvironmentCreationHandler:
                         snapshot_name=collector.os_station.vm_operations.CLEAN_OS_SNAPSHOT_NAME,
                         memory=True)
 
+            # create clean OS snapshot before installing collector
+            collector.os_station.vm_operations.snapshot_create(collector.os_station.vm_operations.CLEAN_OS_SNAPSHOT_NAME)
+
             collector.install_collector(version=version,
                                         aggregator_ip=aggregator_ip,
                                         registration_password=registration_password,
