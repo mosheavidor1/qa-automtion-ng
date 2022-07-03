@@ -287,14 +287,15 @@ class FortiEdrLinuxStation(LinuxStation):
         current_build = StringUtils.get_txt_by_regex(text=current_version, regex="\d+.\d+.\d+.(\d+)", group=1)
 
         if desired_build is None:
-            latest_versions = FortiEdrVersionsServiceHandler.get_latest_versions(base_version=base_version)
+            latest_versions = FortiEdrVersionsServiceHandler.get_latest_components_builds(base_version=base_version,
+                                                                                          num_builds=1)
             match self.__component_type:
                 case ComponentType.MANAGEMENT:
-                    desired_build = latest_versions.get('management')
+                    desired_build = latest_versions.get('management')[0]
                 case ComponentType.AGGREGATOR:
-                    desired_build = latest_versions.get('aggregator')
+                    desired_build = latest_versions.get('aggregator')[0]
                 case ComponentType.CORE:
-                    desired_build = latest_versions.get('core')
+                    desired_build = latest_versions.get('core')[0]
 
             assert desired_build is not None, f"did not found versions that matching to the component {self.__component_type}"
 

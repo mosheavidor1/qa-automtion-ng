@@ -129,7 +129,9 @@ def get_base_versions_of_all_sys_components_as_dict():
 def get_latest_versions_of_all_base_versions_dict(base_versions_dict: dict):
     last_versions_dict = {}
     for key in base_versions_dict.keys():
-        tmp = FortiEdrVersionsServiceHandler.get_latest_versions(base_version=key)
+        tmp = FortiEdrVersionsServiceHandler.get_latest_components_builds(base_version=key, num_builds=1)
+        for nested_key, value in tmp.items():
+            tmp[nested_key] = value[0]
         last_versions_dict[key] = tmp
 
     return last_versions_dict
