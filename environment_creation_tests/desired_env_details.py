@@ -12,7 +12,7 @@ linux_collector_version = os.getenv("linux_collector_version") if os.getenv("lin
 management_and_aggregator_deployment_architecture = os.getenv("management_and_aggregator_deployment_architecture") if os.getenv("management_and_aggregator_deployment_architecture") is not None else 'both'
 
 aggregators_amount = int(os.getenv("aggregators_amount")) if os.getenv("aggregators_amount") is not None else 1
-cores_amount = int(os.getenv("cores_amount")) if os.getenv("cores_amount") is not None else 0
+cores_amount = int(os.getenv("cores_amount")) if os.getenv("cores_amount") is not None else 1
 windows_11_64_bit = int(os.getenv("windows_11_64_bit")) if os.getenv("windows_11_64_bit") is not None else 0
 windows_10_64_bit = int(os.getenv("windows_10_64_bit")) if os.getenv("windows_10_64_bit") is not None else 0
 windows_10_32_bit = int(os.getenv("windows_10_32_bit")) if os.getenv("windows_10_32_bit") is not None else 0

@@ -681,38 +681,39 @@ def revert_to_first_snapshot_for_all_collectors(management: Management, collecto
 def get_collector_latest_version(collector: CollectorAgent) -> str:
     collector_version = collector.get_version()
     collector_base_version = StringUtils.get_txt_by_regex(text=collector_version, regex='(\d+.\d+.\d+).\d+', group=1)
-    latest_versions = FortiEdrVersionsServiceHandler.get_latest_versions(base_version=collector_base_version)
+    latest_versions = FortiEdrVersionsServiceHandler.get_latest_components_builds(base_version=collector_base_version,
+                                                                                  num_builds=1)
 
     latest_version = None
     if isinstance(collector, WindowsCollector):
         architecture = collector.os_station.get_os_architecture()
         if architecture == '64-bit':
-            latest_version = latest_versions['windows_64_collector']
+            latest_version = latest_versions['windows_64_collector'][0]
 
         elif architecture == '32-bit':
-            latest_version = latest_versions['windows_32_collector']
+            latest_version = latest_versions['windows_32_collector'][0]
 
         else:
             raise Exception(f"Upgrade for windows {architecture} is not supported yet")
 
     elif isinstance(collector, LinuxCollector):
         if collector.os_station.distro_data.version_name == 'CentOS6':
-            latest_version = latest_versions['centos_6_collector']
+            latest_version = latest_versions['centos_6_collector'][0]
 
         elif collector.os_station.distro_data.version_name == 'CentOS7':
-            latest_version = latest_versions['centos_7_collector']
+            latest_version = latest_versions['centos_7_collector'][0]
 
         elif collector.os_station.distro_data.version_name == 'CentOS8':
-            latest_version = latest_versions['centos_8_collector']
+            latest_version = latest_versions['centos_8_collector'][0]
 
         elif collector.os_station.distro_data.version_name == 'Ubuntu20.04':
-            latest_version = latest_versions['ubuntu_20_collector']
+            latest_version = latest_versions['ubuntu_20_collector'][0]
 
         elif 'ubuntu18' in collector.os_station.distro_data.version_name.lower():
-            latest_version = latest_versions['ubuntu_18_collector']
+            latest_version = latest_versions['ubuntu_18_collector'][0]
 
         elif 'ubuntu16' in collector.os_station.distro_data.version_name.lower():
-            latest_version = latest_versions['ubuntu_16_collector']
+            latest_version = latest_versions['ubuntu_16_collector'][0]
 
         else:
             raise Exception(f"Upgrade for {collector.os_station.distro_data.version_name} is not supported yet")
