@@ -2,6 +2,8 @@ import os
 
 USER_NAME = 'automation'
 PASSWORD = 'Aut0g00dqa42'
+JENKINS_API_TOKEN = '11207ededd75f01f6880eba42ab16bcf09'
+JENKINS_URL = 'http://jenkins.ensilo.local/'
 USER_NAME_DOMAIN = f'ensilo\\{USER_NAME}'
 SHARED_DRIVE_PATH = r'\\ens-fs01.ensilo.local'
 SHARED_DRIVE_QA_PATH = fr'{SHARED_DRIVE_PATH}\qa'
