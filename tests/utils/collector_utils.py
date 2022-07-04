@@ -50,4 +50,13 @@ class CollectorUtils:
             collector_agent.wait_until_agent_running()
             rest_collector.wait_until_running()
 
-
+    @staticmethod
+    @allure.step("Validate collector installed successfully- basic validation")
+    def validate_collector_installed_successfully(tenant: Tenant, collector_agent: CollectorAgent, expected_version):
+        logger.info(f"Validate {collector_agent} installed successfully- basic validation")
+        rest_collector = tenant.rest_components.collectors.get_by_ip(ip=collector_agent.host_ip)
+        rest_collector.wait_until_running()
+        collector_agent.wait_until_agent_running()
+        assert collector_agent.get_version() == expected_version, \
+            f"{collector_agent} version is {collector_agent.get_version()} instead of {expected_version}"
+        assert collector_agent.is_collector_files_exist(), f"Installation folder was not created"

@@ -4,7 +4,8 @@ from infra.api.api_object import BaseApiObj
 from infra.api.nslo_wrapper.rest_commands import RestCommands
 from infra.enums import FortiEdrSystemState
 from infra.common_utils import wait_for_condition
-from infra.system_components.collectors.default_values import COLLECTOR_KEEPALIVE_INTERVAL, MAX_WAIT_FOR_STATUS
+from infra.system_components.collectors.default_values import COLLECTOR_KEEPALIVE_INTERVAL, MAX_WAIT_FOR_STATUS, \
+    MAX_WAIT_FOR_DELETION
 import allure
 logger = logging.getLogger(__name__)
 
@@ -106,8 +107,9 @@ class RestCollector(BaseApiObj):
     def update_fields(self):
         raise NotImplemented("Collector can't be updated via management")
 
-    def get_fields(self, safe=False, update_cache_data=False) -> dict:
-        collectors_fields = self._rest_client.system_inventory.get_collector_info_by_id(collector_id=self.id)
+    def get_fields(self, safe=False, update_cache_data=False, rest_client=None) -> dict:
+        rest_client = rest_client or self._rest_client
+        collectors_fields = rest_client.system_inventory.get_collector_info_by_id(collector_id=self.id)
         if len(collectors_fields):
             assert len(collectors_fields) == 1
             collector_fields = collectors_fields[0]
@@ -144,10 +146,25 @@ class RestCollector(BaseApiObj):
     def is_disconnected(self):
         return self.get_status(from_cache=False) == FortiEdrSystemState.DISCONNECTED.value
 
+    def is_uninstalling(self):
+        return self.get_status(from_cache=False) == FortiEdrSystemState.UNINSTALLING.value
+
     @allure.step("Wait until is Disconnected in management")
     def wait_until_disconnected(self, timeout_sec=MAX_WAIT_FOR_STATUS, interval_sec=COLLECTOR_KEEPALIVE_INTERVAL):
         logger.info(f"Wait until {self} is Disconnected in management")
         wait_for_condition(condition_func=self.is_disconnected,
+                           timeout_sec=timeout_sec, interval_sec=interval_sec)
+
+    @allure.step("Wait for status 'uninstalling' in management")
+    def wait_for_uninstalling(self, timeout_sec=MAX_WAIT_FOR_STATUS, interval_sec=COLLECTOR_KEEPALIVE_INTERVAL):
+        logger.info(f"Wait until {self} is in status 'uninstalling' in management")
+        wait_for_condition(condition_func=self.is_uninstalling,
+                           timeout_sec=timeout_sec, interval_sec=interval_sec)
+
+    @allure.step("Wait until deleted from management")
+    def wait_until_deleted(self, timeout_sec=MAX_WAIT_FOR_DELETION, interval_sec=COLLECTOR_KEEPALIVE_INTERVAL):
+        logger.info(f"Wait until {self} is deleted from management")
+        wait_for_condition(condition_func=self.is_not_exist,
                            timeout_sec=timeout_sec, interval_sec=interval_sec)
 
     @allure.step("Enable collector")
@@ -180,3 +197,13 @@ class RestCollector(BaseApiObj):
         logger.info(f"Wait until {self} is disabled in management")
         wait_for_condition(condition_func=self.is_disabled,
                            timeout_sec=timeout_sec, interval_sec=interval_sec)
+
+    def is_exist(self) -> bool:
+        """ Check if collector exists in management """
+        logger.info(f"Check if {self} exists")
+        return self.get_fields(safe=True) is not None
+
+    def is_not_exist(self) -> bool:
+        """ Check if collector doesn't exist in management """
+        logger.info(f"Check if {self} doesn't exist in management")
+        return not self.is_exist()

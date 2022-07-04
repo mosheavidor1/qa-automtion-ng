@@ -369,6 +369,14 @@ class ManagementUiClient:
                                           assert_type=assert_type,
                                           test_timeout=test_timeout)
 
+        def uninstall_collector(self, data: dict = None, assert_type: AssertTypeEnum = AssertTypeEnum.HARD,
+                                test_timeout: int = 600):
+            self.parent.start_testim_flow(test_name="Collector | uninstall collector",
+                                          management_ui_ip=self.parent.management_ui_ip,
+                                          data=data,
+                                          assert_type=assert_type,
+                                          test_timeout=test_timeout)
+
         def export_excel_report(self,
                                 data: dict = None,
                                 assert_type: AssertTypeEnum = AssertTypeEnum.HARD,

@@ -475,8 +475,9 @@ def collector_health_check(management: Management, collector: CollectorAgent):
     assert collector.is_agent_running(), f"{collector} status is not running"
 
     yield collector
-    logger.info(f"Test end - {rest_collector} cleanup")
-    assert rest_collector.is_running(), f"{collector} is not running in {management}"
+    updated_rest_collector = management.tenant.rest_components.collectors.get_by_ip(ip=collector.host_ip)
+    logger.info(f"Test end - {updated_rest_collector} cleanup")
+    assert updated_rest_collector.is_running(), f"{collector} is not running in {management}"
     assert collector.is_agent_running(), f"{collector} status is not running"
 
 
