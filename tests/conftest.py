@@ -4,12 +4,14 @@ import logging
 import allure
 
 import sut_details
+import third_party_details
 from infra.allure_report_handler.reporter import Reporter
 from infra.assertion.assertion import Assertion
 from infra.enums import CollectorTypes, FortiEdrSystemState, AutomationVmTemplates, \
     CleanVMsReadyForCollectorInstallation
 from infra.environment_creation.environment_creation_handler import EnvironmentCreationHandler
 from infra.forti_edr_versions_service_handler.forti_edr_versions_service_handler import FortiEdrVersionsServiceHandler
+from infra.jenkins_utils.jenkins_handler import JenkinsHandler
 from infra.system_components.aggregator import Aggregator
 from infra.system_components.collector import CollectorAgent
 from infra.system_components.collectors.linux_os.linux_collector import LinuxCollector
@@ -243,6 +245,14 @@ def create_results_json(session, tests_results: dict):
 
         f.write(json.dumps(data_as_json, indent=4))
         f.truncate()
+
+
+@pytest.fixture(scope="session")
+def jenkins_handler() -> JenkinsHandler:
+    instance = JenkinsHandler(jenkins_url='',
+                              user_name=third_party_details.JENKINS_JOB,
+                              password=third_party_details.JENKINS_API_TOKEN)
+    return instance
 
 
 @pytest.fixture(scope="session")
