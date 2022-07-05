@@ -10,4 +10,4 @@ RUN mkdir -p /home/jenkins/resources
 ADD resources/requirements.txt resources/.
 RUN pip install -r resources/requirements.txt
 RUN mv ./.local /home/pip_lib/.
-# test note
+# test note -
