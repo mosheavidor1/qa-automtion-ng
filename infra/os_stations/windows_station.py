@@ -1,6 +1,9 @@
+import functools
+import os
 import random
 import re
 import logging
+
 from enum import Enum
 from typing import List
 import allure
@@ -9,6 +12,7 @@ from pypsexec.exceptions import SCMRException
 from smbprotocol.exceptions import PipeBroken
 
 import third_party_details
+from infra import common_utils
 from infra.allure_report_handler.reporter import Reporter
 from infra.decorators import retry
 from infra.common_utils import wait_for_condition
@@ -16,12 +20,14 @@ from infra.common_utils import wait_for_condition
 from infra.os_stations.os_station_base import OsStation
 from infra.os_stations.ps_py_exec_client_wrapper import PsPyExecClientWrapper
 from infra.utils.utils import StringUtils
+from infra.os_stations.os_station_base import EXTRACT_EDR_EVENT_TESTER_TIMEOUT, MAX_WAIT_FOR_FILE_TO_APPEAR
 
 logger = logging.getLogger(__name__)
 
 INTERVAL_STATION_KEEPALIVE = 5
 WAIT_FOR_STATION_UP_TIMEOUT = 5 * 60
 WAIT_FOR_STATION_DOWN_TIMEOUT = WAIT_FOR_STATION_UP_TIMEOUT
+SEVEN_ZIP_APPLICATION_PATH = "C:\\Program Files\\7-Zip"
 
 
 class WindowsServiceStartTypeEnum(Enum):
@@ -71,7 +77,8 @@ class WindowsStation(OsStation):
     def _connect_with_retry_on_different_encrypted_option(self):
         try:
             self._remote_connection_session = PsPyExecClientWrapper(self._host_ip,
-                                                                    unique_connection_id=random.randint(1000000, 9999999),
+                                                                    unique_connection_id=random.randint(1000000,
+                                                                                                        9999999),
                                                                     username=self._user_name,
                                                                     password=self._password,
                                                                     encrypt=self.__encrypted_connection)
@@ -123,7 +130,8 @@ class WindowsStation(OsStation):
                     else:
                         Reporter.report(f"command output: {output}")
 
-                if (fail_on_err and stderr_err_output != '') or (fail_on_err and status_code != 0 and 'windows 7' not in self.os_name.lower()):
+                if (fail_on_err and stderr_err_output != '') or (
+                        fail_on_err and status_code != 0 and 'windows 7' not in self.os_name.lower()):
                     assert False, f"Failing because stderr was returned, {output}"
 
                 if return_output:
@@ -134,7 +142,8 @@ class WindowsStation(OsStation):
 
         except SCMRException as e:
             self._remote_connection_session = None
-            Reporter.report("Failed to Execute command because somthing went wrong with pypsexec library connection, connecting again")
+            Reporter.report(
+                "Failed to Execute command because somthing went wrong with pypsexec library connection, connecting again")
             self.connect()
             raise e
 
@@ -145,7 +154,8 @@ class WindowsStation(OsStation):
 
         except PipeBroken as e:
             self._remote_connection_session = None
-            Reporter.report("Failed to connect to windows machine, if you are connected via VPN, check that windows firewall is disabled")
+            Reporter.report(
+                "Failed to connect to windows machine, if you are connected via VPN, check that windows firewall is disabled")
             raise e
 
         except Exception as e:
@@ -264,7 +274,8 @@ class WindowsStation(OsStation):
     @allure.step("Get memory usage")
     def get_memory_usage(self) -> float:
         cpu_info = self.execute_cmd(cmd='systeminfo | find /I "Physical Memory"', fail_on_err=True)
-        available_mem = int(re.search(r'Available\s+Physical\s+Memory:\s+(\d+,\d+)', cpu_info).group(1).replace(',', ''))
+        available_mem = int(
+            re.search(r'Available\s+Physical\s+Memory:\s+(\d+,\d+)', cpu_info).group(1).replace(',', ''))
         total_mem = int(re.search(r'Total\s+Physical\s+Memory:\s+(\d+,\d+)', cpu_info).group(1).replace(',', ''))
         usage = float((total_mem - available_mem) / total_mem)
         usage *= 100
@@ -391,7 +402,7 @@ class WindowsStation(OsStation):
         rows = content.split("\n")
         cmd_builder = f"ECHO {rows[0]} > {file_path}"
 
-        for i in range(1, len(rows)-1):
+        for i in range(1, len(rows) - 1):
             if not self.__is_valid_content_to_write(rows[i]):
                 continue
 
@@ -402,8 +413,8 @@ class WindowsStation(OsStation):
                 self.execute_cmd(cmd=cmd_builder, fail_on_err=True)
                 cmd_builder = f'ECHO {rows[i]} >> {file_path}'
 
-        if self.__is_valid_content_to_write(rows[len(rows)-1]):
-            cmd_builder += f"& ECHO {rows[len(rows)-1]} >> {file_path}"
+        if self.__is_valid_content_to_write(rows[len(rows) - 1]):
+            cmd_builder += f"& ECHO {rows[len(rows) - 1]} >> {file_path}"
         self.execute_cmd(cmd=cmd_builder, fail_on_err=True)
 
     @allure.step("Copy files from shared folder to local machine")
@@ -449,7 +460,7 @@ class WindowsStation(OsStation):
 
             files_exist = self.is_files_exist(target_path_in_local_machine, files_to_copy)
             if not files_exist:
-                    raise Exception(f"files copy failed in {self.host_ip}")
+                raise Exception(f"files copy failed in {self.host_ip}")
 
             return target_folder
 
@@ -468,7 +479,7 @@ class WindowsStation(OsStation):
             return False
 
         for single_file in files_to_copy:
-            if single_file not in files:
+            if single_file not in files and not None:
                 return False
         return True
 
@@ -497,3 +508,47 @@ class WindowsStation(OsStation):
         host_name = "Computer%RANDOM%" if host_name is None else host_name
         self.execute_cmd(cmd=f'wmic computersystem where name="%COMPUTERNAME%" call rename name={host_name}')
         self.reboot()
+
+    @allure.step("Wait for file to appear in specified folder")
+    def wait_for_file_to_appear_in_specified_folder(self, file_path, file_name, timeout=None):
+        max_timeout = timeout
+
+        if timeout is None:
+            max_timeout = MAX_WAIT_FOR_FILE_TO_APPEAR
+
+        predict_condition_func = functools.partial(self.is_files_exist, target_path=file_path, files_to_copy=[file_name])
+
+        common_utils.wait_for_condition(
+            condition_func=predict_condition_func,
+            timeout_sec=max_timeout,
+            interval_sec=INTERVAL_STATION_KEEPALIVE)
+
+    @allure.step("Extracting compressed file")
+    def extract_compressed_file(self, file_path_to_extract, file_name):
+        """This function using 7-zip which is should be installed in the VM templates in advance.
+        The extraction will be at the same copied path.
+
+        file_path: str - Path to file to be extracted
+        file_name: str - The file name to extract
+
+        Returns
+        ----
+        output_path: str - The output path of the extracted files
+        """
+        output_path = fr"{file_path_to_extract}\{file_name.split('.')[0]}"
+
+        command = fr"powershell Expand-Archive {file_path_to_extract}\{file_name} -DestinationPath {output_path} -Force -Verbose"
+        logger.info(f"Going to execute command: {command}")
+
+        Reporter.report(f"Extracting files with command: {command}")
+        command_output = self.execute_cmd(
+            cmd=command,
+            return_output=True,
+            fail_on_err=False,
+            timeout=EXTRACT_EDR_EVENT_TESTER_TIMEOUT,
+            attach_output_to_report=False,
+            asynchronous=False)
+
+        Reporter.report(f"Command Expand-Archive output:\n {command_output}")
+
+        return output_path

@@ -6,7 +6,7 @@ from infra.enums import LinuxDistroTypes
 import allure
 import paramiko
 import third_party_details
-from infra.allure_report_handler.reporter import Reporter
+from infra.allure_report_handler.reporter import Reporter, INFO
 from infra.decorators import retry
 from infra.os_stations.os_station_base import OsStation
 from infra.utils.utils import StringUtils
@@ -18,6 +18,8 @@ logger = logging.getLogger(__name__)
 INTERVAL_STATION_KEEPALIVE = 5
 WAIT_FOR_STATION_UP_TIMEOUT = 4 * 60
 WAIT_FOR_STATION_DOWN_TIMEOUT = 2 * 60
+COLLECTOR_TEMP_PATH = "/tmp"
+COLLECTOR_EDR_EVENT_TESTER_PATH = f"{COLLECTOR_TEMP_PATH}/edr_event_tester"
 
 
 class LinuxStation(OsStation):
@@ -26,6 +28,10 @@ class LinuxStation(OsStation):
         OsStation.__init__(self, host_ip=host_ip, user_name=user_name, password=password)
         self.distro_type = self.get_distro_type()
         self.distro_data = LinuxDistroDetails(self.distro_type)
+        self.__collector_installation_path: str = ""
+        self.__collector_config_folder: str = ""
+
+        self.__qa_files_path: str = COLLECTOR_TEMP_PATH
 
     @retry
     def connect(self):
@@ -452,3 +458,20 @@ class LinuxStation(OsStation):
             return LinuxDistroTypes.UBUNTU
         elif "centos" in os_name:
             return LinuxDistroTypes.CENTOS
+
+    @allure.step("Extract compressed file")
+    def extract_compressed_file(self, file_path_to_extract=None, file_name=None):
+        """
+        This functions extracts the provided file_path to provided output_path.
+        """
+        output_path = COLLECTOR_EDR_EVENT_TESTER_PATH
+
+        cmd = f'unzip {COLLECTOR_EDR_EVENT_TESTER_PATH}/{file_name} -d {output_path}'
+
+        output = self.execute_cmd(f"{cmd}")
+        Reporter.report(f"Extraction output\n {output}", INFO)
+
+        return output_path
+
+    def wait_for_file_to_appear_in_specified_folder(self, file_path: str, file_name: str, timeout: int, interval: int):
+        raise NotImplementedError()

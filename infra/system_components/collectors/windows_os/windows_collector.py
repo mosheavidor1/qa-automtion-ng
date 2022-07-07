@@ -10,9 +10,9 @@ from infra.system_components.collectors.collectors_agents_utils import (
     wait_until_collector_pid_disappears,
     wait_until_collector_pid_appears
 )
-from infra.allure_report_handler.reporter import Reporter
+from infra.allure_report_handler.reporter import Reporter, INFO
+from infra.system_components.collector import CollectorAgent, FILENAME_EDR_TESTER
 from infra.enums import FortiEdrSystemState
-from infra.system_components.collector import CollectorAgent
 from infra.utils.utils import StringUtils
 from sut_details import management_registration_password
 from infra.system_components.collectors.windows_os.windows_collector_installation_utils import (
@@ -29,7 +29,8 @@ REGISTRATION_PASS = management_registration_password
 DEFAULT_AGGREGATOR_PORT = 8081
 SERVICE_NAME = "FortiEDRCollectorService."
 INSTALL_UNINSTALL_LOGS_FOLDER_PATH = "C:\\InstallUninstallLogs"
-
+EXTRACT_EDR_EVENT_TESTER_TIMEOUT = 30
+EDR_EVENT_TESTER_TIMEOUT = 1200
 
 class WindowsCollector(CollectorAgent):
 
@@ -47,7 +48,9 @@ class WindowsCollector(CollectorAgent):
         self.__memory_dmp_file_path: str = r'C:\WINDOWS\memory.dmp'
         self.__collected_crash_dump_dedicated_folder: str = r'C:\CrashDumpsCollected'
         self.__collector_logs_folder: str = f"{self.__program_data}\Logs"
-        self.__qa_files_path: str = "C:\\qa"
+        self.__collector_config_folder: str = f"{self.__program_data}\Config\Collector"
+        self.__bootstrap_file_name: str = "CollectorBootstrap.jsn"
+        self.__qa_files_path: str = r"C:\qa"
         self._kill_all_undesired_processes()
 
     @property
@@ -480,3 +483,95 @@ class WindowsCollector(CollectorAgent):
         logs_folder = collector.os_station.create_new_folder(fr'{INSTALL_UNINSTALL_LOGS_FOLDER_PATH}')
         logs_path = fr"{logs_folder}\{logs_file_name}"
         return logs_path
+
+    @allure.step("Create collector bootstrap file backup")
+    def create_bootstrap_backup(self, reg_password, filename=None):
+        bootstrap_filename = self.__bootstrap_file_name
+
+        if filename is not None:
+            bootstrap_filename = filename
+
+        if self.get_agent_status() == FortiEdrSystemState.RUNNING:
+            self.stop_collector(password=reg_password)
+        else:
+            Reporter.report("No need to stop the collector", INFO)
+
+        full_path_collector_bootstrap = fr"{self.__collector_config_folder}\{bootstrap_filename}"
+        expected_backup_filename = fr"{self.__collector_config_folder}\{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}_{bootstrap_filename}"
+        Reporter.report(f"Full path of bootstrap file: {full_path_collector_bootstrap}"
+                        f"Expected backup filename: {expected_backup_filename}")
+
+        result = self.os_station.execute_cmd(fr"copy {full_path_collector_bootstrap} {expected_backup_filename}")
+        assert "Access is denied" not in result, f"File not copied due to access to copy file issue (usually the cause is collector not stopped). {result}"
+
+        self.start_collector()
+
+        return expected_backup_filename
+
+    @allure.step("Restoring collector bootstrap file from backup")
+    def restore_bootstrap_file(self, full_path_filename):
+        file_to_remove = fr"{self.__collector_config_folder}\{self.__bootstrap_file_name}"
+        del_command = fr"del {file_to_remove}"
+        rename_command = f"rename {full_path_filename} {self.__bootstrap_file_name}"
+
+        result = self.os_station.execute_cmd(del_command)
+        logger.debug(fr"Removing file: {full_path_filename}, result: {result}")
+
+        result = self.os_station.execute_cmd(rename_command)
+        logger.debug(fr"Renaming file '{full_path_filename}', result: {result}")
+
+    @allure.step("Simulation of EDR events configuration")
+    def config_edr_simulation_tester(self, simulator_path, reg_password):
+        """
+        This functions configures the EDR tester for running the EDR simulation in the collector.
+        """
+        config_params = 'config -a'
+        command = fr"python {simulator_path}\{FILENAME_EDR_TESTER} {config_params}"
+        logger.info(f"Going to execute command: `{command}`")
+
+        result = self.os_station.execute_cmd(
+            cmd=command,
+            return_output=True,
+            fail_on_err=False,
+            timeout=EDR_EVENT_TESTER_TIMEOUT,
+            attach_output_to_report=True,
+            asynchronous=False)
+        logger.info(f"Configuration result: {result}")
+
+        assert "Unable to open bootstrap" not in result, f"Configuration with error: {result}"
+
+    @allure.step("Start EDR events tester")
+    def start_edr_simulation_tester(self, simulator_path):
+        """
+        This function starts edrEventTester which is part of the EDR event simulation.
+        """
+        datetime_object = datetime.now().strftime("%d-%m-%Y_%H-%M-%S")
+        json_file_name = f'{datetime_object}-results.json'
+        test_command = 'test -s json -o'
+        debug_option = '-v DEBUG'
+        json_results_file_path = f"{simulator_path}\\{json_file_name}"
+
+        command = fr"python {simulator_path}\{FILENAME_EDR_TESTER} {test_command} {simulator_path}\{json_file_name} {debug_option}"
+
+        Reporter.report(f"Running command: {command}", INFO)
+        self.os_station.execute_cmd(
+                cmd=command,
+                return_output=True,
+                fail_on_err=False,
+                timeout=EDR_EVENT_TESTER_TIMEOUT,
+                attach_output_to_report=True,
+                asynchronous=False)
+
+        return json_results_file_path, json_file_name
+
+    @allure.step("EDR Event tester cleanup")
+    def cleanup_edr_simulation_tester(self, edr_event_tester_path, filename):
+        Reporter.report(f"Removing folder: {edr_event_tester_path}")
+        self.os_station.remove_folder(folder_path=edr_event_tester_path)
+
+        Reporter.report(rf"Removing file: {self.__qa_files_path}\{filename}")
+        self.os_station.remove_file(fr"{self.__qa_files_path}\{filename}")
+
+        Reporter.report(rf"{self.__collector_config_folder}\*.*.bak")
+        self.os_station.remove_file(rf"{self.__collector_config_folder}\*.*.bak")
+

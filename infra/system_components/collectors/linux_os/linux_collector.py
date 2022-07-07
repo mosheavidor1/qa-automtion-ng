@@ -1,8 +1,10 @@
+from logging import DEBUG
+
 import allure
 import time
 from typing import List
 import third_party_details
-from infra.os_stations.linux_station import LinuxStation
+from infra.os_stations.linux_station import LinuxStation, COLLECTOR_TEMP_PATH
 from infra.enums import FortiEdrSystemState, LinuxDistroTypes
 from infra.system_components.collector import CollectorAgent
 from infra.utils.utils import StringUtils
@@ -15,13 +17,16 @@ from sut_details import management_registration_password
 
 PREFIX_INSTALLER_FILE_NAME = "FortiEDRCollectorInstaller"
 SERVICE_NAME = "FortiEDRCollector"
-COLLECTOR_INSTALLER_FOLDER_PATH = "/tmp/version_files"
+COLLECTOR_INSTALLER_FOLDER_PATH = f"{COLLECTOR_TEMP_PATH}/version_files"
+LINUX_LOCAL_MALWARE_FOLDER_PATH = f"{COLLECTOR_TEMP_PATH}/malware_simulator"
 COLLECTOR_INSTALLATION_FOLDER_PATH = f"/opt/{SERVICE_NAME}"
 COLLECTOR_SCRIPTS_FOLDER_PATH = f"{COLLECTOR_INSTALLATION_FOLDER_PATH}/scripts"
 COLLECTOR_CRASH_DUMPS_FOLDER_PATH = f"{COLLECTOR_INSTALLATION_FOLDER_PATH}/CrashDumps/Collector"
+COLLECTOR_BOOTSTRAP_FILENAME = "CollectorBootstrap.jsn"
 
 COLLECTOR_CONTROL_PATH = f"{COLLECTOR_INSTALLATION_FOLDER_PATH}/control.sh"
-COLLECTOR_CONFIG_PATH = f"{COLLECTOR_SCRIPTS_FOLDER_PATH}/fortiedrconfig.sh"
+COLLECTOR_CONFIG_PATH = f"{COLLECTOR_INSTALLATION_FOLDER_PATH}/Config/Collector"
+COLLECTOR_CONFIG_SCRIPT_PATH = f"{COLLECTOR_SCRIPTS_FOLDER_PATH}/fortiedrconfig.sh"
 COLLECTOR_BIN_PATH = f"{COLLECTOR_INSTALLATION_FOLDER_PATH}/bin/{SERVICE_NAME}"
 CRASH_FOLDERS_PATHS = ["/var/crash", COLLECTOR_CRASH_DUMPS_FOLDER_PATH]
 
@@ -30,7 +35,6 @@ DEFAULT_AGGREGATOR_PORT = 8081
 
 SUPPORTED_MALWARE_FOLDER_NAME = "listen"
 LINUX_SHARED_MALWARE_FOLDER_PATH = rf'{third_party_details.SHARED_DRIVE_QA_PATH}\automation_ng\malware_sample\linux'
-LINUX_LOCAL_MALWARE_FOLDER_PATH = "/tmp/malware_simulator"
 
 
 class LinuxCollector(CollectorAgent):
@@ -39,6 +43,7 @@ class LinuxCollector(CollectorAgent):
         self._os_station = LinuxStation(host_ip=host_ip, user_name=user_name, password=password)
         self.distro_type = self.os_station.distro_type
         self._process_id = self.get_current_process_id()
+        self.__qa_files_path = "/home/qa"
 
     @property
     def cached_process_id(self) -> int:
@@ -55,6 +60,9 @@ class LinuxCollector(CollectorAgent):
         process_id = process_ids[0] if process_ids is not None else None  # Why process_ids[0] who told that this is the correct one
         Reporter.report(f"Current process ID is: {process_id}")
         return process_id
+
+    def get_qa_files_path(self):
+        return self.__qa_files_path
 
     @allure.step("Update process ID")
     def update_process_id(self):
@@ -235,7 +243,7 @@ class LinuxCollector(CollectorAgent):
         else:
             organization = f'--organization {organization}'
 
-        cmd = f"{COLLECTOR_CONFIG_PATH} --aggregator {aggregator_ip}:{aggregator_port} --password {registration_password} {organization}"
+        cmd = f"{COLLECTOR_CONFIG_SCRIPT_PATH} --aggregator {aggregator_ip}:{aggregator_port} --password {registration_password} {organization}"
         self.os_station.execute_cmd(cmd=cmd, fail_on_err=True, return_output=False, attach_output_to_report=False)
         time.sleep(wait_after_configuration)  # Wait few sec after triggering the configuration cmd
         wait_until_collector_pid_appears(self)
@@ -319,3 +327,23 @@ class LinuxCollector(CollectorAgent):
                                              attach_output_to_report=True)
         self.os_station.execute_cmd(cmd="ps aux")
         return result
+
+    def prepare_edr_event_tester_folder(self, network_path, filename):
+        raise NotImplementedError()
+
+    def create_bootstrap_backup(self, reg_password, filename=None):
+        raise NotImplementedError()
+
+    def restore_bootstrap_file(self, full_path_filename):
+        raise NotImplementedError()
+
+    def config_edr_simulation_tester(self, simulator_path, collector):
+        raise NotImplementedError()
+
+    @allure.step("Start EDR events tester")
+    def start_edr_simulation_tester(self, simulator_path):
+        raise NotImplementedError()
+
+    @allure.step("EDR Event tester cleanup")
+    def cleanup_edr_simulation_tester(self, edr_event_tester_path, filename):
+        raise NotImplementedError()

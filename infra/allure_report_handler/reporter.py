@@ -40,3 +40,7 @@ class Reporter:
     @staticmethod
     def attach_str_as_file(file_name: str, file_content: str):
         allure.attach(name=file_name, body=file_content, attachment_type=allure.attachment_type.TEXT)
+
+    @staticmethod
+    def attach_str_as_json_file(file_name: str, file_content: str):
+        allure.attach(name=file_name, body=file_content, attachment_type=allure.attachment_type.JSON)
