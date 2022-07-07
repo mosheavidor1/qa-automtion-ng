@@ -1,6 +1,7 @@
 import logging
 import time
 import allure
+from typing import List
 from infra.api.nslo_wrapper.rest_commands import RestCommands
 from infra.api.api_object_factory.organizations_factory import OrganizationsFactory
 from infra.api.api_object_factory.users_factory import UsersFactory
@@ -8,7 +9,9 @@ from infra.api.api_object_factory.rest_collectors_factory import RestCollectorsF
 from infra.api.management_api.user import User
 from infra.api.management_api.organization import Organization
 from infra.api import ADMIN_REST
+from infra.api.management_api.policy import Policy
 from infra.api.management_api.collector import RestCollector
+from infra.utils.policy_utils import get_default_policies
 import sut_details
 
 logger = logging.getLogger(__name__)
@@ -53,6 +56,18 @@ class Tenant:
     def rest_api_client(self) -> RestCommands:
         return self._rest_api_client
 
+    @allure.step("Turn on prevention mode of this tenant")
+    def turn_on_prevention_mode(self, policies: List[Policy] = None):
+        policies = policies or self.get_default_policies()
+        logger.info(f"Turn on prevention mode for organization {self.organization} via policies: \n {policies}")
+        for policy in policies:
+            policy.set_to_prevention_mode(safe=True)
+
+    def get_default_policies(self):
+        policies = get_default_policies(rest_client=self._rest_api_client,
+                                        organization_name=self.organization.get_name())
+        return policies
+
     @classmethod
     @allure.step("Create new tenant")
     def create(cls, username, user_password, organization_name, registration_password, prevention_mode=True):
@@ -81,11 +96,14 @@ class Tenant:
                                                                    organization_name=organization_name)
         else:
             logger.info(f"Default Local admin {username} already exist in org {organization_name}")
-        if prevention_mode and is_new_org:
-            logger.info("Set prevention mode to the new organization")
-            default_local_admin._rest_client.policies.turn_on_prevention_mode()
 
-        return cls(local_admin=default_local_admin, organization=organization)
+        tenant = cls(local_admin=default_local_admin, organization=organization)
+
+        if prevention_mode and is_new_org:
+            logger.info("Turn on prevention mode for the new organization")
+            tenant.turn_on_prevention_mode()
+
+        return tenant
 
     def delete_user(self, user: User, expected_status_code=200):
         """ Use tenant's default local admin user credentials to delete other users in this tenant """

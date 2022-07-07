@@ -10,8 +10,8 @@ logger = logging.getLogger(__name__)
 class BaseApiObj:
     """ Abstract class for working with objects that are api wrappers of real components """
 
-    def __init__(self, rest_client, initial_data):
-        self._rest_client = rest_client
+    def __init__(self, rest_client: RestCommands, initial_data: dict):
+        self._rest_client: RestCommands = rest_client
         self._cache = initial_data
         self._use_cache = False  # By default, always get the updated data from server
 

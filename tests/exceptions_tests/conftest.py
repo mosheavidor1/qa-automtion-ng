@@ -18,15 +18,7 @@ class ExceptionTestType(Enum):
 
 @pytest.fixture(scope="class", autouse=True)
 def setup_method(management):
-    # validation if the system is in prevention mode, else turn it on
-    policies_names = [management.admin_rest_api_client.rest.NsloPolicies.NSLO_POLICY_EXECUTION_PREVENTION,
-                      management.admin_rest_api_client.rest.NsloPolicies.NSLO_POLICY_EXFILTRATION_PREVENTION,
-                      management.admin_rest_api_client.rest.NsloPolicies.NSLO_POLICY_RANSOMWARE_PREVENTION]
-    policies = management.tenant.rest_api_client.policies.get_policy_info()
-    operation_mode = sum([True if policy.get('name') in policies_names and
-                                  policy.get('operationMode') == 'Prevention' else False for policy in policies])
-    if operation_mode < len(policies_names):
-        management.tenant.rest_api_client.policies.turn_on_prevention_mode()
+    management.tenant.turn_on_prevention_mode()
 
 
 @pytest.fixture(scope="function")

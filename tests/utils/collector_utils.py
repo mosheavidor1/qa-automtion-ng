@@ -1,8 +1,11 @@
 import allure
+import time
 import logging
 from infra.system_components.collector import CollectorAgent
 from infra.multi_tenancy.tenant import Tenant
 from infra import common_utils
+from infra.system_components.management import Management
+from infra.api.management_api.policy import WAIT_AFTER_ASSIGN
 logger = logging.getLogger(__name__)
 
 KEEPALIVE_INTERVAL = 5
@@ -14,13 +17,15 @@ class CollectorUtils:
 
     @staticmethod
     @allure.step("move collector to new group and assign group to policies")
-    def move_collector_and_assign_group_policies(management, collector, group_name: str):
+    def move_collector_and_assign_group_policies(management: Management, collector, group_name: str):
+        tenant = management.tenant
         management.tenant.rest_api_client.system_inventory.move_collector(
             validation_data={'ipAddress': collector.os_station.host_ip},
             group_name=group_name)
-        management.tenant.rest_api_client.policies.assign_policy('Exfiltration Prevention', group_name, timeout=1)
-        management.tenant.rest_api_client.policies.assign_policy('Execution Prevention', group_name, timeout=1)
-        management.tenant.rest_api_client.policies.assign_policy('Ransomware Prevention', group_name)
+        default_policies = tenant.get_default_policies()
+        for policy in default_policies:
+            policy.assign_to_collector_group(group_name=group_name, wait_sec=1)
+        time.sleep(WAIT_AFTER_ASSIGN)
 
     @staticmethod
     @allure.step("Wait for configuration")
