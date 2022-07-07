@@ -11,6 +11,8 @@ from infra.vpshere.vsphere_cluster_handler import VmSearchTypeEnum
 from infra.vpshere.vsphere_utils import VsphereUtils
 from infra.vpshere.vsphere_vm_operations import VsphereMachineOperations
 
+EXTRACT_EDR_EVENT_TESTER_TIMEOUT = 60
+MAX_WAIT_FOR_FILE_TO_APPEAR = 60
 
 class OsStation(metaclass=ABCMeta):
 
@@ -221,4 +223,16 @@ class OsStation(metaclass=ABCMeta):
 
     @abstractmethod
     def overwrite_file_content(self, content: str, file_path: str):
+        pass
+
+    @abstractmethod
+    def extract_compressed_file(self, file_path_to_extract: str, file_name: str):
+        pass
+
+    @abstractmethod
+    def wait_for_file_to_appear_in_specified_folder(self,
+                                                    file_path: str,
+                                                    file_name: str,
+                                                    timeout: int,
+                                                    interval: int):
         pass

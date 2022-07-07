@@ -1,10 +1,14 @@
 from abc import abstractmethod
 import logging
 import allure
+
+import third_party_details
 from infra.enums import FortiEdrSystemState
 from infra.system_components.collectors.default_values import COLLECTOR_KEEPALIVE_INTERVAL, MAX_WAIT_FOR_STATUS
 from infra.common_utils import wait_for_condition
 logger = logging.getLogger(__name__)
+
+FILENAME_EDR_TESTER = "edrTester.py"
 
 
 class CollectorAgent:
@@ -127,4 +131,42 @@ class CollectorAgent:
 
     @abstractmethod
     def remove_all_crash_dumps_files(self):
+        pass
+
+    @abstractmethod
+    def create_bootstrap_backup(self, reg_password, filename=None):
+        pass
+
+    @abstractmethod
+    def restore_bootstrap_file(self, full_path_filename):
+        pass
+
+    @allure.step("Preperation of EDR event tester working path")
+    def prepare_edr_event_tester_folder(self, network_path: str, filename: str):
+        """
+        This function will copy and extract edr event tester into specific folder and return the extracted folder.
+        """
+        copied_path = self.os_station.copy_files_from_shared_folder(
+            target_path_in_local_machine=self.get_qa_files_path(),
+            shared_drive_path=network_path,
+            files_to_copy=[filename],
+            shared_drive_user_name=third_party_details.USER_NAME,
+            shared_drive_password=third_party_details.PASSWORD)
+
+        extracted_path = self.os_station.extract_compressed_file(
+            file_path_to_extract=copied_path,
+            file_name=filename)
+        return extracted_path
+
+    @abstractmethod
+    def config_edr_simulation_tester(self, simulator_path, reg_password):
+        pass
+
+    @abstractmethod
+    def start_edr_simulation_tester(self, simulator_path):
+        pass
+
+    @abstractmethod
+    def cleanup_edr_simulation_tester(self, edr_event_tester_path, filename):
+        """This function performs a cleanup of the leftovers of the EDR event tester."""
         pass
