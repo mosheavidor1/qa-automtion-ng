@@ -41,9 +41,7 @@ def exception_function_fixture(management, collector, request):
              ExceptionTestType.EDIT_FULL_COVERED_EXCEPTION | \
              ExceptionTestType.EDIT_PARTIALLY_COVERED_EXCEPTION | \
              ExceptionTestType.CREATE_PARTIALLY_COVERED_EXCEPTION_EVENT_CREATED:
-
-            management.tenant.rest_api_client.system_inventory.create_group(name=group_name,
-                                                                            organization=management.tenant.organization.get_name())
+            user.rest_components.collector_groups.create_collector_group(group_name=group_name)
 
     test_resources = {
         'management': management,

@@ -8,6 +8,7 @@ from infra.api.api_object_factory.exceptions_factory import ExceptionsFactory
 from infra.api.api_object_factory.events_factory import EventsFactory
 from infra.api.api_object_factory.rest_collectors_factory import RestCollectorsFactory
 from infra.api.api_object_factory.policies_factory import PoliciesFactory
+from infra.api.api_object_factory.groups_factory import GroupsFactory
 import sut_details
 
 logger = logging.getLogger(__name__)
@@ -53,6 +54,8 @@ class UserRestComponentsFactory:
                                                    factory_rest_client=rest_client)
         self.policies: PoliciesFactory = PoliciesFactory(organization_name=organization_name,
                                                          factory_rest_client=rest_client)
+        self.collector_groups: GroupsFactory = GroupsFactory(organization_name=organization_name,
+                                                             factory_rest_client=rest_client)
 
 
 class User(BaseApiObj):

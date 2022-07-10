@@ -31,34 +31,11 @@ class SystemInventoryRest(BaseRestFunctionality):
         status, response = self._rest.inventory.ListCollectors(organization=organization)
         return self._get_info(status, response, 'collector', validation_data, output_parameters)
 
-    def create_group(self, name, organization=None):
-        """
-        :param name: string, the name of the group.
-        :return: True if succeeded creating the group, False if failed.
-        """
-        group_status, group_response = self._rest.inventory.ListCollectorGroups(organization=organization)
-        groups_list = self._get_info(group_status, group_response)
-
-        for group in groups_list:
-            if name == group["name"]:
-                Reporter.report('group ' + name + ' already exist')
-                return True
-
+    @allure.step("Create new group")
+    def create_group(self, name):
+        logger.info(f"Create new collector group with name {name}")
         status, response = self._rest.inventory.CreateCollectorGroup(group=name)
-
-        group_status, group_response = self._rest.inventory.ListCollectorGroups(organization=organization)
-        groups_list = self._get_info(group_status, group_response)
-        if not status:
-            assert False, f'Could not get response from the management. \n{response}'
-
-        result = False
-        for group in groups_list:
-            if name in group["name"]:
-                result = True
-        assert result
-
-        Reporter.report('Created the group ' + name + ' successfully.')
-        return True
+        assert status, f"Failed to create collector group {name}, got {response}"
 
     def get_aggregator_info(self, validation_data=None, output_parameters=None):
         """
@@ -155,18 +132,16 @@ class SystemInventoryRest(BaseRestFunctionality):
             actual_status_code=response.status_code,
             error_message=f"Failed to disable collector, got {response.status_code} instead {expected_status_code}")
 
-    @allure.step("Get collector groups in organization {organization_name}")
-    def get_collector_groups(self,
-                             organization_name="Default",
-                             expected_status_code: int = 200):
+    def get_collector_groups(self, organization_name, expected_status_code: int = 200):
+        logger.debug(f"Get all collector groups in organization {organization_name}")
         status, response = self._rest.inventory.ListCollectorGroups(organization=organization_name)
-
+        assert status, f"Failed to get collector groups, got: {response}"
         self._validate_expected_status_code(expected_status_code=expected_status_code,
                                             actual_status_code=response.status_code,
-                                            error_message=f"Reset user password - expected response code: {expected_status_code}, actual: {response.status_code}")
-
-        as_list_of_dicts = json.loads(response.content)
-        return as_list_of_dicts
+                                            error_message=f"Get collector groups - expected response code: {expected_status_code}, actual: {response.status_code}")
+        collector_groups = json.loads(response.text)
+        logger.debug(f"Collector groups are: {collector_groups}")
+        return collector_groups
 
     @allure.step("Delete collectors")
     def delete_collectors(self,
