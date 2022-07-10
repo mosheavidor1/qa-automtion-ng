@@ -146,6 +146,9 @@ class RestCollector(BaseApiObj):
     def is_disconnected(self):
         return self.get_status(from_cache=False) == FortiEdrSystemState.DISCONNECTED.value
 
+    def is_degraded(self):
+        return self.get_status(from_cache=False) == FortiEdrSystemState.DEGRADED.value
+
     def is_uninstalling(self):
         return self.get_status(from_cache=False) == FortiEdrSystemState.UNINSTALLING.value
 
@@ -153,6 +156,12 @@ class RestCollector(BaseApiObj):
     def wait_until_disconnected(self, timeout_sec=MAX_WAIT_FOR_STATUS, interval_sec=COLLECTOR_KEEPALIVE_INTERVAL):
         logger.info(f"Wait until {self} is Disconnected in management")
         wait_for_condition(condition_func=self.is_disconnected,
+                           timeout_sec=timeout_sec, interval_sec=interval_sec)
+
+    @allure.step("Wait until is Degraded in management")
+    def wait_until_degraded(self, timeout_sec=MAX_WAIT_FOR_STATUS, interval_sec=COLLECTOR_KEEPALIVE_INTERVAL):
+        logger.info(f"Wait until {self} is Disconnected in management")
+        wait_for_condition(condition_func=self.is_degraded,
                            timeout_sec=timeout_sec, interval_sec=interval_sec)
 
     @allure.step("Wait for status 'uninstalling' in management")

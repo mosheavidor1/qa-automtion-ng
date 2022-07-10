@@ -12,6 +12,7 @@ class FortiEdrSystemState(Enum):
     RUNNING = 'Running'  # Status name from management
     NOT_RUNNING = 'NOT_RUNNING'
     DISCONNECTED = 'Disconnected'  # Status name from management
+    DEGRADED = 'Degraded'  # Status name from management
     DOWN = 'DOWN'
     DISABLED = 'Disabled'  # Status name from management
     ENABLED = 'ENABLED'
