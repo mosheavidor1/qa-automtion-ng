@@ -29,6 +29,11 @@ class ManagementUiClient:
         self.organizations = self.FortiEdrOrganizations(self)
         self.system_events = self.FortiEdrSystemEvents(self)
         self.users = self.FortiEdrUsers(self)
+        self.exclusion = self.FortiEdrExclusions(self)
+        self.remove_exclusion = self.FortiEdrDeleteExclusions(self)
+        self.remove_security_events = self.FortiEdrDeleteSecurityEvents(self)
+        self.file_not_excluded_check = self.FortiEdrFileIsNotExcludedCheck(self)
+        self.file_excluded_check = self.FortiEdrFileIsExcludedCheck(self)
 
     def start_testim_flow(self,
                           test_name: str,
@@ -350,10 +355,10 @@ class ManagementUiClient:
                          assert_type: AssertTypeEnum = AssertTypeEnum.HARD,
                          test_timeout: int = 600):
             self.parent.start_testim_flow(test_name="Collectors | Delete group",
-                                      management_ui_ip=self.parent.management_ui_ip,
-                                      data=data,
-                                      assert_type=assert_type,
-                                      test_timeout=test_timeout)
+                                          management_ui_ip=self.parent.management_ui_ip,
+                                          data=data,
+                                          assert_type=assert_type,
+                                          test_timeout=test_timeout)
 
     class FortiEdrCollectors:
         def __init__(self, parent):
@@ -488,10 +493,81 @@ class ManagementUiClient:
             self.parent = parent
 
         def create_4_local_users_all_combinations(self,
-                                                 data: dict = None,
-                                                 assert_type: AssertTypeEnum = AssertTypeEnum.HARD,
-                                                 test_timeout: int = 600):
+                                                  data: dict = None,
+                                                  assert_type: AssertTypeEnum = AssertTypeEnum.HARD,
+                                                  test_timeout: int = 600):
             self.parent.start_testim_flow(test_name="Users | Create 4 local user - all combinations",
+                                          management_ui_ip=self.parent.management_ui_ip,
+                                          data=data,
+                                          assert_type=assert_type,
+                                          test_timeout=test_timeout)
+
+    class FortiEdrExclusions:
+        def __init__(self, parent):
+            self.parent = parent
+
+        def add_new_exclusion_file(self,
+                                   data: dict = None,
+                                   assert_type: AssertTypeEnum = AssertTypeEnum.HARD,
+                                   test_timeout: int = 600):
+            self.parent.start_testim_flow(test_name="Exclusions|Add new Exclusion file",
+                                          management_ui_ip=self.parent.management_ui_ip,
+                                          data=data,
+                                          assert_type=assert_type,
+                                          test_timeout=test_timeout)
+
+    class FortiEdrDeleteExclusions:
+        def __init__(self, parent):
+            self.parent = parent
+
+        def delete_exclusions(self,
+                              data: dict = None,
+                              assert_type: AssertTypeEnum = AssertTypeEnum.HARD,
+                              test_timeout: int = 600):
+            self.parent.start_testim_flow(test_name="Exclusions| Delete Exclusion",
+                                          management_ui_ip=self.parent.management_ui_ip,
+                                          data=data,
+                                          assert_type=assert_type,
+                                          test_timeout=test_timeout)
+
+    class FortiEdrDeleteSecurityEvents:
+        def __init__(self, parent):
+            self.parent = parent
+
+
+        def delete_security_events(self,
+                                   data: dict = None,
+                                   assert_type: AssertTypeEnum = AssertTypeEnum.HARD,
+                                   test_timeout: int = 600):
+            self.parent.start_testim_flow(test_name="Exclusions Delete Event viewer events",
+                                          management_ui_ip=self.parent.management_ui_ip,
+                                          data=data,
+                                          assert_type=assert_type,
+                                          test_timeout=test_timeout)
+
+    class FortiEdrFileIsExcludedCheck:
+        def __init__(self, parent):
+            self.parent = parent
+
+        def test_file_is_excluded_check(self,
+                                        data: dict = None,
+                                        assert_type: AssertTypeEnum = AssertTypeEnum.HARD,
+                                        test_timeout: int = 600):
+            self.parent.start_testim_flow(test_name="Exclusions| Event viewer| verify exclusion is set",
+                                          management_ui_ip=self.parent.management_ui_ip,
+                                          data=data,
+                                          assert_type=assert_type,
+                                          test_timeout=test_timeout)
+
+    class FortiEdrFileIsNotExcludedCheck:
+        def __init__(self, parent):
+            self.parent = parent
+
+        def test_file_not_excluded_check(self,
+                                             data: dict = None,
+                                             assert_type: AssertTypeEnum = AssertTypeEnum.HARD,
+                                             test_timeout: int = 600):
+            self.parent.start_testim_flow(test_name="Exclusions| Event viewer| verify exclusion is deleted",
                                           management_ui_ip=self.parent.management_ui_ip,
                                           data=data,
                                           assert_type=assert_type,

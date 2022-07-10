@@ -20,5 +20,5 @@ ENVIRONMENT_SERVICE_URL = 'http://environment-service.ensilo.local'
 AUTOMATION_SERVICES_UTILS_MACHINE_IP = '10.151.121.54' # workaround for now, in the future we will create proxy machine per run in jenkins
 LATEST_VERSIONS_SERVICE_PORT = 5070
 TEST_IM_PROXY_PORT = 5071
-TEST_IM_BRANCH = os.getenv("testim_branch") if os.getenv("testim_branch") is not None else "master"
+TEST_IM_BRANCH = os.getenv("Moshe_Test_Branch") if os.getenv("Moshe_Test_Branch") is not None else "Moshe_Test_Branch"
 
