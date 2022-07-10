@@ -3,6 +3,8 @@ from logging import DEBUG
 import allure
 import time
 from typing import List
+
+import sut_details
 import third_party_details
 from infra.os_stations.linux_station import LinuxStation, COLLECTOR_TEMP_PATH
 from infra.enums import FortiEdrSystemState, LinuxDistroTypes
@@ -84,8 +86,14 @@ class LinuxCollector(CollectorAgent):
     @allure.step("{0} - Stop collector")
     def stop_collector(self, password=None):
         password = password or REGISTRATION_PASS
-        cmd = f"{COLLECTOR_CONTROL_PATH} --stop {password}"
-        result = self.os_station.execute_cmd(cmd=cmd, fail_on_err=True)
+
+        try:
+            cmd = f"{COLLECTOR_CONTROL_PATH} --stop {password}"
+            result = self.os_station.execute_cmd(cmd=cmd, fail_on_err=True)
+        except:
+            cmd = f"{COLLECTOR_CONTROL_PATH} --stop {sut_details.management_registration_password}"
+            result = self.os_station.execute_cmd(cmd=cmd, fail_on_err=True)
+
         assert "stop operation succeeded" in result.lower(), f"Wrong output when stopping collector got: {result}"
         wait_until_collector_pid_disappears(self)
         self.update_process_id()
