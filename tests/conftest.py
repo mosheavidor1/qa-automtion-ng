@@ -2,7 +2,7 @@ import uuid
 from typing import List
 import logging
 import allure
-
+from tests.utils.collector_utils import CollectorUtils
 import sut_details
 import third_party_details
 from infra.allure_report_handler.reporter import Reporter
@@ -393,7 +393,7 @@ def create_snapshot_for_collector(snapshot_name: str,
     Reporter.report("Stop because we want to take snapshot of a collector in a static mode")
     collector.stop_collector(password=management.tenant.organization.registration_password)
     assert collector.is_agent_down(), "Collector agent was not stopped on host"
-    rest_collector.wait_until_degraded()
+    CollectorUtils.wait_until_rest_collector_is_off(rest_collector=rest_collector)
     collector.os_station.vm_operations.remove_all_snapshots()
     collector.remove_all_crash_dumps_files()
     collector.os_station.vm_operations.snapshot_create(snapshot_name=snapshot_name)
@@ -677,7 +677,7 @@ def revert_to_first_snapshot_for_all_collectors(management: Management, collecto
                         logger.info)
         assert collector.is_agent_down(), "Collector was not stopped"
         rest_collector = management.tenant.rest_components.collectors.get_by_ip(ip=collector.host_ip)
-        rest_collector.wait_until_degraded()
+        CollectorUtils.wait_until_rest_collector_is_off(rest_collector=rest_collector)
         Reporter.report("Sometimes the revert action creates a crash files so we want to remove them",
                         logger.info)
         collector.remove_all_crash_dumps_files()
@@ -784,5 +784,5 @@ def dynamic_windows_collector(collector, management, aggregator) -> WindowsColle
     collector.os_station.vm_operations.power_off()
 
     rest_collector = _find_rest_collector(host_ip=collector.host_ip, tenant=management.tenant)
-    rest_collector.wait_until_degraded()
+    CollectorUtils.wait_until_rest_collector_is_off(rest_collector=rest_collector)
     rest_collector.delete()

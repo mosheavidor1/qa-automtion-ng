@@ -52,10 +52,6 @@ class Tenant:
             With the tenant's default local admin user rest credentials """
         return self._rest_components
 
-    @property
-    def rest_api_client(self) -> RestCommands:
-        return self._rest_api_client
-
     @allure.step("Turn on prevention mode of this tenant")
     def turn_on_prevention_mode(self, policies: List[Policy] = None):
         policies = policies or self.get_default_policies()
@@ -124,10 +120,10 @@ class Tenant:
             logger.info(f"{source_collector} already in desired organization '{tenant_org_name}', no need to move")
             return source_collector
         logger.info(f"Move {source_collector} from org {collector_org_name} to {self} and wait few seconds")
-        ADMIN_REST.system_inventory.move_collectors(collectors_names=[source_collector.get_name()],
-                                                    target_group_name=target_group_name,
-                                                    current_collectors_organization=collector_org_name,
-                                                    target_organization=tenant_org_name)
+        ADMIN_REST.system_inventory.move_collectors_to_organization(collectors_names=[source_collector.get_name()],
+                                                                    target_group_name=target_group_name,
+                                                                    current_collectors_organization=collector_org_name,
+                                                                    target_organization=tenant_org_name)
         time.sleep(30)  # wait until collector will get the new configuration, gabi why ? see in gui the collector's organization
         logger.info(f"Validate {source_collector} moved to {self}")
         target_collector = self.rest_components.collectors.get_by_ip(ip=source_collector_ip, safe=False)

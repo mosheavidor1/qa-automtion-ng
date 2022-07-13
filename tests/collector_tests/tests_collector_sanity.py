@@ -27,7 +27,7 @@ def test_stop_start_collector(management, collector):
         collector_agent.stop_collector(password=tenant.organization.registration_password)
         Reporter.report(f"Validate {collector_agent} stopped successfully:", INFO)
         collector_agent.wait_until_agent_down()
-        rest_collector.wait_until_degraded()
+        CollectorUtils.wait_until_rest_collector_is_off(rest_collector=rest_collector)
 
     with TEST_STEP(f"Start {collector_agent} and validate"):
         collector_agent.start_collector()
@@ -86,7 +86,7 @@ def test_uninstall_install_windows_collector(management, aggregator, collector):
         collector_agent.uninstall_collector(registration_password=password)
         Reporter.report(f"Validate {collector_agent} uninstalled successfully:")
         assert not collector_agent.is_collector_files_exist(), f"Installation folder contains files, should be empty"
-        rest_collector.wait_until_degraded()
+        CollectorUtils.wait_until_rest_collector_is_off(rest_collector=rest_collector)
 
     with TEST_STEP(f"Install {collector_agent} and validate"):
         collector_agent.install_collector(version=collector_version,
@@ -237,7 +237,7 @@ def test_uninstall_install_configure_linux_collector(management, aggregator, col
         package_name_after_uninstall = collector_agent.get_package_name()
         assert package_name_after_uninstall is None, \
             f"Collector package was not deleted from OS, name: '{package_name_after_uninstall}'"
-        rest_collector.wait_until_disconnected()
+        CollectorUtils.wait_until_rest_collector_is_off(rest_collector=rest_collector)
 
     with TEST_STEP(f"Install {collector_agent} & Configure"):
         collector_agent.install_collector(version=version_before_uninstall,
@@ -306,7 +306,7 @@ def test_collector_with_new_org_registration_password(management, collector):
                                                   start_collector=False)
             Reporter.report(f"Validate {collector_agent} stopped successfully with new registration password", INFO)
             collector_agent.wait_until_agent_down()
-            new_tenant_rest_collector.wait_until_degraded()
+            CollectorUtils.wait_until_rest_collector_is_off(rest_collector=new_tenant_rest_collector)
 
         with TEST_STEP(f"Turn back on the {collector_agent}"):
             collector_agent.start_collector()
