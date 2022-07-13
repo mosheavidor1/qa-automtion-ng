@@ -23,7 +23,7 @@ class SystemComponentsFactory:
     def get_aggregators(management: Management) -> List[Aggregator]:
         aggr_list = []
 
-        aggregators = management.admin_rest_api_client.system_inventory.get_aggregator_info()
+        aggregators = management.get_aggregators()
         for single_aggr in aggregators:
             ip_addr, port = StringUtils.get_ip_port_as_tuple(single_aggr.get('ipAddress'))
             aggregator_details = AggregatorDetails(host_name=single_aggr.get('hostName'),
@@ -47,7 +47,7 @@ class SystemComponentsFactory:
     @staticmethod
     def get_cores(management: Management) -> List[Core]:
         core_list = []
-        cores = management.admin_rest_api_client.system_inventory.get_core_info()
+        cores = management.get_cores()
         for single_core in cores:
             ip_addr, port = StringUtils.get_ip_port_as_tuple(single_core.get('ip'))
 

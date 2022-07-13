@@ -87,10 +87,6 @@ class Management(FortiEdrLinuxStation):
         self._ui_admin_password = ui_admin_password
 
     @property
-    def admin_rest_api_client(self) -> RestCommands:
-        return self._admin_rest_api_client
-
-    @property
     def ui_client(self) -> ManagementUiClient:
         return self._ui_client
 
@@ -250,7 +246,7 @@ class Management(FortiEdrLinuxStation):
         aggregators = None
         while time.time() - start_time < timeout and aggregators is None:
             try:
-                aggregators = self.admin_rest_api_client.system_inventory.get_aggregator_info()
+                aggregators = self._admin_rest_api_client.system_inventory.get_aggregator_info()
             except Exception as e:
                 logger.info("Rest API is not available yet, going to sleep 5 sceonds")
                 time.sleep(5)
@@ -282,10 +278,18 @@ class Management(FortiEdrLinuxStation):
         logger.info(f"Delete temp tenant: {temp_tenant}")
         assert temp_tenant.organization.id != self.tenant.organization.id, \
             f"{temp_tenant} is the default tenant of management so can't be deleted"
-        temp_tenant.default_local_admin._delete(rest_client=self.admin_rest_api_client,
+        temp_tenant.default_local_admin._delete(rest_client=self._admin_rest_api_client,
                                                 expected_status_code=expected_status_code)
         temp_tenant.organization._delete(expected_status_code=expected_status_code)
         self.temp_tenants.remove(temp_tenant)
+
+    def get_aggregators(self):
+        aggregators = self._admin_rest_api_client.system_inventory.get_aggregator_info()
+        return aggregators
+
+    def get_cores(self):
+        cores = self._admin_rest_api_client.system_inventory.get_core_info()
+        return cores
 
 
 def reduce_default_org_license_capacity():

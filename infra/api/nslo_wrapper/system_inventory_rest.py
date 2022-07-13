@@ -67,12 +67,9 @@ class SystemInventoryRest(BaseRestFunctionality):
 
     @allure.step(
         "Move collectors {collectors_names} to group: {target_group_name} in organization: {target_organization}")
-    def move_collectors(self,
-                        collectors_names: List[str],
-                        target_group_name: str = "Default Collector Group",
-                        current_collectors_organization: str = "Default",
-                        target_organization: str = "Default",
-                        expected_status_code: int = 200):
+    def move_collectors_to_organization(self, collectors_names: List[str], target_group_name,
+                                        current_collectors_organization, target_organization,
+                                        expected_status_code: int = 200):
 
         collectors_to_move = [fr'{current_collectors_organization}\{collector_name}' for collector_name in
                               collectors_names]
@@ -94,27 +91,14 @@ class SystemInventoryRest(BaseRestFunctionality):
                                             actual_status_code=response.status_code,
                                             error_message=f"Move Collector - expected response code: {expected_status_code}, actual: {response.status_code}")
 
-    def move_collector(self,
-                       validation_data,
-                       group_name: str):
-        """
-        :param validation_data: dictionary, the data of the collector to be moved.
-        :param group_name: string, the name of the group to move the collector to.
-        :return: True if succeeded, False if failed.
-        """
-        collector_name = list(map(lambda x: list(x.values())[0], self.get_collector_info(validation_data, 'name')))
+    @allure.step("Move collector {collector_name} to group: {group_name} in same organization")
+    def move_collector_to_group(self, collector_name, group_name, expected_status_code: int = 200):
         status, response = self._rest.inventory.MoveCollectors(collectors=collector_name, group=group_name)
-        collector_group = self.get_collector_info(validation_data, 'collectorGroupName')
-        if not status:
-            assert False, f'Could not get response from the management. \n{response}'
-
-        if collector_group[0]["collectorGroupName"] != group_name:
-            assert False, 'Could not move the collector ' + str(
-                collector_name) + ' to the group ' + group_name + '.'
-
-        Reporter.report(
-            'Moved the collector ' + str(collector_name) + ' to the group ' + group_name + ' successfully.')
-        return True
+        assert status, f'Could not get response from the management. \n{response}'
+        err_msg = f"Failed to move collector {collector_name} to group {group_name}, " \
+                  f"expected response code: {expected_status_code}, actual: {response.status_code}"
+        self._validate_expected_status_code(expected_status_code=expected_status_code,
+                                            actual_status_code=response.status_code, error_message=err_msg)
 
     @allure.step("{toggle_status} collector via MGMT api")
     def toggle_collector(self, collector_name: str, organization_name: str, toggle_status: FortiEdrSystemState,

@@ -75,7 +75,7 @@ class RestCollector(BaseApiObj):
         value = self._get_field(field_name=field_name, from_cache=from_cache, update_cache=update_cache)
         return value
 
-    def get_operating_system(self, from_cache=None, update_cache=True):
+    def get_operating_system(self, from_cache=None, update_cache=True) -> str:
         field_name = CollectorFieldsNames.OPERATING_SYSTEM.value
         value = self._get_field(field_name=field_name, from_cache=from_cache, update_cache=update_cache)
         return value
@@ -85,7 +85,7 @@ class RestCollector(BaseApiObj):
         value = self._get_field(field_name=field_name, from_cache=from_cache, update_cache=update_cache)
         return value
 
-    def get_version(self, from_cache=None, update_cache=True):
+    def get_version(self, from_cache=None, update_cache=True) -> str:
         field_name = CollectorFieldsNames.VERSION.value
         value = self._get_field(field_name=field_name, from_cache=from_cache, update_cache=update_cache)
         return value
@@ -216,3 +216,15 @@ class RestCollector(BaseApiObj):
         """ Check if collector doesn't exist in management """
         logger.info(f"Check if {self} doesn't exist in management")
         return not self.is_exist()
+
+    @allure.step("Move to different group in same organization")
+    def move_to_different_group(self, target_group_name, expected_status_code: int = 200):
+        current_group_name = self.get_group_name()
+        assert target_group_name != current_group_name
+        logger.info(f"Move {self} from group {current_group_name} to group {target_group_name} in same organization")
+        self._rest_client.system_inventory.move_collector_to_group(collector_name=self.get_name(),
+                                                                   group_name=target_group_name,
+                                                                   expected_status_code=expected_status_code)
+        updated_group_name = self.get_group_name(from_cache=False)
+        assert updated_group_name == target_group_name, f"{self} didn't move to group: {target_group_name}"
+

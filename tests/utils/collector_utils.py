@@ -2,6 +2,7 @@ import allure
 import time
 import logging
 from infra.system_components.collector import CollectorAgent
+from infra.api.management_api.collector import RestCollector
 from infra.multi_tenancy.tenant import Tenant
 from infra import common_utils
 from infra.system_components.management import Management
@@ -19,9 +20,9 @@ class CollectorUtils:
     @allure.step("move collector to new group and assign group to policies")
     def move_collector_and_assign_group_policies(management: Management, collector, group_name: str):
         tenant = management.tenant
-        management.tenant.rest_api_client.system_inventory.move_collector(
-            validation_data={'ipAddress': collector.os_station.host_ip},
-            group_name=group_name)
+        user = tenant.default_local_admin
+        rest_collector = user.rest_components.collectors.get_by_ip(ip=collector.host_ip)
+        rest_collector.move_to_different_group(target_group_name=group_name)
         default_policies = tenant.get_default_policies()
         for policy in default_policies:
             policy.assign_to_collector_group(group_name=group_name, wait_sec=1)
@@ -65,3 +66,16 @@ class CollectorUtils:
         assert collector_agent.get_version() == expected_version, \
             f"{collector_agent} version is {collector_agent.get_version()} instead of {expected_version}"
         assert collector_agent.is_collector_files_exist(), f"Installation folder was not created"
+
+    @staticmethod
+    @allure.step("Wait until rest collector is off in management")
+    def wait_until_rest_collector_is_off(rest_collector: RestCollector):
+        """ In collector version 6 the status changed from disconnected
+        to degraded (when collector is stopped/uninstalled) """
+        logger.info(f"Wait until {rest_collector} is off in management")
+        os = rest_collector.get_operating_system(from_cache=False)
+        collector_version = rest_collector.get_version(from_cache=False)
+        if collector_version.startswith("6.") and "windows" in os.lower():
+            rest_collector.wait_until_degraded()
+        else:
+            rest_collector.wait_until_disconnected()

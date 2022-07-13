@@ -59,14 +59,17 @@ def exception_function_fixture(management, collector, request):
 
     match test_flow:
         case ExceptionTestType.CREATE_PARTIALLY_COVERED_EXCEPTION | \
+             ExceptionTestType.EDIT_FULL_COVERED_EXCEPTION | \
+             ExceptionTestType.EDIT_PARTIALLY_COVERED_EXCEPTION | \
              ExceptionTestType.CREATE_PARTIALLY_COVERED_EXCEPTION_EVENT_CREATED:
-
-            management.tenant.rest_api_client.system_inventory.move_collector(
-                validation_data={'ipAddress': collector.os_station.host_ip},
-                group_name=start_group)
+            if test_flow == ExceptionTestType.CREATE_PARTIALLY_COVERED_EXCEPTION:
+                rest_collector.move_to_different_group(target_group_name=start_group)
 
             match test_flow:
-                case ExceptionTestType.CREATE_PARTIALLY_COVERED_EXCEPTION:
+                case ExceptionTestType.CREATE_PARTIALLY_COVERED_EXCEPTION | \
+                     ExceptionTestType.EDIT_FULL_COVERED_EXCEPTION | \
+                     ExceptionTestType.EDIT_PARTIALLY_COVERED_EXCEPTION | \
+                     ExceptionTestType.CREATE_PARTIALLY_COVERED_EXCEPTION_EVENT_CREATED:
                     test_im_params = {
                         "groupName": [group_name],
                         "loginUser": management.tenant.default_local_admin.get_username(),
