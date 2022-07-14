@@ -107,7 +107,7 @@ def test_uninstall_install_windows_collector(management, aggregator, collector):
 @allure.feature("Basic Functionality")
 @pytest.mark.sanity
 @pytest.mark.collector_sanity
-@pytest.mark.xray('http://jira.ensilo.local/browse/EN-77880')
+@pytest.mark.xray('EN-77880')
 def test_uninstall_windows_collector_via_remote_ops(management, aggregator, collector):
     """
         This test is going to uninstall the collector via remote ops (via management's GUI) and install it back via cmd.
@@ -149,7 +149,7 @@ def test_uninstall_windows_collector_via_remote_ops(management, aggregator, coll
 @allure.feature("Basic Functionality")
 @pytest.mark.linux_sanity
 @pytest.mark.collector_linux_sanity
-@pytest.mark.xray('http://jira.ensilo.local/browse/EN-77881')
+@pytest.mark.xray('EN-77881')
 def test_uninstall_linux_collector_via_remote_ops(management, aggregator, collector):
     """ Workaround for EN-77460 so we can continue working with this env.
         This test is going to uninstall the collector via remote ops (via management's GUI) and install it back via cmd.
