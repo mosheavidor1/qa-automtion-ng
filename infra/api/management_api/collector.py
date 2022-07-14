@@ -160,9 +160,10 @@ class RestCollector(BaseApiObj):
 
     @allure.step("Wait until is Degraded in management")
     def wait_until_degraded(self, timeout_sec=MAX_WAIT_FOR_STATUS, interval_sec=COLLECTOR_KEEPALIVE_INTERVAL):
-        logger.info(f"Wait until {self} is Disconnected in management")
+        logger.info(f"Wait until {self} is degraded in management")
+        err_msg = f"{self} status is not degraded after waiting for {timeout_sec} seconds"
         wait_for_condition(condition_func=self.is_degraded,
-                           timeout_sec=timeout_sec, interval_sec=interval_sec)
+                           timeout_sec=timeout_sec, interval_sec=interval_sec, err_msg=err_msg)
 
     @allure.step("Wait for status 'uninstalling' in management")
     def wait_for_uninstalling(self, timeout_sec=MAX_WAIT_FOR_STATUS, interval_sec=COLLECTOR_KEEPALIVE_INTERVAL):
