@@ -6,6 +6,7 @@ from tests.utils.linux_collector_utils import LinuxCollectorUtils
 from infra.allure_report_handler.reporter import Reporter, TEST_STEP, INFO
 from tests.utils.tenant_utils import new_tenant_context
 from tests.utils.collector_utils import CollectorUtils
+from tests.utils.collector_utils import revive_collector_agent_on_failure_context
 
 
 @allure.epic("Collectors")
@@ -15,7 +16,7 @@ from tests.utils.collector_utils import CollectorUtils
 @pytest.mark.collector_sanity
 @pytest.mark.collector_linux_sanity
 @pytest.mark.xray('EN-73287')
-def test_stop_start_collector(management, collector):
+def test_stop_start_collector(management, aggregator, collector):
     """
     1. Stop a running collector and validate it stopped.
     2. Start collector and validate it started successfully.
@@ -24,10 +25,12 @@ def test_stop_start_collector(management, collector):
     collector_agent = collector
     rest_collector = tenant.rest_components.collectors.get_by_ip(ip=collector_agent.host_ip)
     with TEST_STEP(f"Stop {collector_agent} and validate"):
-        collector_agent.stop_collector(password=tenant.organization.registration_password)
-        Reporter.report(f"Validate {collector_agent} stopped successfully:", INFO)
-        collector_agent.wait_until_agent_down()
-        CollectorUtils.wait_until_rest_collector_is_off(rest_collector=rest_collector)
+        with revive_collector_agent_on_failure_context(tenant=tenant, collector_agent=collector_agent,
+                                                       aggregator=aggregator):
+            collector_agent.stop_collector(password=tenant.organization.registration_password)
+            Reporter.report(f"Validate {collector_agent} stopped successfully:", INFO)
+            collector_agent.wait_until_agent_down()
+            CollectorUtils.wait_until_rest_collector_is_off(rest_collector=rest_collector)
 
     with TEST_STEP(f"Start {collector_agent} and validate"):
         collector_agent.start_collector()
@@ -81,12 +84,14 @@ def test_uninstall_install_windows_collector(management, aggregator, collector):
     rest_collector = tenant.rest_components.collectors.get_by_ip(ip=collector_agent.host_ip)
     collector_version = rest_collector.get_version(from_cache=True)
     with TEST_STEP(f"Uninstall {collector_agent} and validate"):
-        version_before_uninstall = collector_agent.get_version()
-        password = tenant.organization.registration_password
-        collector_agent.uninstall_collector(registration_password=password)
-        Reporter.report(f"Validate {collector_agent} uninstalled successfully:")
-        assert not collector_agent.is_collector_files_exist(), f"Installation folder contains files, should be empty"
-        CollectorUtils.wait_until_rest_collector_is_off(rest_collector=rest_collector)
+        with revive_collector_agent_on_failure_context(tenant=tenant, collector_agent=collector_agent,
+                                                       aggregator=aggregator):
+            version_before_uninstall = collector_agent.get_version()
+            password = tenant.organization.registration_password
+            collector_agent.uninstall_collector(registration_password=password)
+            Reporter.report(f"Validate {collector_agent} uninstalled successfully:")
+            assert not collector_agent.is_collector_files_exist(), f"Installation folder contains files, should be empty"
+            CollectorUtils.wait_until_rest_collector_is_off(rest_collector=rest_collector)
 
     with TEST_STEP(f"Install {collector_agent} and validate"):
         collector_agent.install_collector(version=collector_version,
@@ -118,12 +123,15 @@ def test_uninstall_windows_collector_via_remote_ops(management, aggregator, coll
     testim_params = {"collectorName": rest_collector.get_name(from_cache=True)}
 
     with TEST_STEP(f"Uninstall {rest_collector} via remote ops and validate"):
-        version_before_uninstall = collector_agent.get_version()
-        management.ui_client.collectors.uninstall_collector(data=testim_params)
-        Reporter.report(f"Validate {rest_collector} uninstalled successfully and deleted from MGMT:", INFO)
-        rest_collector.wait_for_uninstalling()
-        rest_collector.wait_until_deleted()
-        assert not collector_agent.is_collector_files_exist(), f"Installation folder contains files, should be empty"
+        with revive_collector_agent_on_failure_context(tenant=tenant, collector_agent=collector_agent,
+                                                       aggregator=aggregator):
+            version_before_uninstall = collector_agent.get_version()
+            management.ui_client.collectors.uninstall_collector(data=testim_params)
+            Reporter.report(f"Validate {rest_collector} uninstalled successfully and deleted from MGMT:", INFO)
+            rest_collector.wait_for_uninstalling()
+            rest_collector.wait_until_deleted()
+            assert not collector_agent.is_collector_files_exist(), \
+                f"Installation folder contains files, should be empty"
 
     with TEST_STEP(f"Install {rest_collector} and validate"):
         collector_agent.install_collector(version=collector_version, aggregator_ip=aggregator.host_ip,
@@ -160,14 +168,16 @@ def test_uninstall_linux_collector_via_remote_ops(management, aggregator, collec
         package_name_before_uninstall = collector_agent.get_package_name()
 
     with TEST_STEP(f"Uninstall {rest_collector} via remote ops and validate"):
-        management.ui_client.collectors.uninstall_collector(data=testim_params)
-        Reporter.report(f"Validate {rest_collector} uninstalled successfully and deleted from MGMT:", INFO)
-        rest_collector.wait_for_uninstalling()
-        rest_collector.wait_until_deleted()
-        Reporter.report(f"Validate that {collector_agent} installation folder & installed package removed:", INFO)
-        assert not collector_agent.is_collector_files_exist(), f"Installation folder was not deleted"
-        package_name_after_uninstall = collector_agent.get_package_name()
+        with revive_collector_agent_on_failure_context(tenant=tenant, collector_agent=collector_agent,
+                                                       aggregator=aggregator):
+            management.ui_client.collectors.uninstall_collector(data=testim_params)
+            Reporter.report(f"Validate {rest_collector} uninstalled successfully and deleted from MGMT:", INFO)
+            rest_collector.wait_for_uninstalling()
+            rest_collector.wait_until_deleted()
+            Reporter.report(f"Validate that {collector_agent} installation folder & installed package removed:", INFO)
+            assert not collector_agent.is_collector_files_exist(), f"Installation folder was not deleted"
         try:  # Workaround for EN-77460
+            package_name_after_uninstall = collector_agent.get_package_name()
             assert package_name_after_uninstall is None, \
                 f"Collector package was not deleted from OS, name: '{package_name_after_uninstall}'"
         except Exception as e:  # Workaround for EN-77460 , after fix should remove the try/finally
@@ -190,13 +200,9 @@ def test_uninstall_linux_collector_via_remote_ops(management, aggregator, collec
                                                   registration_password=tenant.organization.registration_password)
 
             with TEST_STEP(f"Validate {collector_agent} installed and configured successfully:"):
-                Reporter.report(f"Validate {collector_agent} installation folder & installed package name:", INFO)
-                installed_package_name = collector_agent.get_package_name()
-                assert installed_package_name == package_name_before_uninstall, \
-                    f"{collector_agent} Package name is '{installed_package_name}' instead of '{package_name_before_uninstall}'"
-                Reporter.report(f"Validate {collector_agent} version and status:", INFO)
                 CollectorUtils.validate_collector_installed_successfully(tenant=tenant, collector_agent=collector_agent,
-                                                                         expected_version=version_before_uninstall)
+                                                                         expected_version=version_before_uninstall,
+                                                                         expected_package_name=package_name_before_uninstall)
                 updated_rest_collector = tenant.rest_components.collectors.get_by_ip(ip=collector_agent.host_ip)
                 assert rest_collector.id != updated_rest_collector.id, \
                     "After uninstall via remote ops, we expect for new collector id in management"
@@ -231,15 +237,17 @@ def test_uninstall_install_configure_linux_collector(management, aggregator, col
         package_name_before_uninstall = collector_agent.get_package_name()
 
     with TEST_STEP(f"Uninstall {collector_agent} and validate:"):
-        uninstall_output = collector_agent.uninstall_collector(registration_password=tenant.organization.registration_password)
-        Reporter.report(f"Validate {collector_agent} uninstalled successfully:")
-        LinuxCollectorUtils.validate_uninstallation_cmd_output(uninstall_output, collector_agent)
-        Reporter.report(f"Validate that {collector_agent} installation folder & installed package removed:")
-        assert not collector_agent.is_collector_files_exist(), f"Installation folder was not deleted"
-        package_name_after_uninstall = collector_agent.get_package_name()
-        assert package_name_after_uninstall is None, \
-            f"Collector package was not deleted from OS, name: '{package_name_after_uninstall}'"
-        CollectorUtils.wait_until_rest_collector_is_off(rest_collector=rest_collector)
+        with revive_collector_agent_on_failure_context(tenant=tenant, collector_agent=collector_agent,
+                                                       aggregator=aggregator):
+            uninstall_output = collector_agent.uninstall_collector(registration_password=tenant.organization.registration_password)
+            Reporter.report(f"Validate {collector_agent} uninstalled successfully:")
+            LinuxCollectorUtils.validate_uninstallation_cmd_output(uninstall_output, collector_agent)
+            Reporter.report(f"Validate that {collector_agent} installation folder & installed package removed:")
+            assert not collector_agent.is_collector_files_exist(), f"Installation folder was not deleted"
+            package_name_after_uninstall = collector_agent.get_package_name()
+            assert package_name_after_uninstall is None, \
+                f"Collector package was not deleted from OS, name: '{package_name_after_uninstall}'"
+            CollectorUtils.wait_until_rest_collector_is_off(rest_collector=rest_collector)
 
     with TEST_STEP(f"Install {collector_agent} & Configure"):
         collector_agent.install_collector(version=version_before_uninstall,
@@ -248,13 +256,9 @@ def test_uninstall_install_configure_linux_collector(management, aggregator, col
                                           registration_password=tenant.organization.registration_password)
 
     with TEST_STEP(f"Validate {collector_agent} installed and configured successfully:"):
-        Reporter.report(f"Validate {collector_agent} installation folder & installed package name:", INFO)
-        installed_package_name = collector_agent.get_package_name()
-        assert installed_package_name == package_name_before_uninstall, \
-            f"{collector_agent} Package name is '{installed_package_name}' instead of '{package_name_before_uninstall}'"
-        Reporter.report(f"Validate {collector_agent} version and status:", INFO)
         CollectorUtils.validate_collector_installed_successfully(tenant=tenant, collector_agent=collector_agent,
-                                                                 expected_version=version_before_uninstall)
+                                                                 expected_version=version_before_uninstall,
+                                                                 expected_package_name=package_name_before_uninstall)
 
 
 @allure.epic("Collectors")
@@ -264,14 +268,16 @@ def test_uninstall_install_configure_linux_collector(management, aggregator, col
 @pytest.mark.collector_sanity
 @pytest.mark.collector_linux_sanity
 @pytest.mark.xray('EN-57176')
-def test_disable_enable_collector(management, collector):
+def test_disable_enable_collector(management, aggregator, collector):
     collector_agent = collector
     rest_collector = management.tenant.rest_components.collectors.get_by_ip(ip=collector_agent.host_ip)
-
+    tenant = management.tenant
     with TEST_STEP(f"Disable {rest_collector} via MGMT and validate status in CLI (Agent) and in MGMT"):
-        rest_collector.disable()
-        collector_agent.wait_until_agent_disabled()
-        rest_collector.wait_until_disabled()
+        with revive_collector_agent_on_failure_context(tenant=tenant, collector_agent=collector_agent,
+                                                       aggregator=aggregator):
+            rest_collector.disable()
+            collector_agent.wait_until_agent_disabled()
+            rest_collector.wait_until_disabled()
 
     with TEST_STEP(f"Enable {rest_collector} via MGMT and validate status in CLI and in MGMT"):
         rest_collector.enable()
@@ -285,7 +291,8 @@ def test_disable_enable_collector(management, collector):
 @pytest.mark.linux_sanity
 @pytest.mark.collector_sanity
 @pytest.mark.collector_linux_sanity
-def test_collector_with_new_org_registration_password(management, collector):
+@pytest.mark.xray('EN-77833')
+def test_collector_with_new_org_registration_password(management, aggregator, collector):
     """ Check that collector can work with the new registration password of the new tenant:
     1. Create new tenant with registration password that is different from the
     registration password of the current tenant.
@@ -304,11 +311,13 @@ def test_collector_with_new_org_registration_password(management, collector):
         with TEST_STEP(f"Stop {collector_agent} with the new registration password and validate that stopped"):
             new_registration_password = new_tenant.organization.registration_password
             assert new_registration_password != old_registration_password
-            CollectorUtils.wait_for_configuration(collector_agent=collector_agent, tenant=new_tenant,
-                                                  start_collector=False)
-            Reporter.report(f"Validate {collector_agent} stopped successfully with new registration password", INFO)
-            collector_agent.wait_until_agent_down()
-            CollectorUtils.wait_until_rest_collector_is_off(rest_collector=new_tenant_rest_collector)
+            with revive_collector_agent_on_failure_context(tenant=new_tenant, collector_agent=collector_agent,
+                                                           aggregator=aggregator):
+                CollectorUtils.wait_for_configuration(collector_agent=collector_agent, tenant=new_tenant,
+                                                      start_collector=False)
+                Reporter.report(f"Validate {collector_agent} stopped successfully with new registration password", INFO)
+                collector_agent.wait_until_agent_down()
+                CollectorUtils.wait_until_rest_collector_is_off(rest_collector=new_tenant_rest_collector)
 
         with TEST_STEP(f"Turn back on the {collector_agent}"):
             collector_agent.start_collector()
