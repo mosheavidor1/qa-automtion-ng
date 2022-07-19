@@ -1,5 +1,4 @@
 import functools
-import os
 import random
 import re
 import logging
@@ -14,7 +13,7 @@ from smbprotocol.exceptions import PipeBroken
 import third_party_details
 from infra import common_utils
 from infra.allure_report_handler.reporter import Reporter
-from infra.decorators import retry
+from infra.decorators import retry, short_retry
 from infra.common_utils import wait_for_condition
 
 from infra.os_stations.os_station_base import OsStation
@@ -60,7 +59,7 @@ class WindowsStation(OsStation):
         except Exception as e:
             Reporter.report("The connections will be removed in background, can continue")
 
-    @retry
+    @short_retry
     @allure.step("Connect To remote machine")
     def connect(self):
         try:
@@ -97,7 +96,7 @@ class WindowsStation(OsStation):
             self._remote_connection_session.create_service()
             self.__encrypted_connection = not self.__encrypted_connection
 
-    @retry
+    @short_retry
     @allure.step("Executing command: {cmd}")
     def execute_cmd(self, cmd: str, return_output: bool = True, fail_on_err: bool = False, timeout=180,
                     attach_output_to_report: bool = True,
