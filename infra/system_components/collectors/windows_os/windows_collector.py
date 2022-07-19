@@ -19,7 +19,7 @@ from sut_details import management_registration_password
 from infra.system_components.collectors.windows_os.windows_collector_installation_utils import (
     create_uninstallation_script,
     get_installer_path,
-    generate_installation_cmd
+    generate_installation_cmd, create_stop_collector_script, _get_stop_collector_script_content
 )
 
 logger = logging.getLogger(__name__)
@@ -126,12 +126,23 @@ class WindowsCollector(CollectorAgent):
         logger.info(f"Stop {self}")
         password = password or REGISTRATION_PASS
 
-        try:
-            cmd = f'"{self.__collector_service_exe}" --stop -rp:{password}'
-            self.os_station.execute_cmd(cmd=cmd, fail_on_err=True)
-        except:
-            cmd = f'"{self.__collector_service_exe}" --stop -rp:{sut_details.management_registration_password}'
-            self.os_station.execute_cmd(cmd=cmd, fail_on_err=True)
+        # cmd = f'"{self.__collector_service_exe}" --stop -rp:{password}'
+        # self.os_station.execute_cmd(cmd=cmd, fail_on_err=False, asynchronous=True)
+        # self.get_agent_status()
+        script_path = create_stop_collector_script(collector_agent=self, registration_password=password)
+        result = self.os_station.execute_cmd(cmd=script_path, fail_on_err=True)
+        expected_valid_result = """C:\\Windows\\system32>cd C:\\Program Files\\Fortinet\\FortiEDR\\  
+
+C:\\Program Files\\Fortinet\\FortiEDR>FortiEDRCollectorService.exe --stop -rp:WINDOWS_10_64  
+
+C:\\Program Files\\Fortinet\\FortiEDR>exit /b 0""".replace("\n", "\r\n")
+
+
+        if result != expected_valid_result:
+            # since stop collector command does not return anything (when stopped without issues)
+            # we are expecting that the result will be the same as the script.
+            # if there is additional output (such as invalid password or so, we should fail the step)
+            assert False, f"Failed to stop collector, check command output: {result}"
 
         wait_until_collector_pid_disappears(self)
         self.update_process_id()
