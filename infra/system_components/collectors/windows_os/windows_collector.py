@@ -131,9 +131,9 @@ class WindowsCollector(CollectorAgent):
         # self.get_agent_status()
         script_path = create_stop_collector_script(collector_agent=self, registration_password=password)
         result = self.os_station.execute_cmd(cmd=script_path, fail_on_err=True)
-        expected_valid_result = """C:\\Windows\\system32>cd C:\\Program Files\\Fortinet\\FortiEDR\\  
+        expected_valid_result = f"""C:\\Windows\\system32>cd C:\\Program Files\\Fortinet\\FortiEDR\\  
 
-C:\\Program Files\\Fortinet\\FortiEDR>FortiEDRCollectorService.exe --stop -rp:WINDOWS_10_64  
+C:\\Program Files\\Fortinet\\FortiEDR>FortiEDRCollectorService.exe --stop -rp:{password}  
 
 C:\\Program Files\\Fortinet\\FortiEDR>exit /b 0""".replace("\n", "\r\n")
 
