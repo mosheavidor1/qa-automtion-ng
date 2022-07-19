@@ -27,7 +27,7 @@ def create_stop_collector_script(collector_agent,
     return full_path
 
 
-@allure.step("Creating script for uninstalling the {collector}")
+@allure.step("Creating script for uninstalling the {collector_agent}")
 def create_uninstallation_script(collector_agent, registration_password: str, logs_file_path: str):
     """ Creating script for uninstalling the collector """
     script_name = 'uninstall_collector.bat'

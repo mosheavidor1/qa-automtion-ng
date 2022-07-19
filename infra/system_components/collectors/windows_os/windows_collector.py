@@ -312,7 +312,9 @@ C:\\Program Files\\Fortinet\\FortiEDR>exit /b 0""".replace("\n", "\r\n")
         logs_path = self._get_logs_path(collector=self, prefix="Uninstallation_logs")
         Reporter.report(f"Installation logs can be found here: {logs_path}")
 
-        uninstall_script_path = create_uninstallation_script(self, registration_password, logs_path)
+        uninstall_script_path = create_uninstallation_script(collector_agent=self,
+                                                             registration_password=registration_password,
+                                                             logs_file_path=logs_path)
         self.os_station.execute_cmd(cmd=uninstall_script_path, asynchronous=False)
         wait_until_collector_pid_disappears(self)
         self.update_process_id()
