@@ -350,10 +350,10 @@ class ManagementUiClient:
                          assert_type: AssertTypeEnum = AssertTypeEnum.HARD,
                          test_timeout: int = 600):
             self.parent.start_testim_flow(test_name="Collectors | Delete group",
-                                      management_ui_ip=self.parent.management_ui_ip,
-                                      data=data,
-                                      assert_type=assert_type,
-                                      test_timeout=test_timeout)
+                                          management_ui_ip=self.parent.management_ui_ip,
+                                          data=data,
+                                          assert_type=assert_type,
+                                          test_timeout=test_timeout)
 
     class FortiEdrCollectors:
         def __init__(self, parent):
@@ -435,11 +435,71 @@ class ManagementUiClient:
         def __init__(self, parent):
             self.parent = parent
 
+        def set_ldap_server(self,
+                            data: dict = None,
+                            assert_type: AssertTypeEnum = AssertTypeEnum.HARD,
+                            test_timeout: int = 600):
+            """
+            login to the management
+            go to ldap page
+            configure the ldap server
+            validate the connection success by test button
+            """
+            self.parent.start_testim_flow(test_name="LDAP | Set LDAP server",
+                                          management_ui_ip=self.parent.management_ui_ip,
+                                          data=data,
+                                          assert_type=assert_type,
+                                          test_timeout=test_timeout)
+
         def set_ldap_server_plus_users_authentication(self,
                                                       data: dict = None,
                                                       assert_type: AssertTypeEnum = AssertTypeEnum.HARD,
                                                       test_timeout: int = 600):
             self.parent.start_testim_flow(test_name="LDAP | Set LDAP server plus users authentication",
+                                          management_ui_ip=self.parent.management_ui_ip,
+                                          data=data,
+                                          assert_type=assert_type,
+                                          test_timeout=test_timeout)
+
+        def reset_ldap_server_configuration(self,
+                                            data: dict = None,
+                                            assert_type: AssertTypeEnum = AssertTypeEnum.HARD,
+                                            test_timeout: int = 600):
+            """
+            login to the management
+            go to ldap page
+            clean all ldap configuration by click on reset button
+            """
+            self.parent.start_testim_flow(test_name="LDAP | reset LDAP server configuration",
+                                          management_ui_ip=self.parent.management_ui_ip,
+                                          data=data,
+                                          assert_type=assert_type,
+                                          test_timeout=test_timeout)
+
+        def validate_ldap_non_admin_user_privileges(self,
+                                                    data: dict = None,
+                                                    assert_type: AssertTypeEnum = AssertTypeEnum.HARD,
+                                                    test_timeout: int = 600):
+            """
+            perform login
+            Verify that the user has user-only permissions by making sure he cannot see the 'administrator' page
+            """
+            self.parent.start_testim_flow(test_name="users | basic validate non admin user privileges",
+                                          management_ui_ip=self.parent.management_ui_ip,
+                                          data=data,
+                                          assert_type=assert_type,
+                                          test_timeout=test_timeout)
+
+        def validate_ldap_local_admin_privileges(self,
+                                                 data: dict = None,
+                                                 assert_type: AssertTypeEnum = AssertTypeEnum.HARD,
+                                                 test_timeout: int = 600):
+            """
+            perform login
+            Verify that the user has local-admin permissions by making sure he can see the 'administrator' page
+            but it not see other organizations
+            """
+            self.parent.start_testim_flow(test_name="users | basic validate local admin privileges",
                                           management_ui_ip=self.parent.management_ui_ip,
                                           data=data,
                                           assert_type=assert_type,
@@ -488,9 +548,9 @@ class ManagementUiClient:
             self.parent = parent
 
         def create_4_local_users_all_combinations(self,
-                                                 data: dict = None,
-                                                 assert_type: AssertTypeEnum = AssertTypeEnum.HARD,
-                                                 test_timeout: int = 600):
+                                                  data: dict = None,
+                                                  assert_type: AssertTypeEnum = AssertTypeEnum.HARD,
+                                                  test_timeout: int = 600):
             self.parent.start_testim_flow(test_name="Users | Create 4 local user - all combinations",
                                           management_ui_ip=self.parent.management_ui_ip,
                                           data=data,
