@@ -1,10 +1,8 @@
 import logging
-from typing import List
 
 import pytest
 
 import third_party_details
-from infra.jira_handler.jira_xray_handler import JiraXrayHandler, TestStatusEnum
 from infra.system_components.collector import CollectorAgent
 
 
@@ -14,22 +12,6 @@ COLLECTOR_KEEP_ALIVE_INTERVAL = 5
 EDR_EVENT_TESTER_REGISTRATION_PASSWORD = '12345678'
 
 logger = logging.getLogger(__name__)
-
-
-# @pytest.fixture(scope="module", autouse=True)
-# @create_test_execution_for_edr_suite()
-# @allure.step("Create environment properties file for allure report")
-# def jira_test_execution_for_edr_tester(collector: CollectorAgent):
-#     collector_agent: CollectorAgent = collector
-#
-#     tests_list: list = [None]
-#     JiraXrayHandler.collector = collector_agent
-#     JiraXrayHandler.mark.execution_key = JiraXrayHandler.create_test_execution()
-#
-#     yield tests_list
-#
-#     for jira_id in tests_list:
-#         JiraXrayHandler.mark.xray(jira_id)
 
 
 @pytest.fixture(scope='function')
