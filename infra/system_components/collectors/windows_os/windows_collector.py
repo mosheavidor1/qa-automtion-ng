@@ -6,6 +6,7 @@ import allure
 
 import sut_details
 import third_party_details
+from infra.decorators import short_retry
 from infra.os_stations.windows_station import WindowsStation
 from infra.system_components.collectors.collectors_agents_utils import (
     wait_until_collector_pid_disappears,
@@ -122,6 +123,7 @@ class WindowsCollector(CollectorAgent):
         return version
 
     @allure.step("{0} - Stop collector")
+    @short_retry
     def stop_collector(self, password=None):
         logger.info(f"Stop {self}")
         password = password or REGISTRATION_PASS
