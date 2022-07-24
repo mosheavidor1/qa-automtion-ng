@@ -226,6 +226,10 @@ class OsStation(metaclass=ABCMeta):
         pass
 
     @abstractmethod
+    def append_text_to_file(self, content: str, file_path: str):
+        pass
+
+    @abstractmethod
     def extract_compressed_file(self, file_path_to_extract: str, file_name: str):
         pass
 

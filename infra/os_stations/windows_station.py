@@ -416,6 +416,10 @@ class WindowsStation(OsStation):
             cmd_builder += f"& ECHO {rows[len(rows) - 1]} >> {file_path}"
         self.execute_cmd(cmd=cmd_builder, fail_on_err=True)
 
+    @allure.step("append text to file {file_path}")
+    def append_text_to_file(self, content: str, file_path: str):
+        raise Exception("Not implemented yet")
+
     @allure.step("Copy files from shared folder to local machine")
     @retry
     def copy_files_from_shared_folder(self,
