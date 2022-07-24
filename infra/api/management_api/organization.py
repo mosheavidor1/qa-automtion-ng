@@ -26,6 +26,8 @@ class OrgFieldsNames(Enum):
     SERVERS_LICENCES = 'serversAllocated'
     WORK_STATION_LICENCES = 'workstationsAllocated'
     IOT_LICENCES = 'iotAllocated'
+    WORK_STATIONS_IN_USE = 'workstationsInUse'
+
 
 
 class Organization(BaseApiObj):
@@ -94,6 +96,11 @@ class Organization(BaseApiObj):
 
     def get_works_station_licences_capacity(self, from_cache=None, update_cache=True):
         field_name = OrgFieldsNames.WORK_STATION_LICENCES.value
+        value = self._get_field(field_name=field_name, from_cache=from_cache, update_cache=update_cache)
+        return value
+
+    def get_works_station_licences_in_use(self, from_cache=None, update_cache=True):
+        field_name = OrgFieldsNames.WORK_STATIONS_IN_USE.value
         value = self._get_field(field_name=field_name, from_cache=from_cache, update_cache=update_cache)
         return value
 

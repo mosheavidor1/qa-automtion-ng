@@ -5,12 +5,16 @@ class ManagementDetails:
                  management_version: str,
                  management_hostname: str,
                  management_external_ip: str,
-                 management_internal_ip: str):
+                 management_internal_ip: str,
+                 work_stations_collectors_in_use: int,
+                 work_station_collectors_license_capacity: int):
         self.license_expiration_date = license_expiration_date
         self.management_version = management_version
         self.management_hostname = management_hostname
         self.management_external_ip = management_external_ip
         self.management_internal_ip = management_internal_ip
+        self.work_stations_collectors_in_use = work_stations_collectors_in_use
+        self.work_station_collectors_license_capacity = work_station_collectors_license_capacity
 
 
 class AggregatorDetails:

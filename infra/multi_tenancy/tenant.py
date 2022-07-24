@@ -47,7 +47,7 @@ class Tenant:
         return self._organization
 
     @property
-    def rest_components(self) -> TenantRestComponentsFactory:
+    def  rest_components(self) -> TenantRestComponentsFactory:
         """ Factory for creating/finding tenant's components like users, collectors, etc.
             With the tenant's default local admin user rest credentials """
         return self._rest_components

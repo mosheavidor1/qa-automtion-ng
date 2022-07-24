@@ -120,7 +120,10 @@ class Management(FortiEdrLinuxStation):
                                  management_version=as_dict.get('managementVersion'),
                                  management_hostname=as_dict.get('managementHostname'),
                                  management_external_ip=as_dict.get('managementExternalIP'),
-                                 management_internal_ip=as_dict.get('managementInternalIP'))
+                                 management_internal_ip=as_dict.get('managementInternalIP'),
+                                 work_stations_collectors_in_use=as_dict.get('workstationsCollectorsInUse'),
+                                 work_station_collectors_license_capacity=as_dict.get('workstationCollectorsLicenseCapacity')
+                                 )
 
     def _get_postgresql_db_obj(self) -> PostgresqlOverSshDb:
         ssh_details = SshDetails(host_ip=self.host_ip, user_name=self.user_name, password=self.password)
@@ -241,7 +244,7 @@ class Management(FortiEdrLinuxStation):
         return role_id
 
     @allure.step("Wait until rest api available")
-    def wait_until_rest_api_available(self, timeout: int = 60):
+    def wait_until_rest_api_available(self, timeout: int = 60, interval: int = 5):
         start_time = time.time()
         aggregators = None
         while time.time() - start_time < timeout and aggregators is None:
@@ -249,7 +252,7 @@ class Management(FortiEdrLinuxStation):
                 aggregators = self._admin_rest_api_client.system_inventory.get_aggregator_info()
             except Exception as e:
                 logger.info("Rest API is not available yet, going to sleep 5 sceonds")
-                time.sleep(5)
+                time.sleep(interval)
 
         assert aggregators is not None, f"REST API is not available within timeout of {timeout}"
 

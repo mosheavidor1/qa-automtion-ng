@@ -11,7 +11,7 @@ class AdministratorRest(BaseRestFunctionality):
     def __init__(self, nslo_rest: NsloRest):
         super().__init__(nslo_rest=nslo_rest)
     
-    def get_system_summery(self, parameter=None, log=False):
+    def get_system_summery(self, parameter=None, log=False, organization='All organizations'):
         """
         :param parameter: string or list, the information parameter to get from the system summery.
         :param log: boolean, True to log the full system summery.
@@ -20,7 +20,7 @@ class AdministratorRest(BaseRestFunctionality):
         if isinstance(parameter, str):
             parameter = [parameter]
 
-        status, response = self._rest.admin.GetSystemSummary()
+        status, response = self._rest.admin.GetSystemSummary(organization=organization)
         self._validate_expected_status_code(expected_status_code=200,
                                             actual_status_code=response.status_code,
                                             error_message=f"Get system summary - expected response code: {200}, actual: {response.status_code}")
@@ -36,7 +36,7 @@ class AdministratorRest(BaseRestFunctionality):
                 return summery[0]
 
         return summery
-    
+
     def set_system_mode(self, prevention: bool):
         """
         :param prevention: boolean, True for prevention mode or False for simulation.

@@ -1,6 +1,7 @@
 import json
 import warnings
 import allure
+import logging
 from sshtunnel import SSHTunnelForwarder
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine
@@ -8,6 +9,7 @@ from sqlalchemy import create_engine
 from infra.allure_report_handler.reporter import Reporter
 from infra.containers.postgresql_over_ssh_details import PostgresqlOverSshDetails
 from infra.containers.ssh_details import SshDetails
+logger = logging.getLogger(__name__)
 
 
 class PostgresqlOverSshDb:
@@ -64,6 +66,7 @@ class PostgresqlOverSshDb:
                 self.connect()
 
             if 'select' in sql_cmd.lower():
+                Reporter.report(message=f"Going to execute sql command: {sql_cmd}", logger_func=logger.info)
                 results = self._session.execute(sql_cmd).fetchall()
                 results_as_list_of_dicts = [{**row} for row in results]
                 Reporter.attach_str_as_file(file_name='result', file_content=json.dumps(results_as_list_of_dicts, indent=4))

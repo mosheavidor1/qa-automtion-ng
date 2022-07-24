@@ -371,8 +371,15 @@ class LinuxStation(OsStation):
         cmd = f"rm -rf {folder_path}"
         self.execute_cmd(cmd=cmd, return_output=False, fail_on_err=True)
 
+    @allure.step("Overwrite {file_path} content")
     def overwrite_file_content(self, content: str, file_path: str):
-        raise Exception("Not implemented yet")
+        cmd = f'echo "{content}" > {file_path}'
+        self.execute_cmd(cmd=cmd, return_output=False, fail_on_err=True)
+
+    @allure.step("append text to file {file_path}")
+    def append_text_to_file(self, content: str, file_path: str):
+        cmd = f'echo "" >> {file_path} && echo "{content}" >> {file_path}'
+        self.execute_cmd(cmd=cmd, return_output=False, fail_on_err=True)
 
     @allure.step("Copy files from shared folder to local machine")
     @retry
