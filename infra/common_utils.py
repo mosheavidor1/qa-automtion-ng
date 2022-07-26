@@ -1,7 +1,8 @@
 import allure
 import time
 from infra.allure_report_handler.reporter import Reporter
-BACKEND_UPDATE_TIME = 60 #time to wait for collector new configuration
+
+WAIT_FOR_COLLECTOR_NEW_CONFIGURATION = 60  # time to wait for collector new configuration
 
 
 @allure.step("Wait max {timeout_sec} for the condition '{condition_func}'")

@@ -31,10 +31,12 @@ def _get_rule_name_by_policy_name(policy_name):
 @pytest.mark.management_sanity
 @pytest.mark.parametrize(
     "xray, policy_name",
-    [('EN-78065', DefaultPoliciesNames.EXECUTION_PREVENTION.value)],
+    [('EN-78065', DefaultPoliciesNames.EXECUTION_PREVENTION.value),
+     ('EN-78300', DefaultPoliciesNames.EXFILTRATION_PREVENTION.value),
+     ('EN-78302', DefaultPoliciesNames.RANSOMWARE_PREVENTION.value)
+     ],
 )
-def test_set_policy_execution_prevention_to_simulation_windows(fx_system_without_events_and_exceptions, collector, xray,
-                                                               policy_name):
+def test_policy_simulation_mode_windows(fx_system_without_events_and_exceptions, collector, xray, policy_name):
     """
         Test that policy in simulation mode catching relevant malware and creating correct security event
 
@@ -67,7 +69,7 @@ def test_set_policy_execution_prevention_to_simulation_windows(fx_system_without
     with disable_rule_in_policies_context(user=user, policies_names=not_tested_policies_names, rule_name=rule_name):
         with change_policy_mode_context(user=user, policy_name=policy_name):
             with change_policy_rule_fields_context(user=user, policy_name=policy_name, rule_name=rule_name):
-                with TEST_STEP(f"Change policy's rule '{rule_name}', the action to block and the state to enabled"):
+                with TEST_STEP(f"Change {policy_name}'s rule '{rule_name}', the action to block and the state to enabled"):
                     policy.set_rule_action_to_block(rule_name=rule_name, safe=True)
                     policy.set_rule_state_to_enabled(rule_name=rule_name, safe=True)
 
