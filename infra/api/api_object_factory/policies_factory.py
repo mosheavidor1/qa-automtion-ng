@@ -40,3 +40,20 @@ class PoliciesFactory(BaseApiObjFactory):
         assert safe, f"Didn't find any policy with field {field_name}={value} in organization {self._organization_name}"
         logger.info(f"Didn't find any policy with field {field_name}={value} in organization {self._organization_name}")
         return None
+
+    def get_all(self, rest_client=None, safe=False) -> List[Policy]:
+        policies = []
+        rest_client = rest_client or self._factory_rest_client
+        org_name = self._organization_name
+        logger.debug(f"Find all policies in organization {org_name}")
+        policies_fields = rest_client.policies.get_policies()
+        for policy_fields in policies_fields:
+            policy = Policy(rest_client=rest_client, initial_data=policy_fields)
+            policies.append(policy)
+        if len(policies):
+            logger.debug(f"Found these policies: \n {policies}")
+            return policies
+        assert safe, f"Didn't find policies  in organization {self._organization_name}"
+        logger.info(f"Didn't find policies in organization {self._organization_name}")
+        return policies
+

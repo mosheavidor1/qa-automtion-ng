@@ -5,7 +5,7 @@ from infra.api.api_object import BaseApiObj
 from infra.api.nslo_wrapper.rest_commands import RestCommands
 logger = logging.getLogger(__name__)
 
-WAIT_AFTER_DELETE = 60  # The period of time that took for deletion in the backend - non-configurable configuration
+WAIT_FOR_COLLECTOR_NEW_CONFIGURATION = 60  # The period of time that took for deletion in the backend - non-configurable configuration
 
 
 class EventFieldsNames(Enum):
@@ -17,6 +17,12 @@ class EventFieldsNames(Enum):
     RULES = 'rules'
     ORGANIZATION = 'organization'
     PROCESS_NAME = 'process'
+    ACTION = 'action'
+
+
+class EventActionNames (Enum):
+    SIMULATION_BLOCK ="SimulationBlock"
+    BLOCK = "Block"
 
 
 class Event(BaseApiObj):
@@ -36,6 +42,21 @@ class Event(BaseApiObj):
 
     def get_organization_name(self, from_cache=None, update_cache=True):
         field_name = EventFieldsNames.ORGANIZATION.value
+        value = self._get_field(field_name=field_name, from_cache=from_cache, update_cache=update_cache)
+        return value
+
+    def get_rules(self, from_cache=None, update_cache=True):
+        field_name = EventFieldsNames.RULES.value
+        value = self._get_field(field_name=field_name, from_cache=from_cache, update_cache=update_cache)
+        return value
+
+    def get_process_name(self, from_cache=None, update_cache=True):
+        field_name = EventFieldsNames.PROCESS_NAME.value
+        value = self._get_field(field_name=field_name, from_cache=from_cache, update_cache=update_cache)
+        return value
+
+    def get_action(self, from_cache=None, update_cache=True):
+        field_name = EventFieldsNames.ACTION.value
         value = self._get_field(field_name=field_name, from_cache=from_cache, update_cache=update_cache)
         return value
 

@@ -1,7 +1,7 @@
 import allure
 from infra.api.api_object_factory.base_api_obj import BaseApiObjFactory
 from infra.api.nslo_wrapper.rest_commands import RestCommands
-from infra.api.management_api.event import Event, EventFieldsNames, WAIT_AFTER_DELETE
+from infra.api.management_api.event import Event, EventFieldsNames, WAIT_FOR_COLLECTOR_NEW_CONFIGURATION
 from infra import common_utils
 import logging
 import functools
@@ -73,7 +73,7 @@ class EventsFactory(BaseApiObjFactory):
 
     @allure.step("Delete all Events")
     def delete_all(self, rest_client=None, safe=False, wait_sec=None):
-        wait_sec = wait_sec or WAIT_AFTER_DELETE
+        wait_sec = wait_sec or WAIT_FOR_COLLECTOR_NEW_CONFIGURATION
         logger.info(f"Delete events in organization {self._organization_name} and wait {wait_sec} seconds")
         rest_client = rest_client or self._factory_rest_client
         all_events = self.get_all(rest_client=rest_client, safe=safe)

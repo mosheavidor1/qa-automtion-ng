@@ -790,3 +790,17 @@ def dynamic_windows_collector(collector, management, aggregator) -> WindowsColle
     rest_collector = _find_rest_collector(host_ip=collector.host_ip, tenant=management.tenant)
     CollectorUtils.wait_until_rest_collector_is_off(rest_collector=rest_collector)
     rest_collector.delete()
+
+
+@pytest.fixture(scope="function")
+def fx_system_without_events_and_exceptions(management):
+    """
+    This fixture making sure that the system is clear from events and exceptions
+    And make cleanup after the test
+    """
+    exceptions = management.tenant.default_local_admin.rest_components.exceptions.get_all(safe=True)
+    assert len(exceptions) == 0, 'ERROR--- There are exceptions, we do not get clear system!!!'
+    management.tenant.default_local_admin.rest_components.events.delete_all(safe=True)
+    yield management
+    management.tenant.default_local_admin.rest_components.events.delete_all(safe=True)
+    management.tenant.default_local_admin.rest_components.exceptions.delete_all(safe=True)
