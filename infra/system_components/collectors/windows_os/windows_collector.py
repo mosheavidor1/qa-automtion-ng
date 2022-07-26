@@ -34,6 +34,7 @@ INSTALL_UNINSTALL_LOGS_FOLDER_PATH = "C:\\InstallUninstallLogs"
 EXTRACT_EDR_EVENT_TESTER_TIMEOUT = 30
 EDR_EVENT_TESTER_TIMEOUT = 1200
 
+
 class WindowsCollector(CollectorAgent):
 
     def __init__(self, host_ip: str, user_name: str, password: str):
@@ -486,7 +487,6 @@ C:\\Program Files\\Fortinet\\FortiEDR>exit /b 0""".replace("\n", "\r\n")
     def create_event(self, malware_name: str="DynamicCodeTests.exe"):
         malware_folder = rf'{third_party_details.SHARED_DRIVE_QA_PATH}\automation_ng\malware_sample'
         target_path = self.get_qa_files_path()
-
         target_folder = self.os_station.copy_files_from_shared_folder(
             target_path_in_local_machine=target_path, shared_drive_path=malware_folder,
             files_to_copy=[malware_name])
