@@ -6,13 +6,13 @@ from enum import Enum
 from infra.api.api_object import BaseApiObj
 from infra.api.nslo_wrapper.rest_commands import RestCommands
 from ensilo.platform.rest.nslo_management_rest import NsloRest
-from infra.common_utils import BACKEND_UPDATE_TIME
+from infra.common_utils import WAIT_FOR_COLLECTOR_NEW_CONFIGURATION
 logger = logging.getLogger(__name__)
 
 
-WAIT_AFTER_ASSIGN = BACKEND_UPDATE_TIME
-WAIT_AFTER_SET_POLICY_MODE = BACKEND_UPDATE_TIME
-WAIT_AFTER_SET_RULE_ACTION_STATE = BACKEND_UPDATE_TIME
+WAIT_AFTER_ASSIGN = WAIT_FOR_COLLECTOR_NEW_CONFIGURATION
+WAIT_AFTER_SET_POLICY_MODE = WAIT_FOR_COLLECTOR_NEW_CONFIGURATION
+WAIT_AFTER_SET_RULE_ACTION_STATE = WAIT_FOR_COLLECTOR_NEW_CONFIGURATION
 
 
 class PolicyFieldsNames(Enum):

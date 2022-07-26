@@ -5,7 +5,7 @@ from infra.api.api_object import BaseApiObj
 from infra.api.nslo_wrapper.rest_commands import RestCommands
 logger = logging.getLogger(__name__)
 
-WAIT_FOR_COLLECTOR_NEW_CONFIGURATION = 60  # The period of time that took for deletion in the backend - non-configurable configuration
+WAIT_AFTER_DELETE = 60  # The period of time that took for deletion in the backend - non-configurable configuration
 
 
 class EventFieldsNames(Enum):
