@@ -118,13 +118,13 @@ class JiraXrayHandler:
         management_version = None
         core_version = None
         collector_version = None
-        try:
-            management_version = self.management.get_version()
-            core_version = self.core.get_version()
-            collector_version = self.collector.get_version()
 
-        except Exception as e:
-            pass
+        if self.management is not None:
+            management_version = self.management.get_version()
+        if self.core is not None:
+            core_version = self.core.get_version()
+        if self.collector is not None:
+            collector_version = self.collector.get_version()
 
         fields = {
             'fields': {
