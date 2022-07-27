@@ -66,7 +66,8 @@ class WindowsStation(OsStation):
             # here we are using wrapper because this library creates always same service name in the remote machine
             # and we want to ensure that it will create always unique process id in case that something will get wrong
             # with the original service.
-            self._connect_with_retry_on_different_encrypted_option()
+            if self._remote_connection_session is None:
+                self._connect_with_retry_on_different_encrypted_option()
 
         except Exception as e:
             logger.debug(f"Failed to connect to windows machine, original exception: {e}")
@@ -158,7 +159,6 @@ class WindowsStation(OsStation):
             raise e
 
         except Exception as e:
-            self._remote_connection_session = None
             Reporter.report(f"Failed to execute command: {cmd} on remote windows machine, original exception: {e}")
             raise e
 
