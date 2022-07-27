@@ -1,7 +1,10 @@
 import logging
 from contextlib import contextmanager
+
+import allure
+
 from infra.api.management_api.policy import DefaultPoliciesNames, RulesNames, set_policies_rule_state_to_disabled, \
-    RuleStates, set_policies_rule_state_to_enabled, set_policies_rules_states
+     set_policies_rules_states
 from infra.api.management_api.user import User
 from typing import List
 from enum import Enum
@@ -41,8 +44,9 @@ def change_policy_rule_fields_context(user: User, policy_name, rule_name):
     try:
         yield
     finally:
-        policy.set_rule_action(rule_name=rule_name, action=old_action, safe=True)
-        policy.set_rule_state(rule_name=rule_name, state=old_state, safe=True)
+        with allure.step(f"Cleanup - return the rule '{rule_name}' fields to the original values,policy {policy_name}"):
+            policy.set_rule_action(rule_name=rule_name, action=old_action, safe=True)
+            policy.set_rule_state(rule_name=rule_name, state=old_state, safe=True)
 
 
 @contextmanager
@@ -52,7 +56,8 @@ def change_policy_mode_context(user: User, policy_name):
     try:
         yield
     finally:
-        policy.set_policy_mode(mode_name=old_mode, safe=True)
+        with allure.step(f"Cleanup - return policy '{policy_name}' to the original mode {old_mode}"):
+            policy.set_policy_mode(mode_name=old_mode, safe=True)
 
 
 @contextmanager
@@ -60,20 +65,22 @@ def disable_rule_in_policies_context(user: User, policies_names: List[str], rule
     """
         Disable the rule in the all given policies and finally return to previous rule state
     """
-    policies = []
-    original_rule_state_by_policy_name = {}
-    for policy_name in policies_names:
-        policy = user.rest_components.policies.get_by_name(policy_name=policy_name)
-        if policy.get_rule_by_name(rule_name=rule_name, safe=True) is not None:
-            original_rule_state_by_policy_name[policy_name] = policy.get_rule_state(rule_name=rule_name)
-            policies.append(policy)
-    set_policies_rule_state_to_disabled(policies=policies, rule_name=rule_name)
+    with allure.step(f"Setup- Disable the rule '{rule_name}' in these policies: {policies_names}"):
+        policies = []
+        original_rule_state_by_policy_name = {}
+        for policy_name in policies_names:
+            policy = user.rest_components.policies.get_by_name(policy_name=policy_name)
+            if policy.get_rule_by_name(rule_name=rule_name, safe=True) is not None:
+                original_rule_state_by_policy_name[policy_name] = policy.get_rule_state(rule_name=rule_name)
+                policies.append(policy)
+        set_policies_rule_state_to_disabled(policies=policies, rule_name=rule_name)
     try:
         yield
     finally:
-        policies_rules_original_states = []
-        for policy in policies:
-            policy_rule_original_state = (policy, rule_name, original_rule_state_by_policy_name[policy.name])
-            policies_rules_original_states.append(policy_rule_original_state)
-        set_policies_rules_states(policies_rules_states=policies_rules_original_states)
+        with allure.step("Cleanup - for each policy return the given rule to the original state"):
+            policies_rules_original_states = []
+            for policy in policies:
+                policy_rule_original_state = (policy, rule_name, original_rule_state_by_policy_name[policy.name])
+                policies_rules_original_states.append(policy_rule_original_state)
+            set_policies_rules_states(policies_rules_states=policies_rules_original_states)
 
