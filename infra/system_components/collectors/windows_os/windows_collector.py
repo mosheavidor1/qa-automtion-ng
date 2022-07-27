@@ -4,9 +4,7 @@ from typing import List
 import logging
 import allure
 
-import sut_details
 import third_party_details
-from infra.decorators import short_retry
 from infra.os_stations.windows_station import WindowsStation
 from infra.system_components.collectors.collectors_agents_utils import (
     wait_until_collector_pid_disappears,
@@ -124,28 +122,12 @@ class WindowsCollector(CollectorAgent):
         return version
 
     @allure.step("{0} - Stop collector")
-    @short_retry
     def stop_collector(self, password=None):
         logger.info(f"Stop {self}")
         password = password or REGISTRATION_PASS
 
-        # cmd = f'"{self.__collector_service_exe}" --stop -rp:{password}'
-        # self.os_station.execute_cmd(cmd=cmd, fail_on_err=False, asynchronous=True)
-        # self.get_agent_status()
-        script_path = create_stop_collector_script(collector_agent=self, registration_password=password)
-        result = self.os_station.execute_cmd(cmd=script_path, fail_on_err=True)
-        expected_valid_result = f"""C:\\Windows\\system32>cd C:\\Program Files\\Fortinet\\FortiEDR\\  
-
-C:\\Program Files\\Fortinet\\FortiEDR>FortiEDRCollectorService.exe --stop -rp:{password}  
-
-C:\\Program Files\\Fortinet\\FortiEDR>exit /b 0""".replace("\n", "\r\n")
-
-
-        if result != expected_valid_result:
-            # since stop collector command does not return anything (when stopped without issues)
-            # we are expecting that the result will be the same as the script.
-            # if there is additional output (such as invalid password or so, we should fail the step)
-            assert False, f"Failed to stop collector, check command output: {result}"
+        cmd = f'"{self.__collector_service_exe}" --stop -rp:{password}'
+        self.os_station.execute_cmd(cmd=cmd, fail_on_err=True, asynchronous=False)
 
         wait_until_collector_pid_disappears(self)
         self.update_process_id()
