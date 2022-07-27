@@ -4,7 +4,7 @@ import allure
 import pytest
 from infra.allure_report_handler.reporter import TEST_STEP, Reporter, INFO
 from infra.api.management_api.event import EventActionNames
-from infra.api.management_api.policy import DefaultPoliciesNames, RulesNames
+from infra.api.management_api.policy import DefaultPoliciesNames, RulesNames, ModeNames
 from infra.system_components.collectors.windows_os.windows_collector import WindowsCollector
 from tests.utils.policy_utils import disable_rule_in_policies_context, \
     change_policy_rule_fields_context, change_policy_mode_context, get_relevant_malware_name
@@ -30,25 +30,29 @@ def _get_rule_name_by_policy_name(policy_name):
 @pytest.mark.policy_sanity
 @pytest.mark.management_sanity
 @pytest.mark.parametrize(
-    "xray, policy_name",
-    [('EN-78065', DefaultPoliciesNames.EXECUTION_PREVENTION.value),
-     ('EN-78300', DefaultPoliciesNames.EXFILTRATION_PREVENTION.value),
-     ('EN-78302', DefaultPoliciesNames.RANSOMWARE_PREVENTION.value)
+    "xray, policy_name, mode",
+    [('EN-78065', DefaultPoliciesNames.EXECUTION_PREVENTION.value, ModeNames.SIMULATION.value),
+     ('EN-78300', DefaultPoliciesNames.EXFILTRATION_PREVENTION.value, ModeNames.SIMULATION.value),
+     ('EN-78302', DefaultPoliciesNames.RANSOMWARE_PREVENTION.value, ModeNames.SIMULATION.value),
+     ('EN-78352', DefaultPoliciesNames.EXECUTION_PREVENTION.value, ModeNames.PREVENTION.value),
+     ('EN-78361', DefaultPoliciesNames.RANSOMWARE_PREVENTION.value, ModeNames.PREVENTION.value),
+     ('EN-78359', DefaultPoliciesNames.EXFILTRATION_PREVENTION.value, ModeNames.PREVENTION.value)
      ],
 )
-def test_policy_simulation_mode_windows(fx_system_without_events_and_exceptions, collector, xray, policy_name):
+def test_policy_mode_on_windows_os(fx_system_without_events_and_exceptions, collector, xray, policy_name, mode):
     """
-        Test that policy in simulation mode catching relevant malware and creating correct security event
+        Test that policy modes simulation/prevention catching relevant malware and creating correct security event with
+        block action
 
             1. Start the test on clean system: without exceptions and without events
             2. disable rule in all policies except the tested policy because we trigger malware (from collector)
                that should be caught by the tested policy and not to other policy
-            3. Change policy's rule , the action to block and the state to enabled because
-               we trigger malware (from collector) that should be caught by the tested policy in action simulation
-               and for this action the policy's rule must be in block action and enabled state
-            4. Assign policy to collector group and set to simulation mode
+            3. Enable policy rule and validate that the rule is on 'block' because
+               we trigger malware (from collector) that should be caught by the tested policy in our mode
+               and for this mode the policy's rule must be in block action and enabled state
+            4. Assign policy to collector group and set to simulation/prevention mode
             5. Trigger malware (from collector) that should be caught by the tested policy
-            6. Validate that event created by the tested policy and by the simulation mode
+            6. Validate that event created with the correct fields
     """
     assert isinstance(collector, WindowsCollector), "This test trigger malware only on a windows collector"
     rule_name = _get_rule_name_by_policy_name(policy_name=policy_name)
@@ -62,24 +66,24 @@ def test_policy_simulation_mode_windows(fx_system_without_events_and_exceptions,
     policy = [policy for policy in all_policies if policy.name == policy_name][0]
     group = user.rest_components.collector_groups.get_by_name(name=rest_collector.get_group_name())
 
-    with TEST_STEP(f"Assign {policy} to {group}"):
+    with TEST_STEP(f"STEP-Assign policy '{policy_name}' to {group}"):
         policy.assign_to_collector_group(group_name=group.name, safe=True)
 
     logger.info(f"Disable rule '{rule_name}' in policies {not_tested_policies_names} in order to isolate our rule")
     with disable_rule_in_policies_context(user=user, policies_names=not_tested_policies_names, rule_name=rule_name):
         with change_policy_mode_context(user=user, policy_name=policy_name):
             with change_policy_rule_fields_context(user=user, policy_name=policy_name, rule_name=rule_name):
-                with TEST_STEP(f"Change {policy_name}'s rule '{rule_name}', the action to block and the state to enabled"):
+                with TEST_STEP(f"STEP-Enable the rule '{rule_name}' and set action to the 'block' action"):
                     policy.set_rule_action_to_block(rule_name=rule_name, safe=True)
                     policy.set_rule_state_to_enabled(rule_name=rule_name, safe=True)
 
-                with TEST_STEP(f"Set mode of {policy_name} policy to simulation mode"):
-                    policy.set_to_simulation_mode(safe=True)
+                with TEST_STEP(f"STEP-Set mode of policy '{policy_name}' to '{mode}' mode"):
+                    policy.set_policy_mode(mode_name=mode, safe=True)
 
-                with TEST_STEP(f"Trigger a malicious {malware_name} in order to create event for the tested policy"):
+                with TEST_STEP(f"STEP-Trigger a malicious {malware_name} in order to create event for the tested policy"):
                     collector.create_event(malware_name=malware_name)
 
-                with TEST_STEP(f"Validate created right event by malware-{malware_name} in mode simulation"):
+                with TEST_STEP("STEP-Validate that event created with the correct values"):
                     events = user.rest_components.events.get_by_process_name(process_name=malware_name, safe=True
                                                                              , wait_for=True)
                     event = events[0]
@@ -88,9 +92,11 @@ def test_policy_simulation_mode_windows(fx_system_without_events_and_exceptions,
                     assert event.get_process_name() == malware_name, f"ERROR - Created event by process " \
                                                                      f"{event.get_process_name()}, " \
                                                                      f"expected by process {malware_name}"
-                    assert event.get_action() == EventActionNames.SIMULATION_BLOCK.value,\
-                        f"ERROR - Created event in {event.get_action()} action, expected" \
-                        f" {EventActionNames.SIMULATION_BLOCK.value} action"
+                    expected_action = EventActionNames.SIMULATION_BLOCK.value if mode == ModeNames.SIMULATION.value \
+                        else EventActionNames.BLOCK.value
+                    assert event.get_action() == expected_action,\
+                           f"ERROR - Created event in {event.get_action()} action, expected" \
+                           f" {expected_action} action"
 
 
 
