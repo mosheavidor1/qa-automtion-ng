@@ -17,6 +17,7 @@ class FortiEdrSystemState(Enum):
     DISABLED = 'Disabled'  # Status name from management
     ENABLED = 'ENABLED'
     UNINSTALLING = 'Uninstalling'
+    ISOLATED = 'Isolated'
 
 
 class ComponentType(Enum):

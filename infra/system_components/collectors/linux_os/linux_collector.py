@@ -83,6 +83,18 @@ class LinuxCollector(CollectorAgent):
 
         return version
 
+    def get_configuration_files_details(self) -> List[dict]:
+        raise NotImplemented("should be implemented")
+
+    def get_the_latest_config_file_details(self):
+        raise NotImplemented("should be implemented")
+
+    def wait_for_new_config_file(self, current_config_file_details=None):
+        """
+        wait until a new latest configuration file details received (latest from {current_config_file_details})
+        """
+        raise NotImplemented("Should be implemented")
+
     @allure.step("{0} - Stop collector")
     def stop_collector(self, password=None):
         password = password or REGISTRATION_PASS
