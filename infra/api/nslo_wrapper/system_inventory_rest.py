@@ -136,3 +136,26 @@ class SystemInventoryRest(BaseRestFunctionality):
         self._validate_expected_status_code(expected_status_code=expected_status_code,
                                             actual_status_code=response.status_code,
                                             error_message=f"Reset user password - expected response code: {expected_status_code}, actual: {response.status_code}")
+
+    def isolate_collector_by_name_and_id(self, collector_name, collector_id, organization_name, expected_status_code: int = 200):
+
+        status, response = self._rest.inventory.IsolateCollectors(devices_names=[collector_name],
+                                                                  devices_ids=[collector_id],
+                                                                  organization=organization_name)
+        assert status, f"Failed to isolate collector {collector_name}, got error: {response}"
+        self._validate_expected_status_code(expected_status_code=expected_status_code,
+                                            actual_status_code=response.status_code,
+                                            error_message=f"Failed to isolate collector - expected response code: \
+                                                            {expected_status_code}, actual: {response.status_code}")
+
+    def remove_isolation_from_collector(self, collector_name, collector_id, organization_name, expected_status_code: int = 200):
+
+        status, response = self._rest.inventory.UnisolateCollectors(devices_names=[collector_name],
+                                                                    devices_ids=[collector_id],
+                                                                    organization=organization_name)
+        assert status, f"Failed to un isolate collector {collector_name}, got error: {response}"
+        self._validate_expected_status_code(expected_status_code=expected_status_code,
+                                            actual_status_code=response.status_code,
+                                            error_message=f"Failed to un isolate collectors - expected response code: \
+                                                            {expected_status_code}, actual: {response.status_code}")
+

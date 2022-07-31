@@ -5,6 +5,7 @@ import logging
 import allure
 
 import third_party_details
+from infra.common_utils import wait_for_condition
 from infra.os_stations.windows_station import WindowsStation
 from infra.system_components.collectors.collectors_agents_utils import (
     wait_until_collector_pid_disappears,
@@ -13,6 +14,8 @@ from infra.system_components.collectors.collectors_agents_utils import (
 from infra.allure_report_handler.reporter import Reporter, INFO
 from infra.system_components.collector import CollectorAgent, FILENAME_EDR_TESTER
 from infra.enums import FortiEdrSystemState
+from infra.system_components.collectors.default_values import MAX_WAIT_FOR_NEW_CONFIG_FILE_TO_APPEAR, \
+    CONFIG_FILE_APPEAR_INTERVAL
 from infra.utils.utils import StringUtils
 from sut_details import management_registration_password
 from infra.system_components.collectors.windows_os.windows_collector_installation_utils import (
@@ -50,6 +53,7 @@ class WindowsCollector(CollectorAgent):
         self.__collected_crash_dump_dedicated_folder: str = r'C:\CrashDumpsCollected'
         self.__collector_logs_folder: str = f"{self.__program_data}\Logs"
         self.__collector_config_folder: str = f"{self.__program_data}\Config\Collector"
+        self.__collector_config_updates_folder: str = fr"{self.__collector_config_folder}\Updates"
         self.__bootstrap_file_name: str = "CollectorBootstrap.jsn"
         self.__qa_files_path: str = r"C:\qa"
         self._kill_all_undesired_processes()
@@ -86,6 +90,10 @@ class WindowsCollector(CollectorAgent):
         return self.__program_data
 
     @property
+    def collector_config_folder(self) -> str:
+        return self.__collector_config_folder
+
+    @property
     def counters_file(self) -> str:
         return self.__counters_file
 
@@ -99,6 +107,57 @@ class WindowsCollector(CollectorAgent):
         process_id = process_ids[0] if process_ids is not None else None  # Why process_ids[0] who told that this is the correct one
         Reporter.report(f"Current process ID is: {process_id}")
         return process_id
+
+    def get_configuration_files_details(self) -> List[dict]:
+        """
+        return these data of the configuration files: names, sizes, datetime
+        """
+        folder_path = self.__collector_config_updates_folder
+        config_files_details = self.os_station.get_folder_json_files_details(folder_path=folder_path)
+        return config_files_details
+
+    def get_the_latest_config_file_details(self) -> dict:
+        """
+        return these data of the latest created configuration file: names, sizes, datetime
+        """
+        current_config_files_details = self.get_configuration_files_details()
+        latest_file_details = current_config_files_details[0]
+        for file_details in current_config_files_details:
+            if file_details['file_datetime'] > latest_file_details['file_datetime']:
+                latest_file_details = file_details
+        return latest_file_details
+
+    @allure.step("Wait for a new configuration file")
+    def wait_for_new_config_file(self, started_latest_config_details=None):
+        """
+        Wait for a new configuration file received.
+        """
+        started_latest_config_details = started_latest_config_details or self.get_the_latest_config_file_details()
+        started_latest_config_file_datetime = started_latest_config_details['file_datetime']
+        logger.info(f"the current latest file datetime is: {started_latest_config_file_datetime},wait for a new config")
+
+        def condition():
+            latest_config_file_details = self.get_the_latest_config_file_details()
+            latest_config_file_datetime = latest_config_file_details['file_datetime']
+            logger.info(f"time of the latest config is {latest_config_file_datetime}")
+            return latest_config_file_datetime > started_latest_config_file_datetime
+
+        logger.info(f"Wait until a new latest configuration file received,"
+                    f" current latest is {started_latest_config_details}")
+        try:
+            wait_for_condition(condition_func=condition,
+                               timeout_sec=MAX_WAIT_FOR_NEW_CONFIG_FILE_TO_APPEAR,
+                               interval_sec=CONFIG_FILE_APPEAR_INTERVAL,
+                               err_msg="No new configuration file received in standard timeout")
+        except AssertionError as original_error:
+            try:
+                wait_for_condition(condition_func=condition,
+                                   timeout_sec=MAX_WAIT_FOR_NEW_CONFIG_FILE_TO_APPEAR * 4,
+                                   interval_sec=CONFIG_FILE_APPEAR_INTERVAL,
+                                   err_msg="REAL BUG!!! No new configuration file received at all")
+                raise Exception(f"Got an error: {original_error}")
+            except AssertionError as real_bug_error:
+                raise Exception(f"Didn't receive a new config file, got an error: {real_bug_error}")
 
     def get_qa_files_path(self):
         return self.__qa_files_path
@@ -253,6 +312,8 @@ class WindowsCollector(CollectorAgent):
             system_state = FortiEdrSystemState.DOWN
         elif forti_edr_service_status == 'Up' and forti_edr_driver_status == 'Up' and forti_edr_status == 'Disabled':
             system_state = FortiEdrSystemState.DISABLED
+        elif forti_edr_service_status == 'Up' and forti_edr_driver_status == 'Up' and forti_edr_status == 'Isolated':
+            system_state = FortiEdrSystemState.ISOLATED
         return system_state
 
     @allure.step('{0} - Start health mechanism')

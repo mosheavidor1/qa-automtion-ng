@@ -137,8 +137,17 @@ class RestCollector(BaseApiObj):
     def export(self):
         raise NotImplemented("Should be implemented")
 
-    def isolate(self):
-        raise NotImplemented("Should be implemented")
+    @allure.step("Isolate collector")
+    def isolate(self, wait=True, ):
+        self._rest_client.system_inventory.isolate_collector_by_name_and_id(collector_name=self.get_name(),
+                                                                            collector_id=self.id,
+                                                                            organization_name=self.get_organization_name())
+
+    @allure.step("Remove collector from isolation")
+    def remove_from_isolation(self):
+        self._rest_client.system_inventory.remove_isolation_from_collector(collector_name=self.get_name(),
+                                                                           collector_id=self.id,
+                                                                           organization_name=self.get_organization_name())
 
     def enable_or_disable(self):
         raise NotImplemented("Should be implemented")
@@ -187,10 +196,19 @@ class RestCollector(BaseApiObj):
     def is_running(self):
         return self.get_status(from_cache=False) == FortiEdrSystemState.RUNNING.value
 
+    def is_isolated(self):
+        return self.get_status(from_cache=False) == FortiEdrSystemState.RUNNING.value
+
     @allure.step("Wait until running in management")
     def wait_until_running(self, timeout_sec=MAX_WAIT_FOR_STATUS, interval_sec=COLLECTOR_KEEPALIVE_INTERVAL):
         logger.info(f"Wait until {self} is running in management")
         wait_for_condition(condition_func=self.is_running,
+                           timeout_sec=timeout_sec, interval_sec=interval_sec)
+
+    @allure.step("Wait until isolated in management")
+    def wait_until_isolated(self, timeout_sec=MAX_WAIT_FOR_STATUS, interval_sec=COLLECTOR_KEEPALIVE_INTERVAL):
+        logger.info(f"Wait until {self} is isolated in management")
+        wait_for_condition(condition_func=self.is_isolated,
                            timeout_sec=timeout_sec, interval_sec=interval_sec)
 
     @allure.step("Disable collector")

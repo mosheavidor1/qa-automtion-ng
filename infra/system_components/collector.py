@@ -1,5 +1,6 @@
 from abc import abstractmethod
 import logging
+from typing import List
 import allure
 
 import third_party_details
@@ -58,6 +59,27 @@ class CollectorAgent:
     def get_agent_status(self) -> FortiEdrSystemState:
         pass
 
+    @abstractmethod
+    def get_configuration_files_details(self) -> List[dict]:
+        """
+        return these data of the configuration files: names, sizes, datetime
+        """
+        pass
+
+    @abstractmethod
+    def get_the_latest_config_file_details(self) -> dict:
+        """
+        return these data of the latest created configuration file: names, sizes, datetime
+        """
+        pass
+
+    @abstractmethod
+    def wait_for_new_config_file(self, current_config_file_details=None):
+        """
+        wait until a new latest configuration file details received (latest from {current_config_file_details})
+        """
+        pass
+
     def is_agent_installed(self) -> bool:
         pid = self.get_current_process_id()
         if pid is None and not self.is_collector_files_exist():
@@ -68,10 +90,19 @@ class CollectorAgent:
     def is_agent_running(self):
         return self.get_agent_status() == FortiEdrSystemState.RUNNING
 
+    def is_agent_isolated(self):
+        return self.get_agent_status() == FortiEdrSystemState.ISOLATED
+
     @allure.step("Wait until agent is running")
     def wait_until_agent_running(self, timeout_sec=MAX_WAIT_FOR_STATUS, interval_sec=COLLECTOR_KEEPALIVE_INTERVAL):
         logger.info(f"Wait until {self} is running")
         wait_for_condition(condition_func=self.is_agent_running,
+                           timeout_sec=timeout_sec, interval_sec=interval_sec)
+
+    @allure.step("Wait until agent is isolated")
+    def wait_until_agent_isolated(self, timeout_sec=MAX_WAIT_FOR_STATUS, interval_sec=COLLECTOR_KEEPALIVE_INTERVAL):
+        logger.info(f"Wait until {self} is isolated")
+        wait_for_condition(condition_func=self.is_agent_isolated,
                            timeout_sec=timeout_sec, interval_sec=interval_sec)
 
     def is_agent_down(self):

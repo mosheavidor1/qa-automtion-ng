@@ -257,6 +257,10 @@ class LinuxStation(OsStation):
         files_paths = [f'{folder_path}/{file_name}' for file_name in files_names]
         return files_paths
 
+    @allure.step("Get files inside {folder_path} include file size and datetime")
+    def get_files_details(self, folder_path: str) -> List[dict]:
+        raise NotImplemented("Should be implemented")
+
     @allure.step("Combine multiple text files into one file")
     def combine_text_file_into_single_file(self,
                                            files: [str],

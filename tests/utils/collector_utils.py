@@ -9,11 +9,14 @@ from infra.multi_tenancy.tenant import Tenant
 from infra import common_utils
 from infra.system_components.management import Management
 from infra.api.management_api.policy import WAIT_AFTER_ASSIGN
+
 logger = logging.getLogger(__name__)
 
 KEEPALIVE_INTERVAL = 5
 STATUS_TIMEOUT = 5 * 60
 MAX_WAIT_FOR_CONFIGURATION = 5 * 60  # Arbitrary value
+MIN_FULL_CONFIG_SIZE_IN_KB = 15000
+MAX_WAIT_FOR_CONFIG_FILE_TO_APPEAR = 60
 
 
 class CollectorUtils:
@@ -162,3 +165,41 @@ def enable_collector_agent_if_is_disabled(tenant: Tenant, collector_agent: Colle
         rest_collector.wait_until_running()
     else:
         logger.info(f"{collector_agent} is not disabled, it is: {collector_agent.get_agent_status()}")
+
+
+@allure.step("Isolate collector rest_collector")
+def isolate_collector(tenant: Tenant, collector_agent: CollectorAgent):
+    rest_collector = tenant.rest_components.collectors.get_by_ip(ip=collector_agent.host_ip)
+    logger.info(f"Isolate collector {rest_collector}")
+    rest_collector.isolate()
+    rest_collector.wait_until_isolated()
+    collector_agent.wait_until_agent_isolated()
+    time.sleep(MAX_WAIT_FOR_CONFIG_FILE_TO_APPEAR)
+
+
+@allure.step("Remove collector_agent from isolation mode")
+def remove_collector_from_isolation_mode(tenant: Tenant, collector_agent: CollectorAgent):
+    rest_collector = tenant.rest_components.collectors.get_by_ip(ip=collector_agent.host_ip)
+    logger.info(f"Remove {collector_agent} from isolation mode")
+    rest_collector.remove_from_isolation()
+    rest_collector.wait_until_running()
+    collector_agent.wait_until_agent_running()
+
+
+@contextmanager
+def isolate_collector_context(tenant: Tenant, collector_agent: CollectorAgent):
+    with allure.step("Setup - Isolate collector"):
+        rest_collector = tenant.rest_components.collectors.get_by_ip(ip=collector_agent.host_ip)
+        assert rest_collector.is_running(), f"{rest_collector} is not running, it must to run before isolation." \
+                                            f" current status is:{rest_collector.get_status()}"
+        isolate_collector(tenant=tenant, collector_agent=collector_agent)
+    try:
+        yield
+    finally:
+        with allure.step("Cleanup - Remove collector from isolation mode"):
+            if collector_agent.is_agent_isolated():
+                remove_collector_from_isolation_mode(tenant=tenant, collector_agent=collector_agent)
+
+
+def is_config_file_is_partial(config_file_details: dict) -> bool:
+    return config_file_details['file_size'] < MIN_FULL_CONFIG_SIZE_IN_KB

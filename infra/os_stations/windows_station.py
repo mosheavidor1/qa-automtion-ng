@@ -1,3 +1,4 @@
+from datetime import datetime
 import functools
 import random
 import re
@@ -390,6 +391,26 @@ class WindowsStation(OsStation):
         files = [x.replace('\r', '').replace('\n', '') for x in files]
 
         return files
+
+    def get_folder_json_files_details(self, folder_path: str) -> List[dict]:
+        """
+        Get files inside {folder path} include name, size and datetime.
+        """
+        logger.info(f"Get details of the json files inside {folder_path}: size, name and datetime")
+        result = self.execute_cmd(cmd=rf'dir {folder_path} | find ".jsn"')
+        files_details = result.split('\r\n')
+        logger.debug(f"{folder_path} contains these files details {files_details}")
+        formatted_files_details = []
+        for file_details in files_details:
+            formatted_file_details = re.split('\s+', file_details)
+            file_details_dict = {}
+            file_create_date = f"{formatted_file_details[0]} {formatted_file_details[1]} {formatted_file_details[2]}"
+            file_details_dict["file_datetime"] = datetime.strptime(f"{file_create_date}", '%m/%d/%Y %I:%M %p')
+            file_details_dict["file_name"] = formatted_file_details[4]
+            file_details_dict["file_size"] = int(formatted_file_details[3].replace(",", ""))
+            formatted_files_details.append(file_details_dict)
+
+        return formatted_files_details
 
     def __is_valid_content_to_write(self, content: str):
         if content is None or content.isspace() or content == '':

@@ -14,6 +14,7 @@ from infra.vpshere.vsphere_vm_operations import VsphereMachineOperations
 EXTRACT_EDR_EVENT_TESTER_TIMEOUT = 60
 MAX_WAIT_FOR_FILE_TO_APPEAR = 60
 
+
 class OsStation(metaclass=ABCMeta):
 
     def __init__(self, host_ip: str, user_name: str, password: str):
