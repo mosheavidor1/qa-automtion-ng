@@ -174,7 +174,7 @@ pipeline {
                         sh "echo $it.key=${it.value} >> ./myenv.txt"
                     }
                     sh "echo BUILD_URL=${BUILD_URL} >> ./myenv.txt"
-                    sh "echo use_test_im_proxy=True >> ./myenv.txt"
+                    sh "echo use_test_im_proxy=true >> ./myenv.txt"
 
                     try
                     {
