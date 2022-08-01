@@ -128,22 +128,22 @@ class WindowsCollector(CollectorAgent):
         return latest_file_details
 
     @allure.step("Wait for a new configuration file")
-    def wait_for_new_config_file(self, started_latest_config_details=None):
+    def wait_for_new_config_file(self, latest_config_file_details=None):
         """
         Wait for a new configuration file received.
         """
-        started_latest_config_details = started_latest_config_details or self.get_the_latest_config_file_details()
-        started_latest_config_file_datetime = started_latest_config_details['file_datetime']
-        logger.info(f"the current latest file datetime is: {started_latest_config_file_datetime},wait for a new config")
+        latest_config_file_details = latest_config_file_details or self.get_the_latest_config_file_details()
+        latest_config_file_datetime = latest_config_file_details['file_datetime']
+        logger.info(f"the current latest file datetime is: {latest_config_file_datetime},wait for a new config")
 
         def condition():
-            latest_config_file_details = self.get_the_latest_config_file_details()
-            latest_config_file_datetime = latest_config_file_details['file_datetime']
-            logger.info(f"time of the latest config is {latest_config_file_datetime}")
-            return latest_config_file_datetime > started_latest_config_file_datetime
+            updated_latest_config_file_details = self.get_the_latest_config_file_details()
+            updated_latest_config_file_datetime = updated_latest_config_file_details['file_datetime']
+            logger.info(f"time of the latest config is {updated_latest_config_file_datetime}")
+            return updated_latest_config_file_datetime > latest_config_file_datetime
 
         logger.info(f"Wait until a new latest configuration file received,"
-                    f" current latest is {started_latest_config_details}")
+                    f" current latest is {latest_config_file_details}")
         try:
             wait_for_condition(condition_func=condition,
                                timeout_sec=MAX_WAIT_FOR_NEW_CONFIG_FILE_TO_APPEAR,

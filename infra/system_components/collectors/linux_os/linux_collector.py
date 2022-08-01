@@ -89,7 +89,7 @@ class LinuxCollector(CollectorAgent):
     def get_the_latest_config_file_details(self):
         raise NotImplemented("should be implemented")
 
-    def wait_for_new_config_file(self, current_config_file_details=None):
+    def wait_for_new_config_file(self, latest_config_file_details=None):
         """
         wait until a new latest configuration file details received (latest from {current_config_file_details})
         """
