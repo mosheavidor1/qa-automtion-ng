@@ -86,8 +86,8 @@ def test_policy_mode_on_windows_os(fx_system_without_events_and_exceptions, coll
                 with TEST_STEP("STEP-Validate that event created with the correct values"):
                     events = user.rest_components.events.get_by_process_name(process_name=malware_name, safe=True
                                                                              , wait_for=True)
-                    event = events[0]
                     assert len(events) == 1, f"ERROR - Created {len(events)} events, expected of 1"
+                    event = events[0]
                     assert rule_name in event.get_rules(), f"ERROR - The event is not connected to our policy"
                     assert event.get_process_name() == malware_name, f"ERROR - Created event by process " \
                                                                      f"{event.get_process_name()}, " \

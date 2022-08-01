@@ -7,8 +7,11 @@ from infra.system_components.collectors.linux_os.linux_collector import LinuxCol
 from infra.api.management_api.collector import RestCollector
 from infra.multi_tenancy.tenant import Tenant
 from infra import common_utils
+from infra.system_components.collectors.windows_os.windows_collector import WindowsCollector
 from infra.system_components.management import Management
 from infra.api.management_api.policy import WAIT_AFTER_ASSIGN
+from tests.utils.policy_utils import WINDOWS_MALWARES_NAMES
+
 
 logger = logging.getLogger(__name__)
 
@@ -203,3 +206,23 @@ def isolate_collector_context(tenant: Tenant, collector_agent: CollectorAgent):
 
 def is_config_file_is_partial(config_file_details: dict) -> bool:
     return config_file_details['file_size'] < MIN_FULL_CONFIG_SIZE_IN_KB
+
+
+@allure.step("Notify/Kill processes of malwares that are running on windows collector")
+def notify_or_kill_malwares_on_windows_collector(collector_agent: CollectorAgent, safe=False):
+    """ Search for a malware, if found: if safe is true so kill this malware.
+    Otherwise, don't kill malware and raise an exception that collector contains a malware """
+    assert isinstance(collector_agent, WindowsCollector), "The collector must be of type windows"
+    logger.info(f"Kill {WINDOWS_MALWARES_NAMES} processes that running on {collector_agent}")
+    for windows_malware_name in WINDOWS_MALWARES_NAMES:
+        pids = collector_agent.os_station.get_service_process_ids(windows_malware_name)
+        if pids is not None:
+            assert safe, f"ERROR- malware {windows_malware_name} is running on {collector_agent}, pids are {pids}"
+            logger.info(f"Kill malware '{windows_malware_name}' that is running on {collector_agent}, pids are {pids}")
+            for pid in pids:
+                collector_agent.os_station.kill_process_by_id(pid=pid)
+            with allure.step(f"Validate that malware '{windows_malware_name}' has no pid"):
+                assert collector_agent.os_station.get_service_process_ids(windows_malware_name) is None, \
+                      f"ERROR- failed to kill malware '{windows_malware_name}'"
+
+
