@@ -41,7 +41,9 @@ def exception_function_fixture(management, collector, request):
              ExceptionTestType.EDIT_FULL_COVERED_EXCEPTION | \
              ExceptionTestType.EDIT_PARTIALLY_COVERED_EXCEPTION | \
              ExceptionTestType.CREATE_PARTIALLY_COVERED_EXCEPTION_EVENT_CREATED:
-            user.rest_components.collector_groups.create_collector_group(group_name=group_name)
+
+            if user.rest_components.collector_groups.get_by_name(name=group_name, safe=True) is None:
+                user.rest_components.collector_groups.create_collector_group(group_name=group_name)
 
     test_resources = {
         'management': management,
@@ -70,6 +72,7 @@ def exception_function_fixture(management, collector, request):
                      ExceptionTestType.EDIT_FULL_COVERED_EXCEPTION | \
                      ExceptionTestType.EDIT_PARTIALLY_COVERED_EXCEPTION | \
                      ExceptionTestType.CREATE_PARTIALLY_COVERED_EXCEPTION_EVENT_CREATED:
+
                     test_im_params = {
                         "groupName": [group_name],
                         "loginUser": management.tenant.default_local_admin.get_username(),

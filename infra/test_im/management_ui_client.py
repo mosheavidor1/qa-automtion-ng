@@ -349,7 +349,7 @@ class ManagementUiClient:
                          data: dict = None,
                          assert_type: AssertTypeEnum = AssertTypeEnum.HARD,
                          test_timeout: int = 600):
-            self.parent.start_testim_flow(test_name="Collectors | Delete group",
+            self.parent.start_testim_flow(test_name="Collectors | Delete group without collectors",
                                           management_ui_ip=self.parent.management_ui_ip,
                                           data=data,
                                           assert_type=assert_type,

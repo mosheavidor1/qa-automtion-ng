@@ -14,7 +14,7 @@ class GroupsFactory(BaseApiObjFactory):
         super().__init__(factory_rest_client=factory_rest_client)
         self._organization_name = organization_name
 
-    def get_by_name(self, name: str, safe=False) -> List[CollectorGroup]:
+    def get_by_name(self, name: str, safe=False) -> CollectorGroup:
         """ Find group by name and return its rest api wrapper """
         groups = self.get_by_field(field_name=GroupFieldsNames.NAME.value, value=name)
         if groups is None:
