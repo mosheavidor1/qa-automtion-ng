@@ -99,7 +99,6 @@ class CleanVMsReadyForCollectorInstallation(Enum):
     this enum holds VMs (not templates) that are ready for collector agent installations
     just connect to machines and do whatever you want
     """
-    WIN_SRV_2016_64_1 = 'WIN_SRV_2016_64_1'
     WIN_SRV_2019_64_1 = 'WIN_SRV_2019_64_1'
     WIN_10_32_1 = 'WIN_10_32_1'
     WIN_10_64_1 = 'WIN_10_64_1'
