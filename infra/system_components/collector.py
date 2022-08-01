@@ -74,9 +74,9 @@ class CollectorAgent:
         pass
 
     @abstractmethod
-    def wait_for_new_config_file(self, current_config_file_details=None):
+    def wait_for_new_config_file(self, latest_config_file_details=None):
         """
-        wait until a new latest configuration file details received (latest from {current_config_file_details})
+        wait until a new latest configuration file details received
         """
         pass
 
