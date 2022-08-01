@@ -18,6 +18,9 @@ class WindowsMalwaresNames(Enum):
     USER_HEAP = 'UserHeapTests.exe'
 
 
+WINDOWS_MALWARES_NAMES = [malware_name.value for malware_name in WindowsMalwaresNames]
+
+
 MALWARE_NAME_MAP_PER_RULE_NAME = {
     DefaultPoliciesNames.EXECUTION_PREVENTION.value:
         {RulesNames.MALICIOUS_FILE_DETECTED.value: WindowsMalwaresNames.EVIL_PROCESS_LAUNCHER.value},
