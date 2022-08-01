@@ -87,7 +87,7 @@ class WindowsStation(OsStation):
             self._remote_connection_session.connect()
             self._remote_connection_session.create_service()
 
-        except:
+        except: # TODO - catch the exact exception for un-encrypted connection
             self._remote_connection_session = PsPyExecClientWrapper(self._host_ip,
                                                                     unique_connection_id=random.randint(1000000,
                                                                                                         9999999),
