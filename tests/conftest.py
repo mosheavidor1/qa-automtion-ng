@@ -573,6 +573,65 @@ def append_logs_from_forti_edr_linux_station(initial_timestamps_dict: dict,
             Reporter.report(f"Failed to add logs from core to report, original exception: {str(e)}")
 
 
+@allure.step("Get logs content")
+def get_forti_edr_log_files(
+        forti_edr_stations: List[FortiEdrLinuxStation],
+        collectors: List[CollectorAgent],
+        filter_regex: str = None,
+):
+    log_files = {}
+    for station in forti_edr_stations:
+        log_files[f'{station}'] = {}
+        log_folder = station.get_logs_folder_path()
+        tmp_log_files = station.get_list_of_files_in_folder(folder_path=log_folder, file_suffix='.log')
+
+        if isinstance(station, Core):
+            blg_log_files = station.get_list_of_files_in_folder(log_folder, file_suffix='.blg')
+            tmp_log_files = station.get_parsed_blg_log_files(blg_log_files_paths=blg_log_files,
+                                                             modified_after_date_time=None)
+
+        for log_file in tmp_log_files:
+            content = station.get_file_content(log_file, filter_regex)
+            if content is not None:
+                log_files[f'{station}'][log_file] = content.splitlines()
+
+    for collector in collectors:
+        log_files[f'{collector}'] = {}
+        logs_content = collector.get_logs_content(filter_regex=filter_regex)
+        for log_file, content in logs_content.items():
+            if content:
+                log_files[f'{collector}'][log_file] = content.splitlines()
+
+    return log_files
+
+
+@pytest.fixture(scope="session", autouse=False)
+def check_errors_and_exceptions_in_logs(
+        management: Management,
+        aggregator: Aggregator,
+        core: Core,
+        collector: CollectorAgent,
+):
+    logger.info("Session start - prepare logs for analysis")
+    forti_edr_stations = [management, aggregator, core]
+    if not sut_details.debug_mode:
+        date_format = "%Y-%m-%d %H:%M:%S"
+        # core_date_format = "%d/%m/%Y %H:%M:%S"
+
+        start_time_dict = get_forti_edr_machines_time_stamp_as_dict(
+            forti_edr_stations=forti_edr_stations,
+            machine_date_format=date_format
+        )
+        start_time_dict.update(get_collectors_machine_time(collectors=[collector]))
+    yield
+    logger.info(f"Session end - start logs analysis")
+    all_logs_files = get_forti_edr_log_files(forti_edr_stations, [collector], filter_regex=r'\[E\]')
+    with allure.step(f"Analyze all logs"):
+        have_errors = any(file for file in all_logs_files.values())
+        Reporter.attach_str_as_json_file(file_name='LogErrors.json', file_content=json.dumps(all_logs_files, indent=2))
+        assert not have_errors, "Some of the log files contains errors"
+
+
 @pytest.fixture(scope="function", autouse=sut_details.debug_mode)
 def management_logs(management):
     logger.info("Test start - prepare management logs")

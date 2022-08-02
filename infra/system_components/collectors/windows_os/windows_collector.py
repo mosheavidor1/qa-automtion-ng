@@ -449,25 +449,14 @@ class WindowsCollector(CollectorAgent):
             self.os_station.remove_file(file_path=fr'{self.__collector_logs_folder}\{sub_folder}\*.blg')
         self.start_collector()
 
-    @allure.step("{0} - Append logs to report from a given log timestamp {first_log_timestamp_to_append}")
-    def append_logs_to_report(self,
-                              first_log_timestamp_to_append: str,
-                              file_suffix='.blg'):
-        """
-        This method will append logs to report from the given initial timestamp
-        :param first_log_timestamp_to_append: the time stamp of the log that we want to add from (lower threshold)
-        should be in the format: 25/01/2022 16:11:38
-        :param file_suffix: files types to take into account, default is .blg
-        """
+    def _prepare_parsed_logs(self, initial_timestamp: str):
 
         self._remove_all_log_files_from_parsed_log_folder()
 
-        machine_timestamp_regex = '(\d+)\/(\d+)\/(\d+)\s+(\d+):(\d+):(\d+)'
-
-        first_time_stamp_datetime_to_append = datetime.strptime(first_log_timestamp_to_append, "%d/%m/%Y %H:%M:%S")
-
         log_parser_file = self.copy_log_parser_to_machine()
-        self._copy_blg_log_files_that_was_modified_after_given_timestamp_to_parsed_log_folder(initial_timestamp=first_log_timestamp_to_append)
+        self._copy_blg_log_files_that_was_modified_after_given_timestamp_to_parsed_log_folder(
+            initial_timestamp=initial_timestamp
+        )
 
         Reporter.report("Checking if all .blg files parsed successfully")
         # extract number of blg files after copy - 1 (minus the log parser itself)
@@ -477,7 +466,7 @@ class WindowsCollector(CollectorAgent):
         self.os_station.execute_cmd(cmd=f'cd {self.__target_logs_folder} & {log_parser_file} -q')
 
         curr_num_of_files = len(self.os_station.get_list_of_files_in_folder(folder_path=self.__target_logs_folder)) - 1
-        expected_file_num = (num_blg_files) * 2
+        expected_file_num = num_blg_files * 2
 
         timeout = 60
         sleep_delay = 2
@@ -493,14 +482,61 @@ class WindowsCollector(CollectorAgent):
         else:
             Reporter.report("all .blg files parsed successfully :)")
 
+    @allure.step("{0} - Get logs content")
+    def get_logs_content(self, file_suffix='.blg', filter_regex=None) -> dict:
+        """
+        This method will collect all logs content
+        Args:
+            filter_regex:
+            file_suffix (str): files types to take into account, default is .blg
+            filter_regex (str): a regex filter to apply on the content
+
+        Returns:
+            dict: a dictionary of log-file-name: content
+        """
+        self._prepare_parsed_logs(initial_timestamp=datetime.strftime(datetime.min, "%d/%m/%Y %H:%M:%S"))
+
         # for each .txt file
-        log_files = self.os_station.get_list_of_files_in_folder(folder_path=self.__target_logs_folder, file_suffix='.log')
+        log_files = self.os_station.get_list_of_files_in_folder(
+            folder_path=self.__target_logs_folder, file_suffix='.log'
+        )
+
+        logs = {}
+        for single_parsed_file in log_files:
+            content = self.os_station.get_file_content(file_path=single_parsed_file, filter_regex=filter_regex)
+            logs[single_parsed_file] = content
+
+        return logs
+
+    @allure.step("{0} - Append logs to report from a given log timestamp {first_log_timestamp_to_append}")
+    def append_logs_to_report(self,
+                              first_log_timestamp_to_append: str,
+                              file_suffix='.blg'):
+        """
+        This method will append logs to report from the given initial timestamp
+        :param first_log_timestamp_to_append: the time stamp of the log that we want to add from (lower threshold)
+        should be in the format: 25/01/2022 16:11:38
+        :param file_suffix: files types to take into account, default is .blg
+        """
+
+        machine_timestamp_regex = r'(\d+)\/(\d+)\/(\d+)\s+(\d+):(\d+):(\d+)'
+
+        first_time_stamp_datetime_to_append = datetime.strptime(first_log_timestamp_to_append, "%d/%m/%Y %H:%M:%S")
+
+        self._prepare_parsed_logs(initial_timestamp=first_log_timestamp_to_append)
+
+        # for each .txt file
+        log_files = self.os_station.get_list_of_files_in_folder(
+            folder_path=self.__target_logs_folder, file_suffix='.log'
+        )
 
         for single_parsed_file in log_files:
 
             append_to_allure_log = False
             content = self.os_station.get_file_content(file_path=single_parsed_file)
-            first_date_in_log_file = StringUtils.get_txt_by_regex(text=content, regex=f'({machine_timestamp_regex})', group=1)
+            first_date_in_log_file = StringUtils.get_txt_by_regex(
+                text=content, regex=f'({machine_timestamp_regex})', group=1
+            )
 
             first_time_stamp_in_log_file_datetime = datetime.strptime(first_date_in_log_file, "%d/%m/%Y %H:%M:%S")
 
@@ -513,9 +549,11 @@ class WindowsCollector(CollectorAgent):
                 append_to_allure_log = True
 
             else:
-                content_splitted = content.split('\n')
-                for single_line in content_splitted:
-                    line_date = StringUtils.get_txt_by_regex(text=single_line, regex=f'({machine_timestamp_regex})', group=1)
+                content_split = content.split('\n')
+                for single_line in content_split:
+                    line_date = StringUtils.get_txt_by_regex(
+                        text=single_line, regex=f'({machine_timestamp_regex})', group=1
+                    )
 
                     if line_date is not None:
                         if datetime.strptime(line_date, "%d/%m/%Y %H:%M:%S") > first_time_stamp_datetime_to_append:
