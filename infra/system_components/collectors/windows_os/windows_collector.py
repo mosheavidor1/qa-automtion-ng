@@ -1,6 +1,6 @@
 import time
 from datetime import datetime
-from typing import List
+from typing import List, Dict
 import logging
 import allure
 
@@ -507,6 +507,81 @@ class WindowsCollector(CollectorAgent):
             logs[single_parsed_file] = content
 
         return logs
+
+    # ------------------------------
+    @allure.step("{0} - return logs from a given log timestamp {first_log_timestamp_to_append} as dictionary")
+    def get_parsed_logs_after_specified_time_stamp(self,
+                                                   first_log_timestamp_to_append: str,
+                                                   file_suffix='.blg') -> Dict[str, str]:
+        """
+        This method will return all logs that was created after the given initial timestamp
+        :param first_log_timestamp_to_append: the time stamp of the log that we want to add from (lower threshold)
+        should be in the format: 25/01/2022 16:11:38
+        :param file_suffix: files types to take into account, default is .blg
+        """
+        logs_dict_with_content = {}
+
+        machine_timestamp_regex = r'(\d+)\/(\d+)\/(\d+)\s+(\d+):(\d+):(\d+)'
+        first_time_stamp_datetime_to_append = datetime.strptime(first_log_timestamp_to_append, "%d/%m/%Y %H:%M:%S")
+
+        self._prepare_parsed_logs(initial_timestamp=first_log_timestamp_to_append)
+
+        # for each .txt file
+        log_files = self.os_station.get_list_of_files_in_folder(
+            folder_path=self.__target_logs_folder, file_suffix='.log'
+        )
+
+        for single_parsed_file in log_files:
+
+            is_logs_exist_after_the_first_timestamp = False
+            content = self.os_station.get_file_content(file_path=single_parsed_file)
+            first_date_in_log_file = StringUtils.get_txt_by_regex(
+                text=content, regex=f'({machine_timestamp_regex})', group=1
+            )
+
+            first_time_stamp_in_log_file_datetime = datetime.strptime(first_date_in_log_file, "%d/%m/%Y %H:%M:%S")
+
+            if first_log_timestamp_to_append in content:
+                index = content.index(first_log_timestamp_to_append)
+                content = content[index:]
+                is_logs_exist_after_the_first_timestamp = True
+            elif first_time_stamp_in_log_file_datetime >= first_time_stamp_datetime_to_append:
+                is_logs_exist_after_the_first_timestamp = True
+            else:
+                content_split = content.split('\n')
+                for single_line in content_split:
+                    line_date = StringUtils.get_txt_by_regex(
+                        text=single_line, regex=f'({machine_timestamp_regex})', group=1
+                    )
+
+                    if line_date is not None:
+                        if datetime.strptime(line_date, "%d/%m/%Y %H:%M:%S") > first_time_stamp_datetime_to_append:
+                            first_index = content.index(line_date)
+                            content = content[first_index:]
+                            break
+            if is_logs_exist_after_the_first_timestamp:
+                logs_dict_with_content[single_parsed_file] = content
+
+        return logs_dict_with_content
+
+    @allure.step("{0} - Append logs to report from a given log timestamp {first_log_timestamp_to_append}")
+    def append_logs_to_report(self,
+                              first_log_timestamp_to_append: str,
+                              file_suffix='.blg'):
+        """
+        This method will append logs to report from the given initial timestamp
+        :param first_log_timestamp_to_append: the time stamp of the log that we want to add from (lower threshold)
+        should be in the format: 25/01/2022 16:11:38
+        :param file_suffix: files types to take into account, default is .blg
+        """
+        results_dict = self.get_parsed_logs_after_specified_time_stamp(
+            first_log_timestamp_to_append=first_log_timestamp_to_append,
+            file_suffix=file_suffix)
+
+        if results_dict is not None and len(results_dict) > 0:
+            for file_name, file_content in results_dict:
+                Reporter.attach_str_as_file(file_name=file_name, file_content=file_content)
+    # ------------------------------
 
     @allure.step("{0} - Append logs to report from a given log timestamp {first_log_timestamp_to_append}")
     def append_logs_to_report(self,
