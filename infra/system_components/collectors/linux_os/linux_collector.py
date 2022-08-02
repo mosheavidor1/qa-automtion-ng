@@ -272,6 +272,9 @@ class LinuxCollector(CollectorAgent):
     def copy_log_parser_to_machine(self):
         pass
 
+    def get_logs_content(self, file_suffix='.blg', filter_regex=None):
+        pass
+
     def append_logs_to_report(self, first_log_timestamp_to_append: str = None, file_suffix='.blg'):
         pass
 

@@ -328,9 +328,11 @@ class WindowsStation(OsStation):
         return False
 
     @allure.step("Get {file_path} content")
-    def get_file_content(self, file_path: str) -> str:
+    def get_file_content(self, file_path: str, filter_regex: str = None) -> str:
         # cmd = f'type {file_path}'
         cmd = f'powershell "get-content -path {file_path}"'
+        if filter_regex is not None:
+            cmd = f'powershell "select-string -pattern "{filter_regex}" -path {file_path} | ForEach-Object Line"'
         file_content = self.execute_cmd(cmd=cmd,
                                         return_output=True,
                                         fail_on_err=True,

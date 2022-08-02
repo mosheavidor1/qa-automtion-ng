@@ -217,8 +217,10 @@ class LinuxStation(OsStation):
         return int(result[0])
 
     @allure.step("Get file content of the file {file_path}")
-    def get_file_content(self, file_path):
+    def get_file_content(self, file_path, filter_regex: str = None):
         cmd = f"cat {file_path}"
+        if filter_regex is not None:
+            cmd = f'grep -E "{filter_regex}" {file_path}'
         output = self.execute_cmd(cmd=cmd)
         return output
 

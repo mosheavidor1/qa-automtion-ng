@@ -168,7 +168,7 @@ class OsStation(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def get_file_content(self, file_path: str) -> str:
+    def get_file_content(self, file_path: str, filter_regex: str = None) -> str:
         pass
 
     @abstractmethod
