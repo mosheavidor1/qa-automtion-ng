@@ -19,7 +19,7 @@ def test_receive_partial_configuration_after_remove_collector_from_isolation_in_
     """
     This test is validated that after remove collector from isolation mode,
     a new config file received, and it is a partial configuration.
-    1. Isolate collector and Fetch the latest config ,before removing isolation
+    1. Isolate collector and Fetch the latest config file, before removing isolation
     2. Remove collector from isolation mode
     3. Validate the collector received partial configuration file (by file size)
     """
