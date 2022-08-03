@@ -212,17 +212,19 @@ def is_config_file_is_partial(config_file_details: dict) -> bool:
 def notify_or_kill_malwares_on_windows_collector(collector_agent: CollectorAgent, safe=False):
     """ Search for a malware, if found: if safe is true so kill this malware.
     Otherwise, don't kill malware and raise an exception that collector contains a malware """
+    running_malwares_names = []
     assert isinstance(collector_agent, WindowsCollector), "The collector must be of type windows"
     logger.info(f"Kill {WINDOWS_MALWARES_NAMES} processes that running on {collector_agent}")
     for windows_malware_name in WINDOWS_MALWARES_NAMES:
         pids = collector_agent.os_station.get_service_process_ids(windows_malware_name)
         if pids is not None:
-            assert safe, f"ERROR- malware {windows_malware_name} is running on {collector_agent}, pids are {pids}"
+            running_malwares_names.append(windows_malware_name)
             logger.info(f"Kill malware '{windows_malware_name}' that is running on {collector_agent}, pids are {pids}")
             for pid in pids:
                 collector_agent.os_station.kill_process_by_id(pid=pid)
             with allure.step(f"Validate that malware '{windows_malware_name}' has no pid"):
                 assert collector_agent.os_station.get_service_process_ids(windows_malware_name) is None, \
                       f"ERROR- failed to kill malware '{windows_malware_name}'"
-
-
+    if len(running_malwares_names):
+        assert safe, f"Found and killed these malwares: {running_malwares_names}, " \
+                     f"probably one of previous test ended without kill the malwares"
