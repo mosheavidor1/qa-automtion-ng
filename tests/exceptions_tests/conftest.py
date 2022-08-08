@@ -1,6 +1,7 @@
 from enum import Enum
 import pytest
 from infra.system_components.collectors.linux_os.linux_collector import LinuxCollector
+from tests.utils.tenant_utils import generate_group_name
 
 WINDOWS_MALWARE_NAME = "DynamicCodeTests.exe"
 LINUX_MALWARE_NAME = "listen"
@@ -26,7 +27,7 @@ def exception_function_fixture(management, collector, request):
     user = management.tenant.default_local_admin
     test_flow = request.param
     malware_name = LINUX_MALWARE_NAME if isinstance(collector, LinuxCollector) else WINDOWS_MALWARE_NAME
-    group_name = "empty"
+    group_name = generate_group_name()
     destination = "Internal Destinations"
     user.rest_components.exceptions.delete_all(safe=True, wait_sec=1)
     user.rest_components.events.delete_all(safe=True)
@@ -74,7 +75,7 @@ def exception_function_fixture(management, collector, request):
                      ExceptionTestType.CREATE_PARTIALLY_COVERED_EXCEPTION_EVENT_CREATED:
 
                     test_im_params = {
-                        "groupName": [group_name],
+                        "groupName": group_name,
                         "loginUser": management.tenant.default_local_admin.get_username(),
                         "loginPassword": management.tenant.default_local_admin.password,
                         "loginOrganization": management.tenant.default_local_admin.password,
