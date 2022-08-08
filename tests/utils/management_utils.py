@@ -1,10 +1,9 @@
 import time
 from contextlib import contextmanager
-
 import allure
 import logging
-
 from infra.allure_report_handler.reporter import TEST_STEP
+from infra.enums import FortiEdrSystemState
 from infra.system_components.collector import CollectorAgent
 from infra.system_components.management import Management
 from infra.assertion.assertion import Assertion, AssertTypeEnum
@@ -88,3 +87,14 @@ def restore_config_files(management: Management, config_files: [str]):
         finally:
             # validate exeption is raised
             assert False, f'Tried to restore {config_files} because Test failed on exception: \n {original_exception};'
+
+
+@contextmanager
+def revive_management_on_failure_context(management: Management):
+    try:
+        yield
+    finally:
+        with allure.step("Cleanup - start service if the system is not running"):
+            if not management.is_system_in_desired_state(desired_state=FortiEdrSystemState.RUNNING):
+                logger.info(f"start {management} service if the system is not running")
+                management.start_service()
