@@ -161,6 +161,9 @@ class CollectorAgent:
     def append_logs_to_report(self, first_log_timestamp_to_append, file_suffix='.blg'):
         pass
 
+    def get_parsed_logs_after_specified_time_stamp(self, first_log_timestamp_to_append: str, file_suffix='.blg'):
+        pass
+
     def create_event(self):
         pass
 
@@ -179,7 +182,7 @@ class CollectorAgent:
     @allure.step("Preperation of EDR event tester working path")
     def prepare_edr_event_tester_folder(self, network_path: str, filename: str):
         """
-        This function will copy and extract edr event tester into specific folder and return the extracted folder.
+            This function will copy and extract edr event tester into specific folder and return the extracted folder.
         """
         copied_path = self.os_station.copy_files_from_shared_folder(
             target_path_in_local_machine=self.get_qa_files_path(),

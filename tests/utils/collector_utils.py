@@ -10,6 +10,7 @@ from infra import common_utils
 from infra.system_components.collectors.windows_os.windows_collector import WindowsCollector
 from infra.system_components.management import Management
 from infra.api.management_api.policy import WAIT_AFTER_ASSIGN
+from infra.utils.utils import StringUtils
 from tests.utils.policy_utils import WINDOWS_MALWARES_NAMES
 
 
@@ -204,8 +205,18 @@ def isolate_collector_context(tenant: Tenant, collector_agent: CollectorAgent):
                 remove_collector_from_isolation_mode(tenant=tenant, collector_agent=collector_agent)
 
 
-def is_config_file_is_partial(config_file_details: dict) -> bool:
-    return config_file_details['file_size'] < MIN_FULL_CONFIG_SIZE_IN_KB
+def is_config_file_is_partial(collector: CollectorAgent, config_file_details: dict, first_log_date_time) -> bool:
+    is_received_in_logs = False
+    logger.info(f"Get parsed logs from {first_log_date_time}")
+    log_files_dict = collector.get_parsed_logs_after_specified_time_stamp(first_log_timestamp_to_append=first_log_date_time,
+                                                                          file_suffix='.blg')
+    for file_name, file_content in log_files_dict.items():
+        result = StringUtils.get_txt_by_regex(text=file_content, regex='Received Partial configuration update version', group=0)
+        if result is not None:
+            is_received_in_logs = True
+            logger.info(f"Received from logs: {result}")
+            break
+    return is_received_in_logs and config_file_details['file_size'] < MIN_FULL_CONFIG_SIZE_IN_KB
 
 
 @allure.step("Notify/Kill processes of malwares that are running on windows collector")

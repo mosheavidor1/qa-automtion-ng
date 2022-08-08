@@ -1,3 +1,4 @@
+import datetime
 import logging
 import allure
 import pytest
@@ -31,9 +32,13 @@ def test_receive_partial_configuration_after_remove_collector_from_isolation_in_
             Reporter.report("Fetch config files before remove from isolation, in order to validate later the diff \
                             after remove from isolation", INFO)
             current_latest_config_file = collector.get_the_latest_config_file_details()
+            first_log_date_time = collector.os_station.get_current_machine_datetime()
 
     with TEST_STEP("STEP-Validate collector received a new partial config file that related to the remove isolation action"):
         collector.wait_for_new_config_file(latest_config_file_details=current_latest_config_file)
         latest_config_file_details_after_remove_isolation = collector.get_the_latest_config_file_details()
-        assert is_config_file_is_partial(config_file_details=latest_config_file_details_after_remove_isolation), \
-            f"Config file after remove isolation collector is not partial, these are the details \n {latest_config_file_details_after_remove_isolation}"
+        assert is_config_file_is_partial(collector=collector,
+                                         config_file_details=latest_config_file_details_after_remove_isolation,
+                                         first_log_date_time=first_log_date_time), \
+            f"Config file after remove isolation collector is not partial, these are the details \
+              {latest_config_file_details_after_remove_isolation}"
