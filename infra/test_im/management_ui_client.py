@@ -417,6 +417,51 @@ class ManagementUiClient:
                                           assert_type=assert_type,
                                           test_timeout=test_timeout)
 
+        def delete_collector_group_without_the_collectors(self,
+                                                          data: dict = None,
+                                                          assert_type: AssertTypeEnum = AssertTypeEnum.HARD,
+                                                          test_timeout: int = 600):
+            """
+            Login to management
+            go to the inventory collectors page
+            select collector group and delete it , without deleting the collector itself
+            """
+            self.parent.start_testim_flow(test_name="Collectors | Delete group without collectors",
+                                          management_ui_ip=self.parent.management_ui_ip,
+                                          data=data,
+                                          assert_type=assert_type,
+                                          test_timeout=test_timeout)
+
+        def validate_the_collector_group_not_exist(self,
+                                                   data: dict = None,
+                                                   assert_type: AssertTypeEnum = AssertTypeEnum.HARD,
+                                                   test_timeout: int = 600):
+            """
+            Login to management
+            go to the inventory collectors page
+            validate the collector group don't exist in collector group list
+            """
+            self.parent.start_testim_flow(test_name="Collectors | Verify that group don't exist",
+                                          management_ui_ip=self.parent.management_ui_ip,
+                                          data=data,
+                                          assert_type=assert_type,
+                                          test_timeout=test_timeout)
+
+        def validate_the_collector_display_under_the_default_group(self,
+                                                                   data: dict = None,
+                                                                   assert_type: AssertTypeEnum = AssertTypeEnum.HARD,
+                                                                   test_timeout: int = 600):
+            """
+            Login to management
+            go to the inventory collectors page
+            validate the collector is in the default collector group
+            """
+            self.parent.start_testim_flow(test_name="Collectors | Validate the collectors is in the default group",
+                                          management_ui_ip=self.parent.management_ui_ip,
+                                          data=data,
+                                          assert_type=assert_type,
+                                          test_timeout=test_timeout)
+
     class FortiEdrIpSet:
         def __init__(self, parent):
             self.parent = parent
