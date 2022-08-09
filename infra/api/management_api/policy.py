@@ -36,6 +36,8 @@ class DefaultPoliciesNames(Enum):
     EXECUTION_PREVENTION = NsloRest.NsloPolicies.NSLO_POLICY_EXECUTION_PREVENTION
     EXFILTRATION_PREVENTION = NsloRest.NsloPolicies.NSLO_POLICY_EXFILTRATION_PREVENTION
     RANSOMWARE_PREVENTION = NsloRest.NsloPolicies.NSLO_POLICY_RANSOMWARE_PREVENTION
+    DEVICE_CONTROL = 'Device Control'
+    EXTENDED_DETECTION = 'eXtended Detection'
 
 
 class RulesNames(Enum):

@@ -31,6 +31,11 @@ class CollectorAgent:
 
     @property
     @abstractmethod
+    def initial_version(self) -> str:
+        pass
+
+    @property
+    @abstractmethod
     def cached_process_id(self) -> int:
         """ Caching the current process id in order later validate if it changed """
         pass

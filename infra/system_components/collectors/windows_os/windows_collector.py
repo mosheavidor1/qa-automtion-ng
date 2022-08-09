@@ -57,10 +57,15 @@ class WindowsCollector(CollectorAgent):
         self.__bootstrap_file_name: str = "CollectorBootstrap.jsn"
         self.__qa_files_path: str = r"C:\qa"
         self._kill_all_undesired_processes()
+        self._initial_version = self.get_version()
 
     @property
     def os_station(self) -> WindowsStation:
         return self._os_station
+
+    @property
+    def initial_version(self) -> str:
+        return self._initial_version
 
     @allure.step("Kill all undesired process that running on windows collector")
     def _kill_all_undesired_processes(self):
