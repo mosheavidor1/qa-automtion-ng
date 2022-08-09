@@ -564,6 +564,16 @@ class ManagementUiClient:
                                           assert_type=assert_type,
                                           test_timeout=test_timeout)
 
+        def validate_cannot_delete_default_policies(self,
+                                                    data: dict = None,
+                                                    assert_type: AssertTypeEnum = AssertTypeEnum.HARD,
+                                                    test_timeout: int = 600):
+            self.parent.start_testim_flow(test_name="Security policies | validate that cant delete default policy",
+                                          management_ui_ip=self.parent.management_ui_ip,
+                                          data=data,
+                                          assert_type=assert_type,
+                                          test_timeout=test_timeout)
+
     class FortiEdrSystemEvents:
         def __init__(self, parent):
             self.parent = parent

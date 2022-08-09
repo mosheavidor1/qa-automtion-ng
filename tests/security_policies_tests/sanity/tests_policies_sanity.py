@@ -99,6 +99,42 @@ def test_policy_mode_on_windows_os(fx_system_without_events_and_exceptions, coll
                            f" {expected_action} action"
 
 
+@allure.epic("Management")
+@allure.feature("Policy")
+@pytest.mark.policy
+@pytest.mark.sanity
+@pytest.mark.policy_sanity
+@pytest.mark.management_sanity
+@pytest.mark.parametrize(
+    "xray, policy_name",
+    [('EN-78675', DefaultPoliciesNames.EXECUTION_PREVENTION.value),
+     ('EN-78676', DefaultPoliciesNames.EXFILTRATION_PREVENTION.value),
+     ('EN-78677', DefaultPoliciesNames.RANSOMWARE_PREVENTION.value),
+     ('EN-78678', DefaultPoliciesNames.DEVICE_CONTROL.value),
+     ('EN-78679', DefaultPoliciesNames.EXTENDED_DETECTION.value)
+     ],)
+def test_delete_main_policy(management, xray, policy_name):
+    """
+        Test that can not delete main policy
+        Test steps:
+        1. Select Execution Prevention policy, Delete the policy, validate can not delete.
+        2. Validate that the  policy is exists
+    """
+    user = management.tenant.default_local_admin
+    with TEST_STEP(f"Select the policy '{policy_name}', Delete the policy, validate can not delete"):
+        test_im_params = {
+            "loginUser": management.tenant.default_local_admin.get_username(),
+            "loginPassword": management.tenant.default_local_admin.password,
+            "loginOrganization": management.tenant.default_local_admin.password,
+            "organization": management.tenant.organization.get_name(),
+            "policyName": policy_name
+        }
+        logger.info(f"Try to delete the policy '{policy_name}', validate can not delete")
+        management.ui_client.security_policies.validate_cannot_delete_default_policies(data=test_im_params)
+
+    with TEST_STEP(f"Validate that the policy '{policy_name}' is exists"):
+        user.rest_components.policies.get_by_name(policy_name=policy_name)
+
 
 
 
