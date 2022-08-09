@@ -46,6 +46,7 @@ class LinuxCollector(CollectorAgent):
         self.distro_type = self.os_station.distro_type
         self._process_id = self.get_current_process_id()
         self.__qa_files_path = "/home/qa"
+        self._initial_version = self.get_version()
 
     @property
     def cached_process_id(self) -> int:
@@ -65,6 +66,10 @@ class LinuxCollector(CollectorAgent):
 
     def get_qa_files_path(self):
         return self.__qa_files_path
+
+    @property
+    def initial_version(self) -> str:
+        return self._initial_version
 
     @allure.step("Update process ID")
     def update_process_id(self):
