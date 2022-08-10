@@ -4,8 +4,7 @@ import allure
 import pytest
 from infra.allure_report_handler.reporter import TEST_STEP, Reporter, INFO
 from infra.system_components.collectors.windows_os.windows_collector import WindowsCollector
-from tests.utils.collector_utils import isolate_collector_context, remove_collector_from_isolation_mode, \
-    is_config_file_is_partial
+from tests.utils.collector_utils import isolate_collector_context, is_config_file_is_partial_or_full, ConfigurationTypes
 
 logger = logging.getLogger(__name__)
 
@@ -37,8 +36,9 @@ def test_receive_partial_configuration_after_remove_collector_from_isolation_in_
     with TEST_STEP("STEP-Validate collector received a new partial config file that related to the remove isolation action"):
         collector.wait_for_new_config_file(latest_config_file_details=current_latest_config_file)
         latest_config_file_details_after_remove_isolation = collector.get_the_latest_config_file_details()
-        assert is_config_file_is_partial(collector=collector,
-                                         config_file_details=latest_config_file_details_after_remove_isolation,
-                                         first_log_date_time=first_log_date_time), \
+        assert is_config_file_is_partial_or_full(collector=collector,
+                                                 config_file_details=latest_config_file_details_after_remove_isolation,
+                                                 first_log_date_time=first_log_date_time,
+                                                 config_type=ConfigurationTypes.PARTIAL), \
             f"Config file after remove isolation collector is not partial, these are the details \
               {latest_config_file_details_after_remove_isolation}"
