@@ -73,7 +73,7 @@ class Policy(BaseApiObj):
         return f"Policy {self.name} in '{self.get_organization_name(from_cache=True)}'"
 
     @property
-    def name(self) -> int:
+    def name(self) -> str:
         return self._name
 
     def get_organization_name(self, from_cache=None, update_cache=True):
