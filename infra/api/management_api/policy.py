@@ -3,6 +3,8 @@ from typing import List
 import allure
 import time
 from enum import Enum
+
+from infra.allure_report_handler.reporter import Reporter
 from infra.api.api_object import BaseApiObj
 from infra.api.nslo_wrapper.rest_commands import RestCommands
 from ensilo.platform.rest.nslo_management_rest import NsloRest
@@ -194,6 +196,11 @@ class Policy(BaseApiObj):
 
     @allure.step("Set policy mode")
     def set_policy_mode(self, mode_name, wait=True, safe=False, wait_sec=None):
+        if self.name.lower() == 'extended detection' and mode_name != ModeNames.SIMULATION.value:
+            Reporter.report(message=f"Can not set {self.name} to mode {mode_name} because"
+                                    f"The eXtended Detection policy only operates in Simulation mode, skipped",
+                            logger_func=logger.info)
+
         is_in_expected_mode = True if self.get_operation_mode() == mode_name else False
         wait_sec = wait_sec or WAIT_AFTER_SET_POLICY_MODE
         if is_in_expected_mode:
