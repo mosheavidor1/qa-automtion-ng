@@ -57,9 +57,6 @@ class Tenant:
         policies = policies or self.get_default_policies()
         logger.info(f"Turn on prevention mode for organization {self.organization} via policies: \n {policies}")
         for policy in policies:
-            if policy.name.lower() == 'extended detection':
-                # The eXtended Detection policy only operates in Simulation mode
-                continue
             policy.set_to_prevention_mode(safe=True)
 
     def get_default_policies(self):
