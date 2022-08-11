@@ -4,10 +4,12 @@ import allure
 import pytest
 from infra.allure_report_handler.reporter import TEST_STEP, Reporter, INFO
 from infra.api.management_api.event import EventActionNames
-from infra.api.management_api.policy import DefaultPoliciesNames, RulesNames, ModeNames
+from infra.api.management_api.policy import DefaultPoliciesNames, RulesNames, ModeNames, RuleActions, \
+    ExternalPoliciesNames
 from infra.system_components.collectors.windows_os.windows_collector import WindowsCollector
-from tests.utils.policy_utils import disable_rule_in_policies_context, \
-    change_policy_rule_fields_context, change_policy_mode_context, get_relevant_malware_name
+from tests.utils.collector_group_utils import new_group_with_collector_context
+from tests.utils.policy_utils import change_policy_rule_fields_context, change_policy_mode_context, \
+    get_relevant_malware_name
 
 logger = logging.getLogger(__name__)
 
@@ -39,38 +41,35 @@ def _get_rule_name_by_policy_name(policy_name):
      ('EN-78359', DefaultPoliciesNames.EXFILTRATION_PREVENTION.value, ModeNames.PREVENTION.value)
      ],
 )
-def test_policy_mode_on_windows_os(fx_system_without_events_and_exceptions, collector, xray, policy_name, mode):
+def test_policy_mode_with_rule_block_on_windows_os(fx_system_without_events_and_exceptions, collector, xray, policy_name
+                                                   , mode):
     """
         Test that policy modes simulation/prevention catching relevant malware and creating correct security event with
-        block action
+        block action and is(in prevention mode)/isn't(in simulation mode) blocked the malware on collector agent
 
             1. Start the test on clean system: without exceptions and without events
-            2. disable rule in all policies except the tested policy because we trigger malware (from collector)
-               that should be caught by the tested policy and not to other policy
+            2. Assign policy to new collector group
             3. Enable policy rule and validate that the rule is on 'block' because
                we trigger malware (from collector) that should be caught by the tested policy in our mode
                and for this mode the policy's rule must be in block action and enabled state
-            4. Assign policy to collector group and set to simulation/prevention mode
+            4. Set to simulation/prevention mode
             5. Trigger malware (from collector) that should be caught by the tested policy
             6. Validate that event created with the correct fields
+            7. TODO: Validate that the malware is(in prevention mode)/isn't(in simulation mode) blocked on collector agent
     """
     assert isinstance(collector, WindowsCollector), "This test trigger malware only on a windows collector"
     rule_name = _get_rule_name_by_policy_name(policy_name=policy_name)
     malware_name = get_relevant_malware_name(policy_name=policy_name, rule_name=rule_name)
     management = fx_system_without_events_and_exceptions
-    collector_agent = collector
-    rest_collector = management.tenant.rest_components.collectors.get_by_ip(ip=collector_agent.host_ip)
     user = management.tenant.default_local_admin
-    all_policies = user.rest_components.policies.get_all()
-    not_tested_policies_names = [policy.name for policy in all_policies if policy.name != policy_name]
-    policy = [policy for policy in all_policies if policy.name == policy_name][0]
-    group = user.rest_components.collector_groups.get_by_name(name=rest_collector.get_group_name())
+    policy = user.rest_components.policies.get_by_name(policy_name=policy_name)
 
-    with TEST_STEP(f"STEP-Assign policy '{policy_name}' to {group}"):
-        policy.assign_to_collector_group(group_name=group.name, safe=True)
+    with new_group_with_collector_context(management=management,
+                                          collector_agent=collector) as group_with_collector:
+        target_group_name, target_collector = group_with_collector
+        with TEST_STEP(f"STEP-Assign policy '{policy_name}' to new group '{target_group_name}'"):
+            policy.assign_to_collector_group(group_name=target_group_name, safe=True)
 
-    logger.info(f"Disable rule '{rule_name}' in policies {not_tested_policies_names} in order to isolate our rule")
-    with disable_rule_in_policies_context(user=user, policies_names=not_tested_policies_names, rule_name=rule_name):
         with change_policy_mode_context(user=user, policy_name=policy_name):
             with change_policy_rule_fields_context(user=user, policy_name=policy_name, rule_name=rule_name):
                 with TEST_STEP(f"STEP-Enable the rule '{rule_name}' and set action to the 'block' action"):
@@ -88,7 +87,8 @@ def test_policy_mode_on_windows_os(fx_system_without_events_and_exceptions, coll
                                                                              , wait_for=True)
                     assert len(events) == 1, f"ERROR - Created {len(events)} events, expected of 1"
                     event = events[0]
-                    assert rule_name in event.get_rules(), f"ERROR - The event is not connected to our policy"
+                    assert len(event.get_rules()) == 1 and rule_name in event.get_rules(),\
+                        f"ERROR -The event was not triggered by the correct rule"
                     assert event.get_process_name() == malware_name, f"ERROR - Created event by process " \
                                                                      f"{event.get_process_name()}, " \
                                                                      f"expected by process {malware_name}"
@@ -97,6 +97,146 @@ def test_policy_mode_on_windows_os(fx_system_without_events_and_exceptions, coll
                     assert event.get_action() == expected_action,\
                            f"ERROR - Created event in {event.get_action()} action, expected" \
                            f" {expected_action} action"
+
+                    with TEST_STEP(f"STEP-Validate that the malicious '{malware_name}' is {expected_action} on {collector}"):
+                        pass
+
+
+@allure.epic("Management")
+@allure.feature("Policy")
+@pytest.mark.policy
+@pytest.mark.sanity
+@pytest.mark.policy_sanity
+@pytest.mark.management_sanity
+@pytest.mark.parametrize(
+    "xray, policy_name",
+    [('EN-78442', DefaultPoliciesNames.EXECUTION_PREVENTION.value),
+     ('EN-78446', DefaultPoliciesNames.EXFILTRATION_PREVENTION.value),
+     ('EN-78448', DefaultPoliciesNames.RANSOMWARE_PREVENTION.value)],)
+def test_policy_rule_action_log_on_windows_os(fx_system_without_events_and_exceptions, collector, xray, policy_name):
+    """
+        Test that policy rule in action 'Log', catching relevant malware and creating correct security event
+        and is not blocked the malware on collector agent
+        *** The block action is already tested in test 'test_policy_mode_with_rule_block_on_windows_os' ***
+
+            1. Start the test on clean system: without exceptions and without events
+            2. Assign policy to new collector group
+            3. Set the policy to prevention mode and Enable policy rule because we trigger malware (from collector) that
+               should be caught by the tested policy in 'Log' action and for the that
+               policy must be in prevention mode and rule in enabled state
+            4. Set the rule action to the 'Log' action
+            5. Trigger malware (from collector) that should be caught by the tested policy
+            6. Validate that event created with the correct fields
+            7. TODO: Validate that the malware is not blocked on collector agent
+    """
+    assert isinstance(collector, WindowsCollector), "This test trigger malware only on a windows collector"
+    rule_name = _get_rule_name_by_policy_name(policy_name=policy_name)
+    malware_name = get_relevant_malware_name(policy_name=policy_name, rule_name=rule_name)
+    management = fx_system_without_events_and_exceptions
+    user = management.tenant.default_local_admin
+    policy = user.rest_components.policies.get_by_name(policy_name=policy_name)
+
+    with new_group_with_collector_context(management=management,
+                                          collector_agent=collector) as group_with_collector:
+        target_group_name, target_collector = group_with_collector
+
+        with TEST_STEP(f"STEP-Assign policy '{policy_name}' to new group '{target_group_name}'"):
+            policy.assign_to_collector_group(group_name=target_group_name, safe=True)
+
+        with change_policy_mode_context(user=user, policy_name=policy_name):
+            with change_policy_rule_fields_context(user=user, policy_name=policy_name, rule_name=rule_name):
+                with TEST_STEP(f"STEP--Set mode of policy '{policy_name}' to 'prevention' mode and "
+                               f"Enable the rule '{rule_name}'"):
+                    policy.set_rule_state_to_enabled(rule_name=rule_name, safe=True)
+                    policy.set_to_prevention_mode(safe=True)
+
+                with TEST_STEP(f"STEP- Set the rule '{rule_name}' action to the 'Log' action"):
+                    policy.set_rule_action_to_log(rule_name=rule_name, safe=True)
+
+                with TEST_STEP(f"STEP-Trigger a malicious {malware_name} in order to create event for the tested policy"):
+                    collector.create_event(malware_name=malware_name)
+
+                with TEST_STEP("STEP-Validate that event created with the correct values"):
+                    events = user.rest_components.events.get_by_process_name(process_name=malware_name, safe=True,
+                                                                             wait_for=True)
+                    assert len(events) == 1, f"ERROR - Created {len(events)} events, expected of 1"
+                    event = events[0]
+                    assert len(event.get_rules()) == 1 and rule_name in event.get_rules(), \
+                        f"ERROR -The event was not triggered by the correct rule"
+                    assert event.get_process_name() == malware_name, f"ERROR - Created event by process " \
+                                                                     f"{event.get_process_name()}, " \
+                                                                     f"expected by process {malware_name}"
+                    assert event.get_action() == RuleActions.LOG.value,\
+                           f"ERROR - Created event in {event.get_action()} action, expected" \
+                           f" {RuleActions.LOG.value} action"
+
+                with TEST_STEP(f"STEP-Validate that the malicious '{malware_name}' is not blocked on {collector}"):
+                    pass
+
+
+@allure.epic("Management")
+@allure.feature("Policy")
+@pytest.mark.policy
+@pytest.mark.sanity
+@pytest.mark.policy_sanity
+@pytest.mark.management_sanity
+@pytest.mark.parametrize(
+    "xray, policy_name",
+    [('EN-78443', DefaultPoliciesNames.EXECUTION_PREVENTION.value),
+     ('EN-78447', DefaultPoliciesNames.EXFILTRATION_PREVENTION.value),
+     ('EN-78454', DefaultPoliciesNames.RANSOMWARE_PREVENTION.value)],
+)
+def test_disabled_policy_rule_state_on_windows_os(fx_system_without_events_and_exceptions, collector, xray, policy_name):
+    """
+        Test that a disabled rule is not blocking the malware on the collector agent and is not creating new event
+        ***
+        The enable mode is already tested in tests:
+            - test_policy_mode_with_rule_block_on_windows_os
+            - test_policy_rule_action_log_on_windows_os
+        ***
+            1. Start the test on clean system: without exceptions and without events
+            2. Assign policy to new collector group
+            3. Set the policy to prevention mode and validate that the rule is on 'block'
+               because we trigger malware (from collector) that should be caught by the tested policy in 'Disabled' state
+               and for that the policy must be on prevention mode and the rule must be in block action
+            4. Set the rule state to the 'disabled' state
+            5. Trigger malware (from collector) that should be caught by the tested policy
+            6. Validate that not created any event
+    """
+    assert isinstance(collector, WindowsCollector), "This test trigger malware only on a windows collector"
+    rule_name = _get_rule_name_by_policy_name(policy_name=policy_name)
+    malware_name = get_relevant_malware_name(policy_name=policy_name, rule_name=rule_name)
+    management = fx_system_without_events_and_exceptions
+    user = management.tenant.default_local_admin
+    policy = user.rest_components.policies.get_by_name(policy_name=policy_name)
+
+    with new_group_with_collector_context(management=management,
+                                          collector_agent=collector) as group_with_collector:
+        target_group_name, target_collector = group_with_collector
+
+        with TEST_STEP(f"STEP-Assign policy '{policy_name}' to new group '{target_group_name}'"):
+            policy.assign_to_collector_group(group_name=target_group_name, safe=True)
+
+        with change_policy_mode_context(user=user, policy_name=policy_name):
+            with change_policy_rule_fields_context(user=user, policy_name=policy_name, rule_name=rule_name):
+                with TEST_STEP(f"STEP-Set mode of policy '{policy_name}' to 'prevention' mode and "
+                               f"rule '{rule_name}' action to the 'block' action"):
+                    policy.set_to_prevention_mode(safe=True)
+                    policy.set_rule_action_to_block(rule_name=rule_name, safe=True)
+
+                with TEST_STEP(f"STEP-Set the rule '{rule_name}' state to the 'disabled' state"):
+                    policy.set_rule_state_to_disabled(rule_name=rule_name, safe=True)
+
+                with TEST_STEP(f"STEP-Trigger a malicious {malware_name} in order to create event for the tested policy"):
+                    collector.create_event(malware_name=malware_name)
+
+                with TEST_STEP("STEP-Validate that not created any event"):
+                    events = user.rest_components.events.get_by_process_name(process_name=malware_name, safe=True,
+                                                                             wait_for=True)
+                    assert len(events) == 0, f"ERROR - Created {len(events)} events, expected of 0"
+
+                with TEST_STEP(f"STEP-Validate that the malicious '{malware_name}' is not blocked on {collector}"):
+                    pass
 
 
 @allure.epic("Management")
@@ -110,10 +250,10 @@ def test_policy_mode_on_windows_os(fx_system_without_events_and_exceptions, coll
     [('EN-78675', DefaultPoliciesNames.EXECUTION_PREVENTION.value),
      ('EN-78676', DefaultPoliciesNames.EXFILTRATION_PREVENTION.value),
      ('EN-78677', DefaultPoliciesNames.RANSOMWARE_PREVENTION.value),
-     ('EN-78678', DefaultPoliciesNames.DEVICE_CONTROL.value),
-     ('EN-78679', DefaultPoliciesNames.EXTENDED_DETECTION.value)
+     ('EN-78678', ExternalPoliciesNames.DEVICE_CONTROL.value),
+     ('EN-78679', ExternalPoliciesNames.EXTENDED_DETECTION.value)
      ],)
-def test_delete_main_policy(management, xray, policy_name):
+def test_can_not_delete_main_policy(management, xray, policy_name):
     """
         Test that can not delete main policy
         Test steps:

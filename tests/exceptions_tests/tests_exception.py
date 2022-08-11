@@ -19,6 +19,7 @@ class ExceptionsTests:
                              ],
                              indirect=True)
     @pytest.mark.sanity
+    @pytest.mark.exception_sanity
     @pytest.mark.linux_sanity
     @pytest.mark.management_sanity
     @pytest.mark.management_linux_sanity
@@ -43,6 +44,7 @@ class ExceptionsTests:
                              [('EN-68890', ExceptionTestType.CREATE_PARTIALLY_COVERED_EXCEPTION)],
                              indirect=True)
     @pytest.mark.sanity
+    @pytest.mark.exception_sanity
     @pytest.mark.linux_sanity
     @pytest.mark.management_sanity
     @pytest.mark.management_linux_sanity
@@ -73,6 +75,7 @@ class ExceptionsTests:
                              [('EN-68891', ExceptionTestType.CREATE_PARTIALLY_COVERED_EXCEPTION_EVENT_CREATED)],
                              indirect=True)
     @pytest.mark.sanity
+    @pytest.mark.exception_sanity
     @pytest.mark.linux_sanity
     @pytest.mark.management_sanity
     @pytest.mark.management_linux_sanity
@@ -96,6 +99,7 @@ class ExceptionsTests:
                              [('EN-68885', ExceptionTestType.EDIT_FULL_COVERED_EXCEPTION)],
                              indirect=True)
     @pytest.mark.sanity
+    @pytest.mark.exception_sanity
     @pytest.mark.linux_sanity
     @pytest.mark.management_sanity
     @pytest.mark.management_linux_sanity
@@ -138,6 +142,7 @@ class ExceptionsTests:
                              [('EN-68888', ExceptionTestType.EDIT_PARTIALLY_COVERED_EXCEPTION)],
                              indirect=True)
     @pytest.mark.sanity
+    @pytest.mark.exception_sanity
     @pytest.mark.linux_sanity
     @pytest.mark.management_sanity
     @pytest.mark.management_linux_sanity
@@ -179,6 +184,7 @@ class ExceptionsTests:
                              [('EN-68892', ExceptionTestType.GENERAL)],
                              indirect=True)
     @pytest.mark.sanity
+    @pytest.mark.exception_sanity
     @pytest.mark.linux_sanity
     @pytest.mark.management_sanity
     @pytest.mark.management_linux_sanity
@@ -207,6 +213,7 @@ class ExceptionsTests:
                              [('EN-68992', ExceptionTestType.EDIT_PARTIALLY_COVERED_EXCEPTION)],
                              indirect=True)
     @pytest.mark.sanity
+    @pytest.mark.exception_sanity
     @pytest.mark.linux_sanity
     @pytest.mark.management_sanity
     @pytest.mark.management_linux_sanity
@@ -246,6 +253,7 @@ class ExceptionsTests:
                              [('EN-68989', ExceptionTestType.GENERAL)],
                              indirect=True)
     @pytest.mark.sanity
+    @pytest.mark.exception_sanity
     @pytest.mark.linux_sanity
     @pytest.mark.management_sanity
     @pytest.mark.management_linux_sanity

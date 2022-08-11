@@ -14,12 +14,13 @@ logger = logging.getLogger(__name__)
 
 @allure.epic("Management")
 @allure.feature("Expired Collector")
-@pytest.mark.management_sanity
-@pytest.mark.management_full_regression
-@pytest.mark.full_regression
-@pytest.mark.xray('EN-70289')
+# @pytest.mark.management_sanity
+# @pytest.mark.management_full_regression
+# @pytest.mark.full_regression
+# @pytest.mark.xray('EN-70289')
 def test_expired_collector(management, collector, aggregator):
     """
+    !!! There is a bug - unstable, for questions please contact Leonid or Miri !!!
     1. Observe the capacity of license in use before making collector expired
     2. change collector to expired mode via manipulation dev_agents table in management DB
     3. wait until collector will be expired in manager
