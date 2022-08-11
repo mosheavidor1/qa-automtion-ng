@@ -20,7 +20,7 @@ def test_add_collectors_during_test(management: Management,
     }
 
     with TEST_STEP('Add collectors to pool'):
-        with add_collectors_from_pool(management=management,
+        with add_collectors_from_pool(tenant=management.tenant,
                                       desired_version=desired_version,
                                       aggregator_ip=aggregator.host_ip,
                                       organization=management.tenant.organization.get_name(),
