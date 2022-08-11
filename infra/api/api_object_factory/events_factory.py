@@ -7,9 +7,12 @@ import logging
 import functools
 from typing import List
 import time
+
+from infra.common_utils import WAIT_FOR_COLLECTOR_NEW_CONFIGURATION
+
 logger = logging.getLogger(__name__)
 
-MAX_WAIT_FOR_EVENT = 5 * 60
+MAX_WAIT_FOR_EVENT = WAIT_FOR_COLLECTOR_NEW_CONFIGURATION
 GET_EVENT_INTERVAL = 2
 
 
@@ -51,7 +54,7 @@ class EventsFactory(BaseApiObjFactory):
         get_event_func = functools.partial(self.get_by_field, field_name=field_name,
                                            value=value, rest_client=rest_client)
         if wait_for:
-            _wait_for_event(get_event_func=get_event_func, timeout=timeout, interval=interval)
+            _wait_for_event(get_event_func=get_event_func, timeout=timeout, interval=interval, safe=safe)
         events = get_event_func(safe=safe)
         return events
 
@@ -69,7 +72,7 @@ class EventsFactory(BaseApiObjFactory):
             return events
         assert safe, f"Didn't find any event with field {field_name}={value} in organization {self._organization_name}"
         logger.info(f"Didn't find any event with field {field_name}={value} in organization {self._organization_name}")
-        return None
+        return events
 
     @allure.step("Delete all Events")
     def delete_all(self, rest_client=None, safe=False, wait_sec=None):
@@ -86,11 +89,16 @@ class EventsFactory(BaseApiObjFactory):
         assert len(remaining_events) == 0, f"These events were not deleted: {remaining_events}"
 
 
-def _wait_for_event(get_event_func, timeout=None, interval=None):
+def _wait_for_event(get_event_func, timeout=None, interval=None, safe=False):
     timeout = timeout or MAX_WAIT_FOR_EVENT
     interval = interval or GET_EVENT_INTERVAL
 
     def condition():
-        result = get_event_func(safe=True) is not None
-        return result
-    common_utils.wait_for_condition(condition_func=condition, timeout_sec=timeout, interval_sec=interval)
+        return True if get_event_func(safe=True) else False
+    try:
+        common_utils.wait_for_condition(condition_func=condition, timeout_sec=timeout, interval_sec=interval)
+    except AssertionError:
+        if not safe:
+            raise Exception(f"Error - No event found after waiting {interval} seconds")
+
+
