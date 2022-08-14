@@ -216,11 +216,12 @@ def is_config_file_is_partial_or_full(collector: CollectorAgent, config_file_det
     logger.info(f"Get parsed logs from {first_log_date_time}")
     log_files_dict = collector.get_parsed_logs_after_specified_time_stamp(first_log_timestamp_to_append=first_log_date_time,
                                                                           file_suffix='.blg')
+    logger.info(f"Checking if {config_type} configuration received in the parsed logs")
     for file_name, file_content in log_files_dict.items():
         result = StringUtils.get_txt_by_regex(text=file_content, regex=f'Received {config_type} configuration update version', group=0)
         if result is not None:
             is_received_in_logs = True
-            logger.info(f"Received from logs: {result}")
+            logger.info(f"Received from '{file_name}' log file: {result}")
             break
     if config_type == ConfigurationTypes.PARTIAL:
         return is_received_in_logs and config_file_details['file_size'] < MIN_FULL_CONFIG_SIZE_IN_KB
