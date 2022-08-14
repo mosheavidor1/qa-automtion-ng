@@ -211,7 +211,9 @@ def isolate_collector_context(tenant: Tenant, collector_agent: CollectorAgent):
                 remove_collector_from_isolation_mode(tenant=tenant, collector_agent=collector_agent)
 
 
-def is_config_file_is_partial_or_full(collector: CollectorAgent, config_file_details: dict, first_log_date_time, config_type) -> bool:
+@allure.step("Checking if partial or full configuration received in logs")
+def is_config_file_is_partial_or_full(collector: CollectorAgent, config_file_details: dict, first_log_date_time,
+                                      config_type: ConfigurationTypes) -> bool:
     is_received_in_logs = False
     logger.info(f"Get parsed logs from {first_log_date_time}")
     log_files_dict = collector.get_parsed_logs_after_specified_time_stamp(first_log_timestamp_to_append=first_log_date_time,

@@ -39,6 +39,6 @@ def test_receive_partial_configuration_after_remove_collector_from_isolation_in_
         assert is_config_file_is_partial_or_full(collector=collector,
                                                  config_file_details=latest_config_file_details_after_remove_isolation,
                                                  first_log_date_time=first_log_date_time,
-                                                 config_type=ConfigurationTypes.PARTIAL), \
+                                                 config_type=ConfigurationTypes.PARTIAL.value), \
             f"Config file after remove isolation collector is not partial, these are the details \
               {latest_config_file_details_after_remove_isolation}"
