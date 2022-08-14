@@ -7,6 +7,11 @@ from infra.api.nslo_wrapper.rest_commands import RestCommands
 logger = logging.getLogger(__name__)
 
 
+class PolicyDefaultCollectorGroupsNames(Enum):
+    DEFAULT_COLLECTOR_GROUP_NAME = "Default Collector Group"
+    HIGH_SECURITY_COLLECTOR_GROUP_NAME = "High Security Collector Group"
+
+
 class GroupFieldsNames(Enum):
     """ Group's fields names as we get from server """
     ID = 'id'

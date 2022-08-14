@@ -2,7 +2,7 @@ import logging
 import allure
 import pytest
 from tests.utils.tenant_utils import new_tenant_context
-from infra.allure_report_handler.reporter import TEST_STEP, Reporter, INFO
+from infra.allure_report_handler.reporter import TEST_STEP
 from infra.enums import FortiEdrSystemState
 from infra.system_components.collectors.windows_os.windows_collector import WindowsCollector
 from tests.utils.aggregator_utils import revive_aggregator_on_failure_context
@@ -56,7 +56,7 @@ def test_receive_full_configuration_after_restart_management_in_windows_os(manag
     with revive_management_on_failure_context(management=management):
         with TEST_STEP("STEP - Restart management and Fetch the latest config file before restart management"):
             latest_config_file_details_before_restart_mng = collector_agent.get_the_latest_config_file_details()
-            logger.log(f"restart management {management}")
+            logger.info(f"restart management {management}")
             management.restart_service()
 
         with TEST_STEP("STEP - Validate service is up and the collector is running"):
@@ -89,7 +89,7 @@ def test_receive_full_configuration_after_restart_aggregator_in_windows_os(manag
     with revive_aggregator_on_failure_context(aggregator=aggregator):
         with TEST_STEP("STEP - Restart aggregator and Fetch the latest config file before restart aggregator"):
             latest_config_file_details_before_restart_agg = collector_agent.get_the_latest_config_file_details()
-            logger.log(f"restart aggregator {aggregator}")
+            logger.info(f"restart aggregator {aggregator}")
             aggregator.restart_service()
 
         with TEST_STEP("STEP - Validate aggregator service is up and the collector is running"):

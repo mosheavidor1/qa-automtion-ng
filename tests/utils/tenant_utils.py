@@ -9,6 +9,7 @@ from infra.api.management_api.collector import RestCollector
 from infra.utils.utils import StringUtils
 from infra.multi_tenancy.tenant import Tenant
 from infra.system_components.collector import CollectorAgent
+from tests.utils.collector_group_utils import generate_group_name
 from tests.utils.collector_utils import CollectorUtils
 
 logger = logging.getLogger(__name__)
@@ -72,10 +73,6 @@ def generate_user_password():
 
 def generate_org_name():
     return f"Organization_{StringUtils.generate_random_string()}"
-
-
-def generate_group_name():
-    return f"Group_{StringUtils.generate_random_string()}"
 
 
 def generate_registration_password():
