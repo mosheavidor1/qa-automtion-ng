@@ -563,8 +563,8 @@ class WindowsCollector(CollectorAgent):
                             first_index = content.index(line_date)
                             content = content[first_index:]
                             logs_dict_with_content[single_parsed_file] = content
-                            break
-                            
+                            continue
+
             if is_logs_exist_after_the_first_timestamp:
                 logs_dict_with_content[single_parsed_file] = content
 

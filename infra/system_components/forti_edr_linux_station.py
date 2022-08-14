@@ -269,7 +269,8 @@ class FortiEdrLinuxStation(LinuxStation):
                         if datetime.strptime(line_date, log_timestamp_date_format) > first_log_timestamp_date_time:
                             first_index = tmp_content.index(line_date)
                             content = tmp_content[first_index:]
-                            break
+                            Reporter.attach_str_as_file(file_name=single_file, file_content=content)
+                            continue
 
             if content is not None:
                 Reporter.attach_str_as_file(file_name=single_file, file_content=content)
