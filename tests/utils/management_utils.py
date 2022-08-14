@@ -21,14 +21,8 @@ class ManagementUtils:
         user = management.tenant.default_local_admin
         user.rest_components.events.delete_all(safe=True)
         collector.create_event(malware_name=malware_name)
-        if expected_result:
-            events = user.rest_components.events.get_by_process_name(process_name=malware_name, wait_for=True)
-        else:
-            time.sleep(60)  # Sleep in order to be sure that event will not appear suddenly later in management
-            events = user.rest_components.events.get_by_process_name(process_name=malware_name,
-                                                                     safe=True, wait_for=False)
-
-        is_event_created = True if events is not None and len(events) > 0 else False
+        events = user.rest_components.events.get_by_process_name(process_name=malware_name, wait_for=True, safe=True)
+        is_event_created = True if len(events) > 0 else False
         Assertion.invoke_assertion(expected=expected_result, actual=is_event_created,
                                    message=r"event was\wasn't created as expected",
                                    assert_type=AssertTypeEnum.SOFT)

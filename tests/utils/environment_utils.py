@@ -8,12 +8,11 @@ import allure
 from infra.allure_report_handler.reporter import Reporter
 from infra.enums import CleanVMsReadyForCollectorInstallation, CollectorTypes
 from infra.environment_creation.environment_creation_handler import EnvironmentCreationHandler
+from infra.multi_tenancy.tenant import Tenant
 from infra.system_components.collector import CollectorAgent
-from infra.system_components.management import Management
 from infra.vpshere.vsphere_cluster_details import ENSILO_VCSA_40
 from infra.vpshere.vsphere_cluster_handler import VsphereClusterHandler
 from tests.conftest import _wait_util_rest_collector_appear, _find_rest_collector
-from tests.utils.collector_utils import CollectorUtils
 import concurrent.futures
 logger = logging.getLogger(__name__)
 
@@ -72,7 +71,7 @@ def _get_clean_vms_list_according_to_collector_type(collector_type: CollectorTyp
 
 
 @contextmanager
-def add_collectors_from_pool(management: Management,
+def add_collectors_from_pool(tenant: Tenant,
                              desired_version: str,
                              aggregator_ip: str,
                              organization: str,
@@ -112,7 +111,7 @@ def add_collectors_from_pool(management: Management,
             with allure.step("Wait until all collectors appear in management"):
                 for deployed_collector in deployed_collectors:
                     rest_collector = _wait_util_rest_collector_appear(host_ip=deployed_collector.host_ip,
-                                                                      tenant=management.tenant,
+                                                                      tenant=tenant,
                                                                       timeout=120)
 
                     rest_collector.wait_until_running()
@@ -142,7 +141,7 @@ def add_collectors_from_pool(management: Management,
                     Reporter.report(f"{single_collector} released successfully")
 
                     try:
-                        rest_collector = _find_rest_collector(host_ip=single_collector.host_ip, tenant=management.tenant)
+                        rest_collector = _find_rest_collector(host_ip=single_collector.host_ip, tenant=tenant)
                         # CollectorUtils.wait_until_rest_collector_is_off(rest_collector=rest_collector)
                         rest_collector.delete()
 

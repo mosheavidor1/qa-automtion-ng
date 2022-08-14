@@ -825,44 +825,6 @@ def init_jira_xray_object(management, aggregator, core, collector):
     jira_xray_handler.collector = collector
 
 
-######################## dynamic system components fixtures ################################
-@pytest.fixture(scope="function")
-def dynamic_windows_collector(collector, management, aggregator) -> WindowsCollector:
-    vspere_details = ENSILO_VCSA_40
-    vsphere_handler = VsphereClusterHandler(vspere_details)
-    clean_vms_list = [CleanVMsReadyForCollectorInstallation.WIN_10_32_1,
-                      CleanVMsReadyForCollectorInstallation.WIN_10_64_1,
-                      CleanVMsReadyForCollectorInstallation.WIN_10_64_2,
-                      CleanVMsReadyForCollectorInstallation.WIN_10_64_3,
-                      CleanVMsReadyForCollectorInstallation.WIN_11_64_1,
-                      CleanVMsReadyForCollectorInstallation.WIN_11_64_2,
-                      CleanVMsReadyForCollectorInstallation.WIN_11_64_3,
-                      CleanVMsReadyForCollectorInstallation.WIN_SRV_2016_64_1,
-                      CleanVMsReadyForCollectorInstallation.WIN_SRV_2019_64_1]
-
-    collector = EnvironmentCreationHandler.add_random_collector_to_setup_from_collectors_pool(
-        vsphere_cluster_handler=vsphere_handler,
-        clean_vms_list=clean_vms_list,
-        version=collector.get_version(),
-        aggregator_ip=aggregator.host_ip,
-        registration_password=management.registration_password,
-        organization=sut_details.default_organization)
-
-    rest_collector = _wait_util_rest_collector_appear(host_ip=collector.host_ip, tenant=management.tenant, timeout=120)
-    rest_collector.wait_until_running()
-
-    yield collector
-
-    collector.os_station.vm_operations.revert_to_root_snapshot()
-    original_name = collector.os_station.vm_operations.vm_obj.name.replace(EnvironmentCreationHandler.BUSY_VM_COLLECTOR, '')
-    collector.os_station.vm_operations.rename_machine_in_vsphere(new_name=original_name)
-    collector.os_station.vm_operations.power_off()
-
-    rest_collector = _find_rest_collector(host_ip=collector.host_ip, tenant=management.tenant)
-    CollectorUtils.wait_until_rest_collector_is_off(rest_collector=rest_collector)
-    rest_collector.delete()
-
-
 @pytest.fixture(scope="function")
 def fx_system_without_events_and_exceptions(management):
     """
