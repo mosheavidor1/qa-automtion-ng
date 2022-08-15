@@ -225,9 +225,9 @@ def is_config_file_is_partial_or_full(collector: CollectorAgent, config_file_det
             is_received_in_logs = True
             logger.info(f"Received from '{file_name}' log file: {result}")
             break
-    if config_type == ConfigurationTypes.PARTIAL:
+    if config_type == ConfigurationTypes.PARTIAL.value:
         return is_received_in_logs and config_file_details['file_size'] < MIN_FULL_CONFIG_SIZE_IN_KB
-    elif config_type == ConfigurationTypes.FULL:
+    elif config_type == ConfigurationTypes.FULL.value:
         return is_received_in_logs and config_file_details['file_size'] >= MIN_FULL_CONFIG_SIZE_IN_KB
     else:
         return False
