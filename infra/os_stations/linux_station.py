@@ -488,3 +488,11 @@ class LinuxStation(OsStation):
 
     def wait_for_file_to_appear_in_specified_folder(self, file_path: str, file_name: str, timeout: int, interval: int):
         raise NotImplementedError()
+
+    @allure.step("Check if {path} is file")
+    def is_file(self, path: str) -> bool:
+        raise Exception("Not Implemented yet")
+
+    @allure.step("Check if {path} is folder")
+    def is_folder(self, path: str) -> bool:
+        raise Exception("Not Implemented yet")

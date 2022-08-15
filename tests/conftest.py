@@ -707,6 +707,12 @@ def reset_driver_verifier_for_all_collectors(collector: CollectorAgent):
     collector.reboot()
 
 
+@pytest.fixture(scope="session", autouse=True)
+def clear_crashes_before_run(collector: CollectorAgent):
+    collector.clear_all_collector_crash_dump_files()
+    yield
+
+
 @pytest.fixture(scope="function", autouse=True)
 def check_if_collector_has_crashed(collector: CollectorAgent):
     yield

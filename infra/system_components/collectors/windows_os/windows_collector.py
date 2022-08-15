@@ -21,7 +21,7 @@ from sut_details import management_registration_password
 from infra.system_components.collectors.windows_os.windows_collector_installation_utils import (
     create_uninstallation_script,
     get_installer_path,
-    generate_installation_cmd, create_stop_collector_script, _get_stop_collector_script_content
+    generate_installation_cmd
 )
 
 logger = logging.getLogger(__name__)
@@ -47,7 +47,6 @@ class WindowsCollector(CollectorAgent):
         self.__program_data: str = r"C:\ProgramData\FortiEdr"
         self.__counters_file: str = fr"{self.__program_data}\Logs\Driver\counters.txt"
         self.__crash_dumps_dir: str = fr"{self.program_data}\CrashDumps\Collector"
-        self.__crash_dumps_info: str = fr"{self.__crash_dumps_dir}\crash_dumps_info.txt"
         self.__target_logs_folder: str = "C:\\ParsedLogsFolder"
         self.__memory_dmp_file_path: str = r'C:\WINDOWS\memory.dmp'
         self.__collected_crash_dump_dedicated_folder: str = r'C:\CrashDumpsCollected'
@@ -101,10 +100,6 @@ class WindowsCollector(CollectorAgent):
     @property
     def counters_file(self) -> str:
         return self.__counters_file
-
-    @property
-    def crash_dumps_dir(self) -> str:
-        return self.__crash_dumps_dir
 
     @allure.step("Get current collector process ID")
     def get_current_process_id(self):
@@ -171,8 +166,11 @@ class WindowsCollector(CollectorAgent):
         """
         :return: the directories that crash files written to
         """
-        return [r'C:\WINDOWS\system32\crashdumps', r'C:\WINDOWS\crashdumps', r'C:\WINDOWS\minidump',
-                r'C:\WINDOWS\system32\config\systemprofile\AppData\Local\crashdumps']
+        return [r'C:\WINDOWS\system32\crashdumps',
+                r'C:\WINDOWS\crashdumps',
+                r'C:\WINDOWS\minidump',
+                r'C:\WINDOWS\system32\config\systemprofile\AppData\Local\crashdumps',
+                r'C:\ProgramData\FortiEDR\Dumps\Collector']
 
     @allure.step("{0} - Get collector version")
     def get_version(self):
@@ -255,11 +253,21 @@ class WindowsCollector(CollectorAgent):
         Reporter.report("No crash detected :)")
         return False
 
+    @allure.step("{0} - Clear all crash dump files")
+    def clear_all_collector_crash_dump_files(self):
+        paths = self.get_crash_dumps_files()
+        if paths is not None and len(paths) > 0:
+            for path in paths:
+                if self.os_station.is_folder(path=path):
+                    self.os_station.remove_folder(folder_path=path)
+                else:
+                    self.os_station.remove_file(file_path=path)
+
     @allure.step("{0} - Checking if crash dumps exists")
     def has_crash_dumps(self, append_to_report: bool = False) -> bool:
         crash_dump_files = self.get_crash_dumps_files()
 
-        found_crash_dumps = True if crash_dump_files is not None and len(crash_dump_files) else False
+        found_crash_dumps = True if crash_dump_files is not None and len(crash_dump_files) > 0 else False
         if found_crash_dumps:
             Reporter.attach_str_as_file(file_name='crash_dumps', file_content=str('\r\n'.join(crash_dump_files)))
         else:
@@ -277,7 +285,9 @@ class WindowsCollector(CollectorAgent):
             if is_folder_exist:
                 files_in_folder = self.os_station.get_list_of_files_in_folder(folder_path=single_folder)
                 if files_in_folder is not None and len(files_in_folder) > 0:
-                    files_in_folder = [f'{single_folder}\{single_file}' for single_file in files_in_folder]
+                    files_in_folder = [fr'{single_folder}\{single_file}' for single_file in files_in_folder]
+                    if 'C:\ProgramData\FortiEDR\Dumps\Collector\TMP' in files_in_folder:
+                        files_in_folder.remove('C:\ProgramData\FortiEDR\Dumps\Collector\TMP')
 
                     if crash_dumps_list is None:
                         crash_dumps_list = []

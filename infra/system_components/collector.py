@@ -61,6 +61,10 @@ class CollectorAgent:
         pass
 
     @abstractmethod
+    def clear_all_collector_crash_dump_files(self):
+        pass
+
+    @abstractmethod
     def get_agent_status(self) -> FortiEdrSystemState:
         pass
 
