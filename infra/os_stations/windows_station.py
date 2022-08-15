@@ -578,3 +578,20 @@ class WindowsStation(OsStation):
         Reporter.report(f"Command Expand-Archive output:\n {command_output}")
 
         return output_path
+
+    @allure.step("Check if {path} is file")
+    def is_folder(self, path: str) -> bool:
+        cmd = f'powershell "(Get-Item {path}) -is [System.IO.DirectoryInfo]"'
+        output = self.execute_cmd(cmd=cmd,
+                                  return_output=True,
+                                  fail_on_err=True,
+                                  attach_output_to_report=True,
+                                  asynchronous=False)
+        if 'true' in output.lower():
+            return True
+
+        return False
+
+    @allure.step("Check if {path} is folder")
+    def is_file(self, path: str) -> bool:
+        return not self.is_folder(path=path)
