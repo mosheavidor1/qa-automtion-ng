@@ -432,6 +432,21 @@ class ManagementUiClient:
                                           assert_type=assert_type,
                                           test_timeout=test_timeout)
 
+        def delete_collector_group_with_the_collectors(self,
+                                                       data: dict = None,
+                                                       assert_type: AssertTypeEnum = AssertTypeEnum.HARD,
+                                                       test_timeout: int = 600):
+            """
+            Login to management
+            go to the inventory collectors page
+            select collector group and delete it including the collectors inside
+            """
+            self.parent.start_testim_flow(test_name="Collectors | Delete a group with collectors",
+                                          management_ui_ip=self.parent.management_ui_ip,
+                                          data=data,
+                                          assert_type=assert_type,
+                                          test_timeout=test_timeout)
+
         def validate_the_collector_group_not_exist(self,
                                                    data: dict = None,
                                                    assert_type: AssertTypeEnum = AssertTypeEnum.HARD,
