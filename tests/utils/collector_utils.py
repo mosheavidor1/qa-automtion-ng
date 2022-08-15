@@ -2,6 +2,8 @@ import allure
 from contextlib import contextmanager
 import time
 import logging
+
+from infra.forti_edr_versions_service_handler.forti_edr_versions_service_handler import FortiEdrVersionsServiceHandler
 from infra.system_components.collector import CollectorAgent
 from infra.system_components.collectors.linux_os.linux_collector import LinuxCollector
 from infra.api.management_api.collector import RestCollector
@@ -10,8 +12,9 @@ from infra import common_utils
 from infra.system_components.collectors.windows_os.windows_collector import WindowsCollector
 from infra.system_components.management import Management
 from infra.api.management_api.policy import WAIT_AFTER_ASSIGN
+from infra.utils.utils import StringUtils
+from infra.system_components.aggregator import Aggregator
 from tests.utils.policy_utils import WINDOWS_MALWARES_NAMES
-
 
 logger = logging.getLogger(__name__)
 
@@ -103,9 +106,10 @@ class CollectorUtils:
 
 
 @contextmanager
-def revive_collector_agent_on_failure_context(tenant: Tenant, collector_agent: CollectorAgent, aggregator):
+def revive_collector_agent_on_failure_context(tenant: Tenant, collector_agent: CollectorAgent, aggregator,
+                                              revived_version=None):
     """ Revive collector agent only if there is an exception in the body of this context """
-    collector_version = collector_agent.get_version()
+    revived_version = revived_version or collector_agent.get_version()
     package_name = None
     if isinstance(collector_agent, LinuxCollector):
         package_name = collector_agent.get_package_name()
@@ -115,7 +119,7 @@ def revive_collector_agent_on_failure_context(tenant: Tenant, collector_agent: C
         try:
             logger.info(f"Test Failed ! got: \n {original_exception} \n Now Try to revive {collector_agent}")
             install_collector_if_not_installed(tenant=tenant, collector_agent=collector_agent, aggregator=aggregator,
-                                               expected_version=collector_version, expected_package_name=package_name)
+                                               expected_version=revived_version, expected_package_name=package_name)
             start_collector_agent_if_is_down(tenant=tenant, collector_agent=collector_agent)
             enable_collector_agent_if_is_disabled(tenant=tenant, collector_agent=collector_agent)
             assert collector_agent.is_agent_installed(), f"{collector_agent} is not installed after revive"
@@ -224,7 +228,105 @@ def notify_or_kill_malwares_on_windows_collector(collector_agent: CollectorAgent
                 collector_agent.os_station.kill_process_by_id(pid=pid)
             with allure.step(f"Validate that malware '{windows_malware_name}' has no pid"):
                 assert collector_agent.os_station.get_service_process_ids(windows_malware_name) is None, \
-                      f"ERROR- failed to kill malware '{windows_malware_name}'"
+                    f"ERROR- failed to kill malware '{windows_malware_name}'"
     if len(running_malwares_names):
         assert safe, f"Found and killed these malwares: {running_malwares_names}, " \
                      f"probably one of previous test ended without kill the malwares"
+
+
+@allure.step("Change {collector_agent} version to: {target_version}")
+def _change_collector_version(management: Management, aggregator: Aggregator,
+                              collector_agent: CollectorAgent, target_version: str, revived_version=None):
+    """ Uninstall current version and install the target version """
+    rest_collector = management.tenant.rest_components.collectors.get_by_ip(ip=collector_agent.host_ip)
+    current_version = collector_agent.get_version()
+    assert current_version != target_version, f"{collector_agent} version is already {target_version}"
+    logger.info(f"Change {collector_agent} version from {current_version} to {target_version}")
+    revived_version = revived_version or current_version
+    with revive_collector_agent_on_failure_context(tenant=management.tenant, collector_agent=collector_agent,
+                                                   aggregator=aggregator, revived_version=revived_version):
+        logger.info(f"Uninstall {collector_agent} with version {current_version}")
+        password = management.tenant.organization.registration_password
+        collector_agent.uninstall_collector(registration_password=password)
+        logger.info(f"Validate {collector_agent} uninstalled successfully")
+        assert not collector_agent.is_collector_files_exist(), f"Failed to uninstall {collector_agent}"
+        CollectorUtils.wait_until_rest_collector_is_off(rest_collector=rest_collector)
+
+        logger.info(f"Install {collector_agent} with version: {target_version} and validate")
+        collector_agent.install_collector(version=target_version, aggregator_ip=aggregator.host_ip,
+                                          organization=management.tenant.organization.get_name(),
+                                          registration_password=password)
+        logger.info(f"Validate {collector_agent} installed successfully with version: {target_version}")
+        CollectorUtils.validate_collector_installed_successfully(tenant=management.tenant,
+                                                                 collector_agent=collector_agent,
+                                                                 expected_version=target_version)
+
+
+@contextmanager
+def downgrade_collector_context(management: Management, aggregator: Aggregator, collector_agent: CollectorAgent):
+    """ Downgrade collector to 1 build lower, finally return to the start version """
+    source_version = collector_agent.get_version()
+    version_to_downgrade = get_previous_build_version_number(collector=collector_agent)
+    with allure.step(f"Setup - Downgrade {collector_agent} version from {source_version} to {version_to_downgrade}"):
+        logger.info(f"Downgrade {collector_agent} version from {source_version} to {version_to_downgrade}")
+        _change_collector_version(management=management, aggregator=aggregator,
+                                  collector_agent=collector_agent, target_version=version_to_downgrade)
+    try:
+        yield collector_agent
+    finally:
+        with allure.step(f"Cleanup-Return version of {collector_agent} to source version {source_version} if needed"):
+            updated_version = collector_agent.get_version()
+            if updated_version != source_version:
+                logger.info(f"Return {collector_agent} from version {updated_version} "
+                            f"to source version: {source_version}")
+                _change_collector_version(management=management, aggregator=aggregator,
+                                          collector_agent=collector_agent, target_version=source_version,
+                                          revived_version=source_version)
+
+
+def get_previous_build_version_number(collector: CollectorAgent):
+    # Gabi's implementation, copied as is. Sharon opened jira ticket to refactor this implementation
+    current_version = collector.get_version()
+    base_version = StringUtils.get_txt_by_regex(text=current_version, regex='(\d+.\d+.\d+).\d+', group=1)
+    builds_dict = FortiEdrVersionsServiceHandler.get_latest_components_builds(base_version=base_version,
+                                                                              num_builds=50)
+    builds_list: list[str] = None
+    if 'windows' in collector.os_station.os_name.lower():
+        if '64' in collector.os_station.os_architecture:
+            builds_list = builds_dict.get('windows_64_collector')
+
+        elif '32' in collector.os_station.os_architecture:
+            builds_list = builds_dict.get('windows_32_collector')
+
+        else:
+            raise Exception(f"This test is not supported for {collector.os_station.os_name.lower()}")
+
+    elif 'centos' in collector.os_station.os_name.lower():
+        if 'centos-linux-6' in collector.os_station.os_name.lower():
+            builds_list = builds_dict.get('centos_6_collector')
+
+        elif 'centos-linux-7' in collector.os_station.os_name.lower():
+            builds_list = builds_dict.get('centos_7_collector')
+
+        elif 'centos-linux-8' in collector.os_station.os_name.lower():
+            builds_list = builds_dict.get('centos_8_collector')
+
+        raise Exception(f"This test is not supported for {collector.os_station.os_name.lower()}")
+
+    else:
+        raise Exception(f"This test is not supported for {collector.os_station.os_name.lower()}")
+
+    assert builds_list is not None, f"Can not extract builds based on current_version {current_version} for {collector.os_station.os_name.lower()}"
+
+    index_of_current_version = builds_list.index(current_version)
+    if current_version not in builds_list:
+        assert False, "Could not find collector version on builds list"
+
+    index_of_the_previous_version = index_of_current_version + 1
+    if index_of_the_previous_version > len(builds_list):
+        assert False, "There is not previous current_version in versions list, can not continue the test"
+
+    version_to_downgrade = builds_list[index_of_the_previous_version]
+    logger.info(f"previous collector version is {version_to_downgrade}")
+
+    return version_to_downgrade
