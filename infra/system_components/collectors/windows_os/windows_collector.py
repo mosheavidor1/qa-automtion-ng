@@ -253,16 +253,6 @@ class WindowsCollector(CollectorAgent):
         Reporter.report("No crash detected :)")
         return False
 
-    @allure.step("{0} - Clear all crash dump files")
-    def clear_all_collector_crash_dump_files(self):
-        paths = self.get_crash_dumps_files()
-        if paths is not None and len(paths) > 0:
-            for path in paths:
-                if self.os_station.is_folder(path=path):
-                    self.os_station.remove_folder(folder_path=path)
-                else:
-                    self.os_station.remove_file(file_path=path)
-
     @allure.step("{0} - Checking if crash dumps exists")
     def has_crash_dumps(self, append_to_report: bool = False) -> bool:
         crash_dump_files = self.get_crash_dumps_files()
@@ -305,11 +295,15 @@ class WindowsCollector(CollectorAgent):
 
     @allure.step("Remove crash dumps files")
     def remove_all_crash_dumps_files(self):
-        files_to_remove = self.get_crash_dumps_files()
-        if files_to_remove is not None and isinstance(files_to_remove, list) and len(files_to_remove) > 0:
-            Reporter.report(f"Remove crash files: {files_to_remove}")
-            for file in files_to_remove:
-                self.os_station.remove_file(file_path=file)
+        paths = self.get_crash_dumps_files()
+        if paths is not None and isinstance(paths, list) and len(paths) > 0:
+            for path in paths:
+                if self.os_station.is_folder(path=path):
+                    Reporter.report(f"Removing folder: {path}", logger_func=logger.info)
+                    self.os_station.remove_folder(folder_path=path)
+                else:
+                    Reporter.report(f"Removing file: {path}", logger_func=logger.info)
+                    self.os_station.remove_file(file_path=path)
 
     @allure.step("{0} - Get collector status via cli")
     def get_agent_status(self) -> FortiEdrSystemState:

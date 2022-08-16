@@ -156,13 +156,6 @@ class LinuxCollector(CollectorAgent):
             Reporter.report(f"No crash dump file found in {self}")
             return False
 
-    @allure.step("{0} - Clear all crash dump files")
-    def clear_all_collector_crash_dump_files(self):
-        crash_dump_files_path = self.get_crash_dumps_files_paths()
-        if crash_dump_files_path is not None and len(crash_dump_files_path) > 0:
-            for file in crash_dump_files_path:
-                self.os_station.remove_file(file_path=file)
-
     @allure.step("Get crash dump files paths")
     def get_crash_dumps_files_paths(self) -> List[str]:
         crash_dumps_paths = []

@@ -423,44 +423,6 @@ def create_snapshot_for_collector_at_the_beginning_of_the_run(management: Manage
                                   collector=collector)
 
 
-# @pytest.fixture(scope="session", autouse=sut_details.upgrade_management_to_latest_build)
-# def upgrade_to_latest_build(management: Management,
-#                             aggregator: Aggregator,
-#                             core: Core,
-#                             collector: Collector,
-#                             create_snapshot_for_collector_at_the_beginning_of_the_run):
-#     """
-#     The role of this fixture is to upgrade environment to latest builds.
-#     should run after creating snapshot of the system components which gives us the ability to revert in case of
-#     upgrade failure or broken version
-#     """
-#     management.upgrade_to_specific_build(desired_build=None, create_snapshot_before_upgrade=True)
-#
-#     if management.host_ip != aggregator.host_ip:
-#         aggregator.upgrade_to_specific_build(desired_build=None, create_snapshot_before_upgrade=True)
-#
-#     core.upgrade_to_specific_build(desired_build=None, create_snapshot_before_upgrade=True)
-#
-#     collector_latest_version = get_collector_latest_version(collector=collector)
-#     if collector.get_version() != collector_latest_version:
-#         collector.uninstall_collector(registration_password=management.tenant.registration_password)
-#         collector.install_collector(version=collector_latest_version,
-#                                     aggregator_ip=aggregator.host_ip,
-#                                     organization=management.tenant.organization,
-#                                     registration_password=management.tenant.registration_password)
-#
-#         wait_for_running_collector_status_in_cli(collector)
-#         wait_for_running_collector_status_in_mgmt(management, collector)
-#
-#         # in case of installation of the new version passed successfully we need to create new snapshot
-#         # for future purposes such as revert to first snapshot (revert to the new version)
-#         first_snapshot_name = collector.os_station.vm_operations.snapshot_list[0][0]
-#         collector.os_station.vm_operations.remove_all_snapshots()
-#         create_snapshot_for_collector(snapshot_name=first_snapshot_name,
-#                                       management=management,
-#                                       collector=collector)
-
-
 @pytest.fixture(scope="function", autouse=False)
 def revert_to_snapshot(management, collector):
     logger.info("Test start - Revert to collector")
@@ -705,12 +667,6 @@ def collector_logs(collector):
 def reset_driver_verifier_for_all_collectors(collector: CollectorAgent):
     collector.os_station.execute_cmd(cmd='Verifier.exe /reset', fail_on_err=False)
     collector.reboot()
-
-
-@pytest.fixture(scope="session", autouse=True)
-def clear_crashes_before_run(collector: CollectorAgent):
-    collector.clear_all_collector_crash_dump_files()
-    yield
 
 
 @pytest.fixture(scope="function", autouse=True)
