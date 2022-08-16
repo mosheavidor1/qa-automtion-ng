@@ -4,6 +4,9 @@ from typing import Tuple, ContextManager
 
 import allure
 
+from infra.api import RestCommands
+from infra.api.api_object_factory.organizations_factory import OrganizationsFactory
+from infra.api.management_api.organization import Organization
 from infra.system_components.management import Management
 from infra.api.management_api.collector import RestCollector
 from infra.utils.utils import StringUtils
@@ -77,4 +80,35 @@ def generate_org_name():
 
 def generate_registration_password():
     return f"RegPass{StringUtils.generate_random_string()}"
+
+
+@contextmanager
+def new_organization_without_user_context(management: Management, organization_name=None, registration_password=None) -> Organization:
+    """
+    Context for creating new organization without user, at the end delete the new organization.
+    """
+    user_name = generate_username()
+    user_password = generate_user_password()
+    organization_name = organization_name or generate_org_name()
+    registration_password = registration_password or generate_registration_password()
+
+    with allure.step("Setup - Create a new organization without user"):
+        local_admin_rest = RestCommands(management_ip=management.host_ip, management_user=user_name,
+                                        management_password=user_password, organization=organization_name)
+        organizations_factory = OrganizationsFactory(factory_rest_client=local_admin_rest)
+        organization = organizations_factory.get_by_name(org_name=organization_name,
+                                                         registration_password=registration_password,
+                                                         safe=True)
+        assert organization is None, f"Bug in infra! generate a new organization name {organization_name} that already exists"
+        logger.info(f"Organization {organization_name} doesn't exist in management, create a new one")
+        new_organization = organizations_factory.create_organization(organization_name=organization_name,
+                                                                     password=registration_password)
+    try:
+        yield new_organization
+    finally:
+        with allure.step(f"Cleanup - Delete the new organization {new_organization}"):
+            assert new_organization.get_name() != management.tenant.organization.get_name(), \
+                f"default organization can not be deleted!"
+            logger.info(f"Delete the new organization {new_organization}")
+            new_organization._delete()
 
