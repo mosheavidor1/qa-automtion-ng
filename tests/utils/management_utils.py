@@ -89,6 +89,13 @@ def revive_management_on_failure_context(management: Management):
         yield
     finally:
         with allure.step("Cleanup - start service if the system is not running"):
-            if not management.is_system_in_desired_state(desired_state=FortiEdrSystemState.RUNNING):
+            try:
+                is_in_desired_state = management.is_system_in_desired_state(desired_state=FortiEdrSystemState.RUNNING)
+                if not is_in_desired_state:
+                    logger.info(f"start {management} service if the system is not running")
+                    management.start_service()
+                    ManagementUtils.wait_till_operational(management=management)
+            except AssertionError:
                 logger.info(f"start {management} service if the system is not running")
                 management.start_service()
+                ManagementUtils.wait_till_operational(management=management)
