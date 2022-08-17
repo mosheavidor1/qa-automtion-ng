@@ -25,3 +25,14 @@ class FortiEdrVersionsServiceHandler:
                                                         url=url,
                                                         expected_status_code=200)
         return versions_dict
+
+    @staticmethod
+    @allure.step("Extract last {num_last_content_files} content files from shared folder")
+    def get_latest_content_files_from_shared_folder(num_last_content_files: int = 1):
+        url = f'http://{third_party_details.AUTOMATION_SERVICES_UTILS_MACHINE_IP}:{third_party_details.LATEST_VERSIONS_SERVICE_PORT}/list_content?num_last_content_files={num_last_content_files}'
+        versions_dict = HttpRequesterUtils.send_request(request_method=HttpRequestMethodsEnum.GET,
+                                                        url=url,
+                                                        expected_status_code=200)
+        return versions_dict
+
+
