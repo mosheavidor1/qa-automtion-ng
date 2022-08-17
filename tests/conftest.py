@@ -672,9 +672,17 @@ def reset_driver_verifier_for_all_collectors(collector: CollectorAgent):
 
 @pytest.fixture(scope="function", autouse=True)
 def check_if_collector_has_crashed(collector: CollectorAgent):
+    logger.info("Test Start - check if collector has crashes")
+    if collector.has_crash():
+        assert False, "Crashes was detected, can not start the test"
+    logger.info("Test Start - did not detected crashes, test starts")
+
     yield
-    logger.info("Test end - check if collector has crashes")
-    check_if_collectors_has_crashed([collector])
+
+    if collector.has_crash(): # if we detected crash, we will take snapshots inside the has_crash() method
+        collector.remove_all_crash_dumps_files()
+        assert False, "Crashes was detected, can not start the test"
+    logger.info("Test Start - did not detected crashes at the end of the test :)")
 
 
 @allure.step("Get collectors machine time at the beginning of the test")
