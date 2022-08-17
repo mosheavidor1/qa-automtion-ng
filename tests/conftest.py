@@ -250,9 +250,10 @@ def create_results_json(session, tests_results: dict):
 
 @pytest.fixture(scope="session")
 def jenkins_handler() -> JenkinsHandler:
-    instance = JenkinsHandler(jenkins_url='',
-                              user_name=third_party_details.JENKINS_JOB,
+    instance = JenkinsHandler(jenkins_url=third_party_details.JENKINS_URL,
+                              user_name=third_party_details.USER_NAME,
                               password=third_party_details.JENKINS_API_TOKEN)
+    instance.connect_to_jenkins_server()
     return instance
 
 
