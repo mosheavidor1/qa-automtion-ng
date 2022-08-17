@@ -58,11 +58,10 @@ def test_delete_group_with_the_collector(management, collector):
     2. delete the group with the collectors via ui
     3. validate the group was deleted
     4. validate the collector was deleted
-    5. validate that collector makes reregister and appears in the default group via ui(by waiting 60 seconds, if this
+    5. validate that collector makes re-register and appears in the default group via ui(by waiting 60 seconds, if this
         failed maybe need to create a function for wait until collector registers)
     6. check the collector appears in the default group
-    7. check the collector id was changed
-    8. check the status of the collector is running in agent and rest
+    7. check the status of the collector is running in agent and rest
     """
     with new_group_with_collector_context(management=management, collector_agent=collector) as group_with_collector:
         target_group_name, target_collector = group_with_collector
@@ -72,14 +71,14 @@ def test_delete_group_with_the_collector(management, collector):
             "groupName": target_group_name
         }
         with TEST_STEP(
-                f"STEP - delete the group '{target_group_name}' of  collector '{target_collector_name}' with the collectors"):
+            f"STEP - delete the group '{target_group_name}' of collector '{target_collector_name}' with the collectors"):
             management.ui_client.collectors.delete_collector_group_with_the_collectors(test_im_params)
-
-        with TEST_STEP(f"STEP - check the group '{target_group_name}' was deleted"):
-            management.ui_client.collectors.validate_the_collector_group_not_exist(test_im_params)
 
         with TEST_STEP(f"STEP - check the collector '{target_collector_name}' was deleted"):
             target_collector.wait_until_deleted()
+
+        with TEST_STEP(f"STEP - check the group '{target_group_name}' was deleted"):
+            management.ui_client.collectors.validate_the_collector_group_not_exist(test_im_params)
 
         with TEST_STEP(f"STEP - wait for collector '{target_collector_name}' will reregister to management"):
             time.sleep(60)
@@ -87,12 +86,8 @@ def test_delete_group_with_the_collector(management, collector):
         with TEST_STEP(f"STEP - check the collector '{target_collector_name}' appears in the default group"):
             management.ui_client.collectors.validate_the_collector_display_under_the_default_group(test_im_params)
 
-        with TEST_STEP(f"STEP - check the collector id was changed"):
-            updated_rest_collector = management.tenant.rest_components.collectors.get_by_ip(ip=collector.host_ip)
-            assert target_collector.id != updated_rest_collector.id, \
-                "After uninstall via ui, we expect for new collector id in management"
-
         with TEST_STEP(
                 f"STEP - check the status of the collector '{target_collector_name}' is running in agent and rest"):
             collector.wait_until_agent_running()
+            updated_rest_collector = management.tenant.rest_components.collectors.get_by_ip(ip=collector.host_ip)
             updated_rest_collector.wait_until_running()
