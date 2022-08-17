@@ -5,13 +5,15 @@ import logging
 
 from infra.forti_edr_versions_service_handler.forti_edr_versions_service_handler import FortiEdrVersionsServiceHandler
 from infra.system_components.collector import CollectorAgent
-from infra.system_components.collectors.linux_os.linux_collector import LinuxCollector
+from infra.system_components.collectors.linux_os.linux_collector import LinuxCollector, LINUX_LOCAL_MALWARE_FOLDER_PATH
 from infra.api.management_api.collector import RestCollector
 from infra.multi_tenancy.tenant import Tenant
 from infra import common_utils
 from infra.system_components.collectors.windows_os.windows_collector import WindowsCollector
 from infra.system_components.management import Management
 from infra.api.management_api.policy import WAIT_AFTER_ASSIGN
+from tests.utils.policy_utils import WINDOWS_MALWARES_NAMES, LINUX_MALWARES_NAMES
+
 from infra.utils.utils import StringUtils
 from infra.system_components.aggregator import Aggregator
 from tests.utils.policy_utils import WINDOWS_MALWARES_NAMES
@@ -330,3 +332,14 @@ def get_previous_build_version_number(collector: CollectorAgent):
     logger.info(f"previous collector version is {version_to_downgrade}")
 
     return version_to_downgrade
+
+
+@allure.step("Notify processes of malwares that are running on linux collector")
+def notify_malwares_on_linux_collector(collector_agent: CollectorAgent):
+    """ Search for a malware, if found raise an exception that collector contains a malware """
+    assert isinstance(collector_agent, LinuxCollector), "The collector must be of type linux"
+    logger.info(f"Notify that there are not malwares processes that running on linux collector {collector_agent}, "
+                f"tested malwares are {LINUX_MALWARES_NAMES}")
+    for linux_malware_name in LINUX_MALWARES_NAMES:
+        pid = collector_agent.os_station.get_service_process_ids(linux_malware_name)
+        assert pid is None, f"{linux_malware_name} already running pid is {pid}"

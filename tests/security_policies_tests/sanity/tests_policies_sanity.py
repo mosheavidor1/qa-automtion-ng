@@ -4,9 +4,12 @@ import allure
 import pytest
 from infra.allure_report_handler.reporter import TEST_STEP, Reporter, INFO
 from infra.api.management_api.event import EventActionNames
+from infra.system_components.collector import CollectorAgent
+from infra.system_components.collectors.linux_os.linux_collector import LinuxCollector
 from infra.api.management_api.policy import DefaultPoliciesNames, RulesNames, ModeNames, RuleActions, \
     ExternalPoliciesNames
 from infra.system_components.collectors.windows_os.windows_collector import WindowsCollector
+from sut_details import collector_type
 from tests.utils.collector_group_utils import new_group_with_collector_context
 from tests.utils.policy_utils import change_policy_rule_fields_context, change_policy_mode_context, \
     get_relevant_malware_name
@@ -14,15 +17,44 @@ from tests.utils.policy_utils import change_policy_rule_fields_context, change_p
 logger = logging.getLogger(__name__)
 
 
-_RULE_NAME_BY_TESTED_POLICY = {
+_WINDOWS_RULE_NAME_BY_TESTED_POLICY = {
     DefaultPoliciesNames.EXECUTION_PREVENTION.value: RulesNames.MALICIOUS_FILE_DETECTED.value,
     DefaultPoliciesNames.EXFILTRATION_PREVENTION.value: RulesNames.STACK_PIVOT.value,
     DefaultPoliciesNames.RANSOMWARE_PREVENTION.value: RulesNames.DYNAMIC_CODE.value
 }
 
+_LINUX_RULE_NAME_BY_TESTED_POLICY = {
+    DefaultPoliciesNames.EXFILTRATION_PREVENTION.value: RulesNames.UNCONFIRMED_EXECUTABLE.value
+}
 
-def _get_rule_name_by_policy_name(policy_name):
-    return _RULE_NAME_BY_TESTED_POLICY[policy_name]
+
+def _get_rule_name_by_policy_name(collector_agent: CollectorAgent, policy_name):
+    if isinstance(collector_agent, WindowsCollector):
+        return _WINDOWS_RULE_NAME_BY_TESTED_POLICY[policy_name]
+    elif isinstance(collector_agent, LinuxCollector):
+        return _LINUX_RULE_NAME_BY_TESTED_POLICY[policy_name]
+    else:
+        assert False, f"ERROR - Not supported {collector_type}!!!"
+
+
+def _generate_params_for_test_policy_mode_with_rule_block():
+    linux = [('EN-78981', DefaultPoliciesNames.EXFILTRATION_PREVENTION.value, ModeNames.SIMULATION.value),
+             ('EN-78982', DefaultPoliciesNames.EXFILTRATION_PREVENTION.value, ModeNames.PREVENTION.value)]
+    windows = [('EN-78065', DefaultPoliciesNames.EXECUTION_PREVENTION.value, ModeNames.SIMULATION.value),
+               ('EN-78300', DefaultPoliciesNames.EXFILTRATION_PREVENTION.value, ModeNames.SIMULATION.value),
+               ('EN-78302', DefaultPoliciesNames.RANSOMWARE_PREVENTION.value, ModeNames.SIMULATION.value),
+               ('EN-78352', DefaultPoliciesNames.EXECUTION_PREVENTION.value, ModeNames.PREVENTION.value),
+               ('EN-78361', DefaultPoliciesNames.RANSOMWARE_PREVENTION.value, ModeNames.PREVENTION.value),
+               ('EN-78359', DefaultPoliciesNames.EXFILTRATION_PREVENTION.value, ModeNames.PREVENTION.value)]
+    if 'linux' in collector_type.lower():
+        return linux
+    elif 'windows' in collector_type.lower():
+        return windows
+    else:
+        assert False, f"ERROR - Not supported {collector_type}!!!"
+
+
+params_for_test_policy_mode_with_rule_block = _generate_params_for_test_policy_mode_with_rule_block()
 
 
 @allure.epic("Management")
@@ -33,16 +65,9 @@ def _get_rule_name_by_policy_name(policy_name):
 @pytest.mark.management_sanity
 @pytest.mark.parametrize(
     "xray, policy_name, mode",
-    [('EN-78065', DefaultPoliciesNames.EXECUTION_PREVENTION.value, ModeNames.SIMULATION.value),
-     ('EN-78300', DefaultPoliciesNames.EXFILTRATION_PREVENTION.value, ModeNames.SIMULATION.value),
-     ('EN-78302', DefaultPoliciesNames.RANSOMWARE_PREVENTION.value, ModeNames.SIMULATION.value),
-     ('EN-78352', DefaultPoliciesNames.EXECUTION_PREVENTION.value, ModeNames.PREVENTION.value),
-     ('EN-78361', DefaultPoliciesNames.RANSOMWARE_PREVENTION.value, ModeNames.PREVENTION.value),
-     ('EN-78359', DefaultPoliciesNames.EXFILTRATION_PREVENTION.value, ModeNames.PREVENTION.value)
-     ],
+    params_for_test_policy_mode_with_rule_block,
 )
-def test_policy_mode_with_rule_block_on_windows_os(fx_system_without_events_and_exceptions, collector, xray, policy_name
-                                                   , mode):
+def test_policy_mode_with_rule_block(fx_system_without_events_and_exceptions, collector, xray, policy_name, mode):
     """
         Test that policy modes simulation/prevention catching relevant malware and creating correct security event with
         block action and is(in prevention mode)/isn't(in simulation mode) blocked the malware on collector agent
@@ -57,8 +82,7 @@ def test_policy_mode_with_rule_block_on_windows_os(fx_system_without_events_and_
             6. Validate that event created with the correct fields
             7. TODO: Validate that the malware is(in prevention mode)/isn't(in simulation mode) blocked on collector agent
     """
-    assert isinstance(collector, WindowsCollector), "This test trigger malware only on a windows collector"
-    rule_name = _get_rule_name_by_policy_name(policy_name=policy_name)
+    rule_name = _get_rule_name_by_policy_name(collector_agent=collector, policy_name=policy_name)
     malware_name = get_relevant_malware_name(policy_name=policy_name, rule_name=rule_name)
     management = fx_system_without_events_and_exceptions
     user = management.tenant.default_local_admin
@@ -102,6 +126,22 @@ def test_policy_mode_with_rule_block_on_windows_os(fx_system_without_events_and_
                         pass
 
 
+def _generate_params_for_test_policy_rule_action_log():
+    linux = [('EN-79033', DefaultPoliciesNames.EXFILTRATION_PREVENTION.value)]
+    windows = [('EN-78442', DefaultPoliciesNames.EXECUTION_PREVENTION.value),
+               ('EN-78446', DefaultPoliciesNames.EXFILTRATION_PREVENTION.value),
+               ('EN-78448', DefaultPoliciesNames.RANSOMWARE_PREVENTION.value)]
+    if 'linux' in collector_type.lower():
+        return linux
+    elif 'windows' in collector_type.lower():
+        return windows
+    else:
+        assert False, f"ERROR - Not supported {collector_type}!!!"
+
+
+params_for_test_policy_rule_action_log = _generate_params_for_test_policy_rule_action_log()
+
+
 @allure.epic("Management")
 @allure.feature("Policy")
 @pytest.mark.policy
@@ -110,10 +150,9 @@ def test_policy_mode_with_rule_block_on_windows_os(fx_system_without_events_and_
 @pytest.mark.management_sanity
 @pytest.mark.parametrize(
     "xray, policy_name",
-    [('EN-78442', DefaultPoliciesNames.EXECUTION_PREVENTION.value),
-     ('EN-78446', DefaultPoliciesNames.EXFILTRATION_PREVENTION.value),
-     ('EN-78448', DefaultPoliciesNames.RANSOMWARE_PREVENTION.value)],)
-def test_policy_rule_action_log_on_windows_os(fx_system_without_events_and_exceptions, collector, xray, policy_name):
+    params_for_test_policy_rule_action_log
+    ,)
+def test_policy_rule_action_log(fx_system_without_events_and_exceptions, collector, xray, policy_name):
     """
         Test that policy rule in action 'Log', catching relevant malware and creating correct security event
         and is not blocked the malware on collector agent
@@ -129,8 +168,7 @@ def test_policy_rule_action_log_on_windows_os(fx_system_without_events_and_excep
             6. Validate that event created with the correct fields
             7. TODO: Validate that the malware is not blocked on collector agent
     """
-    assert isinstance(collector, WindowsCollector), "This test trigger malware only on a windows collector"
-    rule_name = _get_rule_name_by_policy_name(policy_name=policy_name)
+    rule_name = _get_rule_name_by_policy_name(collector_agent=collector, policy_name=policy_name)
     malware_name = get_relevant_malware_name(policy_name=policy_name, rule_name=rule_name)
     management = fx_system_without_events_and_exceptions
     user = management.tenant.default_local_admin
@@ -174,6 +212,22 @@ def test_policy_rule_action_log_on_windows_os(fx_system_without_events_and_excep
                     pass
 
 
+def _generate_params_for_test_disabled_policy_rule_state():
+    linux = [('EN-79034', DefaultPoliciesNames.EXFILTRATION_PREVENTION.value)]
+    windows = [('EN-78443', DefaultPoliciesNames.EXECUTION_PREVENTION.value),
+               ('EN-78447', DefaultPoliciesNames.EXFILTRATION_PREVENTION.value),
+               ('EN-78454', DefaultPoliciesNames.RANSOMWARE_PREVENTION.value)]
+    if 'linux' in collector_type.lower():
+        return linux
+    elif 'windows' in collector_type.lower():
+        return windows
+    else:
+        assert False, f"ERROR - Not supported {collector_type}!!!"
+
+
+params_for_test_disabled_policy_rule_state = _generate_params_for_test_disabled_policy_rule_state()
+
+
 @allure.epic("Management")
 @allure.feature("Policy")
 @pytest.mark.policy
@@ -182,11 +236,9 @@ def test_policy_rule_action_log_on_windows_os(fx_system_without_events_and_excep
 @pytest.mark.management_sanity
 @pytest.mark.parametrize(
     "xray, policy_name",
-    [('EN-78443', DefaultPoliciesNames.EXECUTION_PREVENTION.value),
-     ('EN-78447', DefaultPoliciesNames.EXFILTRATION_PREVENTION.value),
-     ('EN-78454', DefaultPoliciesNames.RANSOMWARE_PREVENTION.value)],
+    params_for_test_disabled_policy_rule_state,
 )
-def test_disabled_policy_rule_state_on_windows_os(fx_system_without_events_and_exceptions, collector, xray, policy_name):
+def test_disabled_policy_rule_state(fx_system_without_events_and_exceptions, collector, xray, policy_name):
     """
         Test that a disabled rule is not blocking the malware on the collector agent and is not creating new event
         ***
@@ -203,8 +255,7 @@ def test_disabled_policy_rule_state_on_windows_os(fx_system_without_events_and_e
             5. Trigger malware (from collector) that should be caught by the tested policy
             6. Validate that not created any event
     """
-    assert isinstance(collector, WindowsCollector), "This test trigger malware only on a windows collector"
-    rule_name = _get_rule_name_by_policy_name(policy_name=policy_name)
+    rule_name = _get_rule_name_by_policy_name(collector_agent=collector, policy_name=policy_name)
     malware_name = get_relevant_malware_name(policy_name=policy_name, rule_name=rule_name)
     management = fx_system_without_events_and_exceptions
     user = management.tenant.default_local_admin
@@ -274,7 +325,6 @@ def test_can_not_delete_main_policy(management, xray, policy_name):
 
     with TEST_STEP(f"Validate that the policy '{policy_name}' is exists"):
         user.rest_components.policies.get_by_name(policy_name=policy_name)
-
 
 
 

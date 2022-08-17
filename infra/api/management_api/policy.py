@@ -49,6 +49,7 @@ class RulesNames(Enum):
     MALICIOUS_FILE_DETECTED = 'Malicious File Detected'
     STACK_PIVOT = 'Stack Pivot'
     DYNAMIC_CODE = 'Dynamic Code'
+    UNCONFIRMED_EXECUTABLE = 'Unconfirmed Executable'
 
 
 class ModeNames(Enum):
