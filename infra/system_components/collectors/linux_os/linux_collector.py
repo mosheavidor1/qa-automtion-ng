@@ -348,7 +348,7 @@ class LinuxCollector(CollectorAgent):
         self.os_station.execute_cmd(cmd=chmod_cmd, fail_on_err=True, return_output=True,
                                     attach_output_to_report=True)
         self.os_station.execute_cmd(cmd="ps aux")
-        pid = self.os_station.get_service_process_ids(malware_file_path)
+        pid = self.os_station.get_service_process_ids(malware_name)
         assert pid is None, f"{malware_name} already running pid is {pid}"
         trigger_event_cmd = f"cd {local_malware_folder_path}; {malware_file_path}"
         result = self.os_station.execute_cmd(cmd=trigger_event_cmd, fail_on_err=False, return_output=True,

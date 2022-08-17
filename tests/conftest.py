@@ -3,7 +3,7 @@ from typing import List
 import logging
 import allure
 from tests.utils.collector_utils import CollectorUtils, \
-    notify_or_kill_malwares_on_windows_collector
+    notify_or_kill_malwares_on_windows_collector, notify_malwares_on_linux_collector
 import sut_details
 import third_party_details
 from infra.allure_report_handler.reporter import Reporter
@@ -464,10 +464,20 @@ def collector_malware_check(management: Management, collector: CollectorAgent):
     if isinstance(collector, WindowsCollector):
         logger.info(f"Test start- validate there are not malware processes that running on {collector} ")
         notify_or_kill_malwares_on_windows_collector(collector_agent=collector)
+    elif isinstance(collector, LinuxCollector):
+        logger.info(f"Test start- validate there are not malware processes that running on {collector} ")
+        notify_malwares_on_linux_collector(collector_agent=collector)
+    else:
+        assert False, f"ERROR - Not supported {collector}!!!"
     yield collector
     if isinstance(collector, WindowsCollector):
         logger.info(f"Test end - kill all windows malwares processes that running on {collector}")
         notify_or_kill_malwares_on_windows_collector(collector_agent=collector, safe=True)
+    elif isinstance(collector, LinuxCollector):
+        logger.info(f"Test end - validate there are not malware processes that running on {collector}")
+        notify_malwares_on_linux_collector(collector_agent=collector)
+    else:
+        assert False, f"ERROR - Not supported {collector}!!!"
 
 
 @pytest.fixture(scope="function", autouse=True)
