@@ -279,6 +279,9 @@ class WindowsCollector(CollectorAgent):
                     if 'C:\ProgramData\FortiEDR\Dumps\Collector\TMP' in files_in_folder:
                         files_in_folder.remove('C:\ProgramData\FortiEDR\Dumps\Collector\TMP')
 
+                    if single_folder == 'C:\ProgramData\FortiEDR\Dumps\Collector':
+                        files_in_folder = [file for file in files_in_folder if not file.endswith('.exe.mem')]
+
                     if crash_dumps_list is None:
                         crash_dumps_list = []
 
