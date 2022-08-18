@@ -156,7 +156,7 @@ def test_policy_rule_action_log(fx_system_without_events_and_exceptions, collect
     """
         Test that policy rule in action 'Log', catching relevant malware and creating correct security event
         and is not blocked the malware on collector agent
-        *** The block action is already tested in test 'test_policy_mode_with_rule_block_on_windows_os' ***
+        *** The block action is already tested in test 'test_policy_mode_with_rule_block' ***
 
             1. Start the test on clean system: without exceptions and without events
             2. Assign policy to new collector group
@@ -243,8 +243,8 @@ def test_disabled_policy_rule_state(fx_system_without_events_and_exceptions, col
         Test that a disabled rule is not blocking the malware on the collector agent and is not creating new event
         ***
         The enable mode is already tested in tests:
-            - test_policy_mode_with_rule_block_on_windows_os
-            - test_policy_rule_action_log_on_windows_os
+            - test_policy_mode_with_rule_block
+            - test_policy_rule_action_log
         ***
             1. Start the test on clean system: without exceptions and without events
             2. Assign policy to new collector group
@@ -307,9 +307,9 @@ def test_disabled_policy_rule_state(fx_system_without_events_and_exceptions, col
 def test_can_not_delete_main_policy(management, xray, policy_name):
     """
         Test that can not delete main policy
-        Test steps:
-        1. Select Execution Prevention policy, Delete the policy, validate can not delete.
-        2. Validate that the  policy is exists
+
+            1. Select Execution Prevention policy, Delete the policy, validate can not delete.
+            2. Validate that the  policy is exists
     """
     user = management.tenant.default_local_admin
     with TEST_STEP(f"Select the policy '{policy_name}', Delete the policy, validate can not delete"):
