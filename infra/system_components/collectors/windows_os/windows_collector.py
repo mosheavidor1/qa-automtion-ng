@@ -445,7 +445,10 @@ class WindowsCollector(CollectorAgent):
             self.os_station.remove_file(file_path=fr'{self.__target_logs_folder}\*.log')
 
         if self.os_station.is_path_exist(path=fr'{self.__target_logs_folder}\*.blg'):
-            self.os_station.remove_file(file_path=fr'{self.__target_logs_folder}\*.blg')
+            try:
+                self.os_station.remove_file(file_path=fr'{self.__target_logs_folder}\*.blg')
+            except Exception as e:
+                print(e)
 
     @allure.step("{0} - Remove all irrelevant blg2log parsers from C:\\ParsedLogsFolder")
     def _remove_all_irrelevant_blg2log_parsers(self):
@@ -579,7 +582,7 @@ class WindowsCollector(CollectorAgent):
                             first_index = content.index(line_date)
                             content = content[first_index:]
                             logs_dict_with_content[single_parsed_file] = content
-                            continue
+                            break
 
             if is_logs_exist_after_the_first_timestamp:
                 logs_dict_with_content[single_parsed_file] = content

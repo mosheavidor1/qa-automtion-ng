@@ -222,11 +222,13 @@ def is_config_file_is_partial_or_full(collector: CollectorAgent, config_file_det
                                       config_type: ConfigurationTypes) -> bool:
     is_received_in_logs = False
     logger.info(f"Get parsed logs from {first_log_date_time}")
-    log_files_dict = collector.get_parsed_logs_after_specified_time_stamp(first_log_timestamp_to_append=first_log_date_time,
-                                                                          file_suffix='.blg')
+    log_files_dict = collector.get_parsed_logs_after_specified_time_stamp(
+        first_log_timestamp_to_append=first_log_date_time,
+        file_suffix='.blg')
     logger.info(f"Checking if {config_type} configuration received in the parsed logs")
     for file_name, file_content in log_files_dict.items():
-        result = StringUtils.get_txt_by_regex(text=file_content, regex=f'Received {config_type} configuration update version', group=0)
+        result = StringUtils.get_txt_by_regex(text=file_content.lower(),
+                                              regex=f'Received {config_type} configuration update version'.lower(), group=0)
         if result is not None:
             is_received_in_logs = True
             logger.info(f"Received from '{file_name}' log file: {result}")
