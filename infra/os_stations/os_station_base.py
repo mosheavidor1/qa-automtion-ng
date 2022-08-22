@@ -168,6 +168,14 @@ class OsStation(metaclass=ABCMeta):
         pass
 
     @abstractmethod
+    def is_file(self, path: str) -> bool:
+        pass
+
+    @abstractmethod
+    def is_folder(self, path: str) -> bool:
+        pass
+
+    @abstractmethod
     def get_file_content(self, file_path: str, filter_regex: str = None) -> str:
         pass
 

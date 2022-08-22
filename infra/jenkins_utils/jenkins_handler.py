@@ -1,8 +1,14 @@
+import logging
 import time
 
+import allure
 import urllib3
 from jenkinsapi.build import Build
+from jenkinsapi.custom_exceptions import NoBuildData
 from jenkinsapi.jenkins import Jenkins
+logger = logging.getLogger(__name__)
+
+from infra.allure_report_handler.reporter import Reporter
 
 
 class JenkinsHandler:
@@ -10,7 +16,7 @@ class JenkinsHandler:
     def __init__(self,
                  user_name,
                  password,
-                 jenkins_url): # full url with port
+                 jenkins_url):  # full url with port
         self.user_name = user_name
         self.password = password
         self.jenkins_url = jenkins_url
@@ -23,17 +29,17 @@ class JenkinsHandler:
         urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
     def connect_to_jenkins_server(self, force: bool = False):
-        if self.__jenkins_server_connection or force is True:
+        if self.__jenkins_server_connection is None or force is True:
             self.__jenkins_server_connection = Jenkins(self.jenkins_url,
                                                        username=self.user_name,
                                                        password=self.password,
                                                        ssl_verify=False)
 
     def get_jenkins_job(self, job_name: str):
-        num_reries = 10
+        num_retries = 10
         count = 1
 
-        while count <= num_reries:
+        while count <= num_retries:
             try:
                 jenkins_job = self.__jenkins_server_connection.get_job(job_name)
                 return jenkins_job
@@ -62,10 +68,10 @@ class JenkinsHandler:
             return triggered_build
 
     def get_build(self, job, build_number: int) -> Build:
-        get_build_retru_num = 10
+        get_build_retry_num = 10
         curr_try = 0
 
-        while curr_try < get_build_retru_num:
+        while curr_try < get_build_retry_num:
             try:
                 build = job.get_build(build_number)
                 return build
@@ -110,3 +116,18 @@ class JenkinsHandler:
         assert build_concrete_state is not 'None', f"Failed to get build concrete state within timeout of {timeout}, seems like the job did not finished"
 
         return build_concrete_state
+
+    @allure.step("Check if build with specific params is already triggered in job {job_name}")
+    def get_build_number_according_to_params_if_exist(self,
+                                                      job_name: str,
+                                                      job_params: dict):
+        job = self.get_jenkins_job(job_name=job_name)
+        matching_build = None
+        try:
+            matching_build = job.get_build_by_params(build_params=job_params, order=1)
+            Reporter.report(f"Found build {matching_build} is already exist with the same params", logger_func=logger.info)
+        except NoBuildData:
+            Reporter.report("Did not found any job with the desired params", logger_func=logger.info)
+            matching_build = None
+
+        return matching_build

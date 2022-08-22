@@ -12,6 +12,10 @@ from enum import Enum
 logger = logging.getLogger(__name__)
 
 
+class LinuxMalwaresNames(Enum):
+    LISTEN = "listen"
+
+
 class WindowsMalwaresNames(Enum):
     EVIL_PROCESS_LAUNCHER = 'EvilProcessLauncherTests.exe'
     STACK_PIVOT = 'StackPivotTests.exe'
@@ -19,15 +23,23 @@ class WindowsMalwaresNames(Enum):
 
 
 WINDOWS_MALWARES_NAMES = [malware_name.value for malware_name in WindowsMalwaresNames]
+LINUX_MALWARES_NAMES = [malware_name.value for malware_name in LinuxMalwaresNames]
 
 
 MALWARE_NAME_MAP_PER_RULE_NAME = {
     DefaultPoliciesNames.EXECUTION_PREVENTION.value:
-        {RulesNames.MALICIOUS_FILE_DETECTED.value: WindowsMalwaresNames.EVIL_PROCESS_LAUNCHER.value},
+        {
+            RulesNames.MALICIOUS_FILE_DETECTED.value: WindowsMalwaresNames.EVIL_PROCESS_LAUNCHER.value
+        },
     DefaultPoliciesNames.EXFILTRATION_PREVENTION.value:
-        {RulesNames.STACK_PIVOT.value: WindowsMalwaresNames.STACK_PIVOT.value},
+        {
+            RulesNames.STACK_PIVOT.value: WindowsMalwaresNames.STACK_PIVOT.value,
+            RulesNames.UNCONFIRMED_EXECUTABLE.value: LinuxMalwaresNames.LISTEN.value
+        },
     DefaultPoliciesNames.RANSOMWARE_PREVENTION.value:
-        {RulesNames.DYNAMIC_CODE.value: WindowsMalwaresNames.USER_HEAP.value}
+        {
+            RulesNames.DYNAMIC_CODE.value: WindowsMalwaresNames.USER_HEAP.value
+        }
 }
 
 

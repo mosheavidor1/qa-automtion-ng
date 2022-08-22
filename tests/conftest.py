@@ -3,7 +3,7 @@ from typing import List
 import logging
 import allure
 from tests.utils.collector_utils import CollectorUtils, \
-    notify_or_kill_malwares_on_windows_collector
+    notify_or_kill_malwares_on_windows_collector, notify_malwares_on_linux_collector
 import sut_details
 import third_party_details
 from infra.allure_report_handler.reporter import Reporter
@@ -250,9 +250,10 @@ def create_results_json(session, tests_results: dict):
 
 @pytest.fixture(scope="session")
 def jenkins_handler() -> JenkinsHandler:
-    instance = JenkinsHandler(jenkins_url='',
-                              user_name=third_party_details.JENKINS_JOB,
+    instance = JenkinsHandler(jenkins_url=third_party_details.JENKINS_URL,
+                              user_name=third_party_details.USER_NAME,
                               password=third_party_details.JENKINS_API_TOKEN)
+    instance.connect_to_jenkins_server()
     return instance
 
 
@@ -423,44 +424,6 @@ def create_snapshot_for_collector_at_the_beginning_of_the_run(management: Manage
                                   collector=collector)
 
 
-# @pytest.fixture(scope="session", autouse=sut_details.upgrade_management_to_latest_build)
-# def upgrade_to_latest_build(management: Management,
-#                             aggregator: Aggregator,
-#                             core: Core,
-#                             collector: Collector,
-#                             create_snapshot_for_collector_at_the_beginning_of_the_run):
-#     """
-#     The role of this fixture is to upgrade environment to latest builds.
-#     should run after creating snapshot of the system components which gives us the ability to revert in case of
-#     upgrade failure or broken version
-#     """
-#     management.upgrade_to_specific_build(desired_build=None, create_snapshot_before_upgrade=True)
-#
-#     if management.host_ip != aggregator.host_ip:
-#         aggregator.upgrade_to_specific_build(desired_build=None, create_snapshot_before_upgrade=True)
-#
-#     core.upgrade_to_specific_build(desired_build=None, create_snapshot_before_upgrade=True)
-#
-#     collector_latest_version = get_collector_latest_version(collector=collector)
-#     if collector.get_version() != collector_latest_version:
-#         collector.uninstall_collector(registration_password=management.tenant.registration_password)
-#         collector.install_collector(version=collector_latest_version,
-#                                     aggregator_ip=aggregator.host_ip,
-#                                     organization=management.tenant.organization,
-#                                     registration_password=management.tenant.registration_password)
-#
-#         wait_for_running_collector_status_in_cli(collector)
-#         wait_for_running_collector_status_in_mgmt(management, collector)
-#
-#         # in case of installation of the new version passed successfully we need to create new snapshot
-#         # for future purposes such as revert to first snapshot (revert to the new version)
-#         first_snapshot_name = collector.os_station.vm_operations.snapshot_list[0][0]
-#         collector.os_station.vm_operations.remove_all_snapshots()
-#         create_snapshot_for_collector(snapshot_name=first_snapshot_name,
-#                                       management=management,
-#                                       collector=collector)
-
-
 @pytest.fixture(scope="function", autouse=False)
 def revert_to_snapshot(management, collector):
     logger.info("Test start - Revert to collector")
@@ -501,10 +464,20 @@ def collector_malware_check(management: Management, collector: CollectorAgent):
     if isinstance(collector, WindowsCollector):
         logger.info(f"Test start- validate there are not malware processes that running on {collector} ")
         notify_or_kill_malwares_on_windows_collector(collector_agent=collector)
+    elif isinstance(collector, LinuxCollector):
+        logger.info(f"Test start- validate there are not malware processes that running on {collector} ")
+        notify_malwares_on_linux_collector(collector_agent=collector)
+    else:
+        assert False, f"ERROR - Not supported {collector}!!!"
     yield collector
     if isinstance(collector, WindowsCollector):
         logger.info(f"Test end - kill all windows malwares processes that running on {collector}")
         notify_or_kill_malwares_on_windows_collector(collector_agent=collector, safe=True)
+    elif isinstance(collector, LinuxCollector):
+        logger.info(f"Test end - validate there are not malware processes that running on {collector}")
+        notify_malwares_on_linux_collector(collector_agent=collector)
+    else:
+        assert False, f"ERROR - Not supported {collector}!!!"
 
 
 @pytest.fixture(scope="function", autouse=True)
@@ -709,9 +682,17 @@ def reset_driver_verifier_for_all_collectors(collector: CollectorAgent):
 
 @pytest.fixture(scope="function", autouse=True)
 def check_if_collector_has_crashed(collector: CollectorAgent):
+    logger.info("Test Start - check if collector has crashes")
+    if collector.has_crash():
+        assert False, "Crashes was detected, can not start the test"
+    logger.info("Test Start - did not detected crashes, test starts")
+
     yield
-    logger.info("Test end - check if collector has crashes")
-    check_if_collectors_has_crashed([collector])
+
+    if collector.has_crash(): # if we detected crash, we will take snapshots inside the has_crash() method
+        collector.remove_all_crash_dumps_files()
+        assert False, "Crashes was detected, can not start the test"
+    logger.info("Test Start - did not detected crashes at the end of the test :)")
 
 
 @allure.step("Get collectors machine time at the beginning of the test")

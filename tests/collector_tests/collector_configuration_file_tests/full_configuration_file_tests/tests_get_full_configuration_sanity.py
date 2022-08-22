@@ -1,8 +1,8 @@
 import logging
 import allure
 import pytest
-from tests.utils.tenant_utils import new_tenant_context
-from infra.allure_report_handler.reporter import TEST_STEP, Reporter, INFO
+from tests.utils.tenant_utils import new_tenant_context, new_organization_without_user_context
+from infra.allure_report_handler.reporter import TEST_STEP
 from infra.enums import FortiEdrSystemState
 from infra.system_components.collectors.windows_os.windows_collector import WindowsCollector
 from tests.utils.aggregator_utils import revive_aggregator_on_failure_context
@@ -20,6 +20,7 @@ logger = logging.getLogger(__name__)
 @pytest.mark.xray('EN-76208')
 def test_receive_full_configuration_after_delete_organization_in_windows_os(management, collector):
     """
+    This test is validated that after delete an organization ,a new config file received and it is a full configuration.
     1. Create a new organization and Fetch the latest config ,before delete organization
     2. Delete the new organization
     3. Validate the collector received full configuration file (by file size)
@@ -37,6 +38,33 @@ def test_receive_full_configuration_after_delete_organization_in_windows_os(mana
         latest_config_file_details_after_delete_org = collector.get_the_latest_config_file_details()
         assert not is_config_file_is_partial_or_full(config_file_details=latest_config_file_details_after_delete_org), \
             f"Config file after deleting org '{new_org_name}' is not full, these are the details \n {latest_config_file_details_after_delete_org}"
+
+
+@allure.epic("Collector Configuration File")
+@allure.feature("Collector full configuration file")
+@pytest.mark.sanity
+@pytest.mark.collector_configuration
+@pytest.mark.collector_configuration_sanity
+@pytest.mark.xray('EN-76209')
+def test_receive_full_configuration_after_create_organization_in_windows_os(management, collector):
+    """
+    This test is validated that after create an organization ,a new config file received and it is a full configuration.
+    1. Fetch the latest config before creating an organization
+    2. Create a new organization
+    3. Validate the collector received full configuration file (by file size)
+    """
+    assert isinstance(collector, WindowsCollector), "This test should run only on windows collector"
+
+    with TEST_STEP(f"STEP - Fetch the latest config before creating a new organization"):
+        latest_config_file_details_before_create_org = collector.get_the_latest_config_file_details()
+
+    with new_organization_without_user_context(management=management) as new_org:
+        with TEST_STEP("STEP - Validate collector received a new full config file that related to the create organization action"):
+            collector.wait_for_new_config_file(latest_config_file_details=latest_config_file_details_before_create_org)
+            latest_config_file_details_after_create_org = collector.get_the_latest_config_file_details()
+            assert not is_config_file_is_partial(config_file_details=latest_config_file_details_after_create_org), \
+                f"Config file after creating {new_org} is not full, these are the details\
+                {latest_config_file_details_after_create_org}"
 
 
 @allure.epic("Collector Configuration File")

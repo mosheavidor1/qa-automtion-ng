@@ -2,6 +2,8 @@ import logging
 import time
 import allure
 from typing import List
+
+from infra.api.management_api.collector_group import PolicyDefaultCollectorGroupsNames
 from infra.api.nslo_wrapper.rest_commands import RestCommands
 from infra.api.api_object_factory.organizations_factory import OrganizationsFactory
 from infra.api.api_object_factory.users_factory import UsersFactory
@@ -15,8 +17,6 @@ from infra.utils.policy_utils import get_default_policies
 import sut_details
 
 logger = logging.getLogger(__name__)
-
-DEFAULT_COLLECTOR_GROUP_NAME = "Default Collector Group"
 
 
 class TenantRestComponentsFactory:
@@ -112,7 +112,7 @@ class Tenant:
         """ Require ownership over collector from different tenant.
             Return the updated rest collector that has the rest credentials of the current tenant """
         source_collector_ip = source_collector.get_ip()
-        target_group_name = target_group_name or DEFAULT_COLLECTOR_GROUP_NAME
+        target_group_name = target_group_name or PolicyDefaultCollectorGroupsNames.DEFAULT_COLLECTOR_GROUP_NAME.value
         collector_org_name = source_collector.get_organization_name()
         tenant_org_name = self.organization.get_name()
         if collector_org_name == tenant_org_name:
