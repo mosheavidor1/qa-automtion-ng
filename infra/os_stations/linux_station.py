@@ -191,15 +191,15 @@ class LinuxStation(OsStation):
             result = not self.is_reachable()
             return result
 
-        wait_for_condition(condition_func=predict,
-                           timeout_sec=timeout, interval_sec=INTERVAL_STATION_KEEPALIVE)
+        wait_for_condition(condition_func=predict, timeout_sec=timeout,
+                           interval_sec=INTERVAL_STATION_KEEPALIVE, condition_msg="VM is unreachable")
 
     @allure.step("Wait until machine is reachable")
     def wait_until_machine_is_reachable(self, timeout=None):
         timeout = timeout or WAIT_FOR_STATION_UP_TIMEOUT
         predict_condition_func = self.is_reachable
-        wait_for_condition(condition_func=predict_condition_func,
-                           timeout_sec=timeout, interval_sec=INTERVAL_STATION_KEEPALIVE)
+        wait_for_condition(condition_func=predict_condition_func, timeout_sec=timeout,
+                           interval_sec=INTERVAL_STATION_KEEPALIVE, condition_msg="VM is reachable")
 
     @allure.step("Get current linux machine date time")
     def get_current_machine_datetime(self, date_format="%d/%m/%Y %H:%M:%S"):
@@ -317,6 +317,15 @@ class LinuxStation(OsStation):
             return None
         pids = [int(pid)]
         return pids
+
+    @allure.step("Get malware {malware_name} process ID")
+    def get_malware_process_id(self, malware_name: str) -> int:
+        cmd = f"ps aux | grep -w '{malware_name}' | grep -v grep | awk '{{print $2}}'"
+        pid = self.execute_cmd(cmd=cmd)
+        if pid is None:
+            return None
+        pid = int(pid)
+        return pid
 
     @allure.step("Kill process with the id: {pid}")
     def kill_process_by_id(self, pid):

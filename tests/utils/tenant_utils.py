@@ -53,17 +53,20 @@ def new_tenant_context(management: Management, collector_agent: CollectorAgent =
         yield new_tenant, target_rest_collector
     finally:
         with allure.step("Cleanup - Delete the temp tenant"):
-            if target_rest_collector is not None \
-                    and target_rest_collector.get_organization_name() != main_tenant.organization.get_name():
-                logger.info(f"Return back the {target_rest_collector} to the main tenant {main_tenant}")
-                main_tenant.require_ownership_over_collector(source_collector=target_rest_collector)
-                logger.info(f"Wait until {collector_agent} will get the configuration from {main_tenant}")
-                CollectorUtils.wait_for_configuration(collector_agent=collector_agent, tenant=main_tenant,
-                                                      start_collector=True)
-            logger.info(f"Validate that temp tenant {new_tenant} has no collectors and delete it")
-            remaining_rest_collectors = new_tenant.rest_components.collectors.get_all(safe=True)
-            assert remaining_rest_collectors is None, f"Temp {new_tenant} still has collectors: {remaining_rest_collectors}"
-            management.delete_tenant(temp_tenant=new_tenant)
+            try:
+                if target_rest_collector is not None \
+                        and target_rest_collector.get_organization_name() != main_tenant.organization.get_name():
+                    logger.info(f"Return back the {target_rest_collector} to the main tenant {main_tenant}")
+                    main_tenant.require_ownership_over_collector(source_collector=target_rest_collector)
+                    logger.info(f"Wait until {collector_agent} will get the configuration from {main_tenant}")
+                    CollectorUtils.wait_for_registration_password(collector_agent=collector_agent,
+                                                                  tenant=main_tenant, start_collector=True)
+            finally:
+                logger.info(f"Validate that temp tenant {new_tenant} has no collectors and delete it")
+                remaining_rest_collectors = new_tenant.rest_components.collectors.get_all(safe=True)
+                assert remaining_rest_collectors is None, f"Temp {new_tenant} still has " \
+                                                          f"collectors: {remaining_rest_collectors}"
+                management.delete_tenant(temp_tenant=new_tenant)
 
 
 def generate_username():

@@ -33,8 +33,8 @@ def _wait_for_process_id(collector: CollectorAgent, is_alive, timeout=None, inte
             is_correct_pid = current_pid is None
         return is_correct_pid
 
-    wait_for_condition(condition_func=is_expected_pid,
-                       timeout_sec=timeout, interval_sec=interval)
+    wait_for_condition(condition_func=is_expected_pid, timeout_sec=timeout, interval_sec=interval,
+                       condition_msg=f"Wait for collector pid to {log_msg}")
 
 
 @contextmanager

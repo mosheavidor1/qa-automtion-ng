@@ -101,14 +101,14 @@ class CollectorAgent:
     @allure.step("Wait until agent is running")
     def wait_until_agent_running(self, timeout_sec=MAX_WAIT_FOR_STATUS, interval_sec=COLLECTOR_KEEPALIVE_INTERVAL):
         logger.info(f"Wait until {self} is running")
-        wait_for_condition(condition_func=self.is_agent_running,
-                           timeout_sec=timeout_sec, interval_sec=interval_sec)
+        wait_for_condition(condition_func=self.is_agent_running, timeout_sec=timeout_sec,
+                           interval_sec=interval_sec, condition_msg=f"{self} is running")
 
     @allure.step("Wait until agent is isolated")
     def wait_until_agent_isolated(self, timeout_sec=MAX_WAIT_FOR_STATUS, interval_sec=COLLECTOR_KEEPALIVE_INTERVAL):
         logger.info(f"Wait until {self} is isolated")
-        wait_for_condition(condition_func=self.is_agent_isolated,
-                           timeout_sec=timeout_sec, interval_sec=interval_sec)
+        wait_for_condition(condition_func=self.is_agent_isolated, timeout_sec=timeout_sec,
+                           interval_sec=interval_sec, condition_msg=f"{self} is isolated")
 
     def is_agent_down(self):
         return self.get_agent_status() == FortiEdrSystemState.DOWN
@@ -116,8 +116,8 @@ class CollectorAgent:
     @allure.step("Wait until agent is down")
     def wait_until_agent_down(self, timeout_sec=MAX_WAIT_FOR_STATUS, interval_sec=COLLECTOR_KEEPALIVE_INTERVAL):
         logger.info(f"Wait until {self} is down")
-        wait_for_condition(condition_func=self.is_agent_down,
-                           timeout_sec=timeout_sec, interval_sec=interval_sec)
+        wait_for_condition(condition_func=self.is_agent_down, timeout_sec=timeout_sec,
+                           interval_sec=interval_sec, condition_msg=f"{self} is down")
 
     def is_agent_disabled(self):
         return self.get_agent_status() == FortiEdrSystemState.DISABLED
@@ -125,8 +125,8 @@ class CollectorAgent:
     @allure.step("Wait until agent is disabled")
     def wait_until_agent_disabled(self, timeout_sec=MAX_WAIT_FOR_STATUS, interval_sec=COLLECTOR_KEEPALIVE_INTERVAL):
         logger.info(f"Wait until {self} is disabled")
-        wait_for_condition(condition_func=self.is_agent_disabled,
-                           timeout_sec=timeout_sec, interval_sec=interval_sec)
+        wait_for_condition(condition_func=self.is_agent_disabled, timeout_sec=timeout_sec,
+                           interval_sec=interval_sec, condition_msg=f"{self} is disabled")
 
     @abstractmethod
     def reboot(self):
