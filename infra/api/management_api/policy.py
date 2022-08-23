@@ -204,7 +204,7 @@ class Policy(BaseApiObj):
             Reporter.report(message=f"Can not set {self.name} to mode {mode_name} because"
                                     f"The eXtended Detection policy only operates in Simulation mode, skipped",
                             logger_func=logger.info)
-            return 
+            return
 
         is_in_expected_mode = True if self.get_operation_mode() == mode_name else False
         wait_sec = wait_sec or WAIT_AFTER_SET_POLICY_MODE

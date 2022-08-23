@@ -41,7 +41,7 @@ class CollectorAgent:
         pass
 
     @abstractmethod
-    def get_version(self):
+    def get_version(self, safe: bool = False):
         pass
 
     @abstractmethod
@@ -159,14 +159,10 @@ class CollectorAgent:
     def clear_logs(self):
         pass
 
-    @abstractmethod
-    def get_logs_content(self, file_suffix='.blg', filter_regex: str = None):
-        pass
-
     def append_logs_to_report(self, first_log_timestamp_to_append, file_suffix='.blg'):
         pass
 
-    def create_event(self):
+    def create_event(self, malware_name: str):
         pass
 
     @abstractmethod

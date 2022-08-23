@@ -75,7 +75,7 @@ class EventsFactory(BaseApiObjFactory):
         return events
 
     @allure.step("Delete all Events")
-    def delete_all(self, rest_client=None, safe=False, wait_sec=None):
+    def delete_all(self, rest_client=None, safe: bool = False, wait_sec: int = None):
         wait_sec = wait_sec or WAIT_AFTER_DELETE
         logger.info(f"Delete events in organization {self._organization_name} and wait {wait_sec} seconds")
         rest_client = rest_client or self._factory_rest_client
@@ -100,6 +100,6 @@ def _wait_for_event(get_event_func, timeout=None, interval=None, safe=False):
                                         condition_msg="Wait for specific event")
     except AssertionError:
         if not safe:
-            raise Exception(f"Error - No event found after waiting {interval} seconds")
+            raise Exception(f"Error - No event found after waiting {timeout} seconds")
 
 
