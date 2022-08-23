@@ -159,10 +159,20 @@ class CollectorAgent:
     def clear_logs(self):
         pass
 
+    @abstractmethod
+    def get_logs_content(self, file_suffix='.blg', filter_regex: str = None):
+        pass
+
     def append_logs_to_report(self, first_log_timestamp_to_append, file_suffix='.blg'):
         pass
 
     def create_event(self, malware_name: str):
+        pass
+
+    def get_parsed_logs_after_specified_time_stamp(self, first_log_timestamp_to_append: str, file_suffix='.blg'):
+        pass
+
+    def create_event(self):
         pass
 
     @abstractmethod
