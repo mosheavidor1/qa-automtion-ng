@@ -117,3 +117,28 @@ def test_generate_collector_excel_report(management, collector):
     with TEST_STEP(f"STEP - download EXCEL report via UI of {rest_collector}"):
         management.ui_client.collectors.export_excel_report(data=test_im_params)
 
+
+@allure.epic("Management")
+@allure.feature("Inventory - report")
+@pytest.mark.inventory
+@pytest.mark.export_report
+@pytest.mark.sanity
+@pytest.mark.management_sanity
+@pytest.mark.xray('EN-73324')
+def test_generate_collector_pdf_report(management, collector):
+    """
+    This test checks generate of collector PDF report
+    steps: (all in one flow by Testim)
+        login to management
+        go to inventory > collectors
+        select a collector and export a pdf report
+        verify that the generate report was successful
+        verify that the download process was successful
+    """
+    rest_collector = management.tenant.rest_components.collectors.get_by_ip(ip=collector.host_ip)
+    test_im_params = {
+        "collectorName": rest_collector.get_name()
+    }
+    with TEST_STEP(f"STEP - download PDF report via UI of {rest_collector}"):
+        management.ui_client.collectors.export_pdf_report(data=test_im_params)
+
