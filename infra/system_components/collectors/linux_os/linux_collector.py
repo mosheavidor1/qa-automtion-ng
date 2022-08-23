@@ -74,13 +74,19 @@ class LinuxCollector(CollectorAgent):
         Reporter.report(f"Collector process ID updated to: {self._process_id}")
 
     @allure.step("{0} - Get collector version")
-    def get_version(self):
-        cmd = f"{COLLECTOR_CONTROL_PATH} --version"
-        result = self.os_station.execute_cmd(cmd=cmd,
-                                             return_output=True,
-                                             fail_on_err=True,
-                                             attach_output_to_report=True)
-        version = StringUtils.get_txt_by_regex(text=result, regex='FortiEDR\s+Collector\s+version\s+(\d+.\d+.\d+.\d+)', group=1)
+    def get_version(self, safe: bool = False):
+        try:
+            cmd = f"{COLLECTOR_CONTROL_PATH} --version"
+            result = self.os_station.execute_cmd(cmd=cmd,
+                                                 return_output=True,
+                                                 fail_on_err=True,
+                                                 attach_output_to_report=True)
+            version = StringUtils.get_txt_by_regex(text=result, regex='FortiEDR\s+Collector\s+version\s+(\d+.\d+.\d+.\d+)', group=1)
+        except Exception as e:
+            if safe:
+                return None
+            else:
+                raise e
 
         return version
 
@@ -316,7 +322,7 @@ class LinuxCollector(CollectorAgent):
         return package_name_to_uninstall
 
     @allure.step("{0} - Create event {malware_name}")
-    def create_event(self, malware_name=SUPPORTED_MALWARE_FOLDER_NAME):
+    def create_event(self, malware_name: str=SUPPORTED_MALWARE_FOLDER_NAME):
         """ If the malware simulator does not exist on local machine, we will copy it from the shared drive """
         malware_folder_name = malware_name
         assert malware_folder_name == SUPPORTED_MALWARE_FOLDER_NAME, \

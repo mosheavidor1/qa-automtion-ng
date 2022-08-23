@@ -56,7 +56,7 @@ class WindowsCollector(CollectorAgent):
         self.__bootstrap_file_name: str = "CollectorBootstrap.jsn"
         self.__qa_files_path: str = r"C:\qa"
         self._kill_all_undesired_processes()
-        self._initial_version = self.get_version()
+        self._initial_version = self.get_version(safe=True)
 
     @property
     def os_station(self) -> WindowsStation:
@@ -173,13 +173,19 @@ class WindowsCollector(CollectorAgent):
                 r'C:\ProgramData\FortiEDR\Dumps\Collector']
 
     @allure.step("{0} - Get collector version")
-    def get_version(self):
-        cmd = f'"{self.__collector_service_exe}" -v'
-        result = self.os_station.execute_cmd(cmd=cmd,
-                                             return_output=True,
-                                             fail_on_err=True,
-                                             attach_output_to_report=True)
-        version = StringUtils.get_txt_by_regex(text=result, regex='FortiEDR\s+Collector\s+Service\s+version\s+(\d+.\d+.\d+.\d+)', group=1)
+    def get_version(self, safe: bool = False):
+        try:
+            cmd = f'"{self.__collector_service_exe}" -v'
+            result = self.os_station.execute_cmd(cmd=cmd,
+                                                 return_output=True,
+                                                 fail_on_err=True,
+                                                 attach_output_to_report=True)
+            version = StringUtils.get_txt_by_regex(text=result, regex='FortiEDR\s+Collector\s+Service\s+version\s+(\d+.\d+.\d+.\d+)', group=1)
+        except Exception as e:
+            if safe:
+                return None
+            else:
+                raise e
 
         return version
 
@@ -259,9 +265,10 @@ class WindowsCollector(CollectorAgent):
 
         found_crash_dumps = True if crash_dump_files is not None and len(crash_dump_files) > 0 else False
         if found_crash_dumps:
+            logger.info(f"Found crash dumps: {crash_dump_files}")
             Reporter.attach_str_as_file(file_name='crash_dumps', file_content=str('\r\n'.join(crash_dump_files)))
         else:
-            Reporter.report(f"No crash dump file found in {self}")
+            Reporter.report(f"No crash dump file found in {self}", logger_func=logger.info)
 
         return found_crash_dumps
 
@@ -586,7 +593,7 @@ class WindowsCollector(CollectorAgent):
                 Reporter.attach_str_as_file(file_name=single_parsed_file, file_content=content)
 
     @allure.step("{0} - Create event {malware_name}")
-    def create_event(self, malware_name: str="DynamicCodeTests.exe"):
+    def create_event(self, malware_name: str = "DynamicCodeTests.exe"):
         malware_folder = rf'{third_party_details.SHARED_DRIVE_QA_PATH}\automation_ng\malware_sample'
         target_path = self.get_qa_files_path()
         target_folder = self.os_station.copy_files_from_shared_folder(

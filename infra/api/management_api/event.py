@@ -5,7 +5,7 @@ from infra.api.api_object import BaseApiObj
 from infra.api.nslo_wrapper.rest_commands import RestCommands
 logger = logging.getLogger(__name__)
 
-WAIT_AFTER_DELETE = 60  # The period of time that took for deletion in the backend - non-configurable configuration
+WAIT_AFTER_DELETE = 61  # The period of time that took for deletion in the backend - non-configurable configuration
 
 
 class EventFieldsNames(Enum):
@@ -18,6 +18,7 @@ class EventFieldsNames(Enum):
     ORGANIZATION = 'organization'
     PROCESS_NAME = 'process'
     ACTION = 'action'
+    DESTINATION = 'destinations'
 
 
 class EventActionNames (Enum):
@@ -42,6 +43,11 @@ class Event(BaseApiObj):
 
     def get_organization_name(self, from_cache=None, update_cache=True):
         field_name = EventFieldsNames.ORGANIZATION.value
+        value = self._get_field(field_name=field_name, from_cache=from_cache, update_cache=update_cache)
+        return value
+
+    def get_destination_ip(self, from_cache=None, update_cache=True):
+        field_name = EventFieldsNames.DESTINATION.value
         value = self._get_field(field_name=field_name, from_cache=from_cache, update_cache=update_cache)
         return value
 
