@@ -2,6 +2,7 @@ import json
 
 from ensilo.platform.rest.nslo_management_rest import NsloRest
 
+import sut_details
 from infra.allure_report_handler.reporter import Reporter
 from infra.api.nslo_wrapper.base_rest_functionality import BaseRestFunctionality
 

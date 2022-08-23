@@ -1,16 +1,13 @@
 import allure
 import pytest
-
 from infra.allure_report_handler.reporter import TEST_STEP, Reporter
 import datetime
 import logging
 import time
-
 from tests.utils.collector_utils import CollectorUtils, revive_collector_agent_on_failure_context
 from tests.utils.management_utils import restore_config_files, ManagementUtils
 
 logger = logging.getLogger(__name__)
-
 
 @allure.epic("Management")
 @allure.feature("Expired Collector")

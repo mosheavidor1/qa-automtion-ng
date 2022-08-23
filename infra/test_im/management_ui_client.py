@@ -30,6 +30,7 @@ class ManagementUiClient:
         self.system_events = self.FortiEdrSystemEvents(self)
         self.users = self.FortiEdrUsers(self)
 
+
     def start_testim_flow(self,
                           test_name: str,
                           management_ui_ip=sut_details.management_host,

@@ -3,7 +3,8 @@ import time
 import allure
 from typing import List
 
-from infra.api.management_api.collector_group import PolicyDefaultCollectorGroupsNames
+from infra.api.api_object_factory.ip_sets_factory import IpSetFactory
+from infra.api.management_api.ip_set import IpSet
 from infra.api.nslo_wrapper.rest_commands import RestCommands
 from infra.api.api_object_factory.organizations_factory import OrganizationsFactory
 from infra.api.api_object_factory.users_factory import UsersFactory
@@ -11,12 +12,14 @@ from infra.api.api_object_factory.rest_collectors_factory import RestCollectorsF
 from infra.api.management_api.user import User
 from infra.api.management_api.organization import Organization
 from infra.api import ADMIN_REST
-from infra.api.management_api.policy import Policy
+from infra.api.management_api.policy import Policy, WAIT_AFTER_SET_POLICY_MODE
 from infra.api.management_api.collector import RestCollector
 from infra.utils.policy_utils import get_default_policies
 import sut_details
 
 logger = logging.getLogger(__name__)
+
+DEFAULT_COLLECTOR_GROUP_NAME = "Default Collector Group"
 
 
 class TenantRestComponentsFactory:
@@ -26,7 +29,7 @@ class TenantRestComponentsFactory:
         self.collectors: RestCollectorsFactory = RestCollectorsFactory(organization_name=organization_name,
                                                                        factory_rest_client=rest_client)
         self.users: UsersFactory = UsersFactory(organization_name=organization_name, factory_rest_client=rest_client)
-
+        self.ip_set: IpSetFactory = IpSetFactory(organization_name=organization_name, factory_rest_client=rest_client)
 
 class Tenant:
     """ An ecosystem that represents only one organization with a default local admin user
@@ -39,6 +42,10 @@ class Tenant:
                                                             rest_client=self._rest_api_client)
 
     @property
+    def ip_set(self) -> IpSet:
+        return self._ipSet
+
+    @property
     def default_local_admin(self) -> User:
         return self._default_local_admin
 
@@ -47,7 +54,7 @@ class Tenant:
         return self._organization
 
     @property
-    def  rest_components(self) -> TenantRestComponentsFactory:
+    def rest_components(self) -> TenantRestComponentsFactory:
         """ Factory for creating/finding tenant's components like users, collectors, etc.
             With the tenant's default local admin user rest credentials """
         return self._rest_components
@@ -57,9 +64,10 @@ class Tenant:
         policies = policies or self.get_default_policies()
         logger.info(f"Turn on prevention mode for organization {self.organization} via policies: \n {policies}")
         for policy in policies:
-            policy.set_to_prevention_mode(safe=True)
+            policy.set_to_prevention_mode(safe=True, wait=False)
+        time.sleep(WAIT_AFTER_SET_POLICY_MODE)
 
-    def get_default_policies(self):
+    def get_default_policies(self) -> List[Policy]:
         policies = get_default_policies(rest_client=self._rest_api_client,
                                         organization_name=self.organization.get_name())
         return policies
@@ -112,7 +120,7 @@ class Tenant:
         """ Require ownership over collector from different tenant.
             Return the updated rest collector that has the rest credentials of the current tenant """
         source_collector_ip = source_collector.get_ip()
-        target_group_name = target_group_name or PolicyDefaultCollectorGroupsNames.DEFAULT_COLLECTOR_GROUP_NAME.value
+        target_group_name = target_group_name or DEFAULT_COLLECTOR_GROUP_NAME
         collector_org_name = source_collector.get_organization_name()
         tenant_org_name = self.organization.get_name()
         if collector_org_name == tenant_org_name:

@@ -26,7 +26,7 @@ class OsXCollector(CollectorAgent):
     def get_current_process_id(self):
         pass
 
-    def get_version(self):
+    def get_version(self, safe: bool = False):
         pass
 
 
