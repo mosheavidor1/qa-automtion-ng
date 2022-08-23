@@ -164,27 +164,26 @@ class RestCollector(BaseApiObj):
     @allure.step("Wait until is Disconnected in management")
     def wait_until_disconnected(self, timeout_sec=MAX_WAIT_FOR_STATUS, interval_sec=COLLECTOR_KEEPALIVE_INTERVAL):
         logger.info(f"Wait until {self} is Disconnected in management")
-        wait_for_condition(condition_func=self.is_disconnected,
-                           timeout_sec=timeout_sec, interval_sec=interval_sec)
+        wait_for_condition(condition_func=self.is_disconnected, timeout_sec=timeout_sec, interval_sec=interval_sec,
+                           condition_msg=f"{self} is in disconnected state in management")
 
     @allure.step("Wait until is Degraded in management")
     def wait_until_degraded(self, timeout_sec=MAX_WAIT_FOR_STATUS, interval_sec=COLLECTOR_KEEPALIVE_INTERVAL):
         logger.info(f"Wait until {self} is degraded in management")
-        err_msg = f"{self} status is not degraded after waiting for {timeout_sec} seconds"
-        wait_for_condition(condition_func=self.is_degraded,
-                           timeout_sec=timeout_sec, interval_sec=interval_sec, err_msg=err_msg)
+        wait_for_condition(condition_func=self.is_degraded, timeout_sec=timeout_sec, interval_sec=interval_sec,
+                           condition_msg=f"{self} is in Degraded state in management")
 
     @allure.step("Wait for status 'uninstalling' in management")
     def wait_for_uninstalling(self, timeout_sec=MAX_WAIT_FOR_STATUS, interval_sec=COLLECTOR_KEEPALIVE_INTERVAL):
         logger.info(f"Wait until {self} is in status 'uninstalling' in management")
-        wait_for_condition(condition_func=self.is_uninstalling,
-                           timeout_sec=timeout_sec, interval_sec=interval_sec)
+        wait_for_condition(condition_func=self.is_uninstalling, timeout_sec=timeout_sec, interval_sec=interval_sec,
+                           condition_msg=f"{self} is in 'uninstalling' state in management")
 
     @allure.step("Wait until deleted from management")
     def wait_until_deleted(self, timeout_sec=MAX_WAIT_FOR_DELETION, interval_sec=COLLECTOR_KEEPALIVE_INTERVAL):
         logger.info(f"Wait until {self} is deleted from management")
-        wait_for_condition(condition_func=self.is_not_exist,
-                           timeout_sec=timeout_sec, interval_sec=interval_sec)
+        wait_for_condition(condition_func=self.is_not_exist, timeout_sec=timeout_sec, interval_sec=interval_sec,
+                           condition_msg=f"{self} does not appear in management")
 
     @allure.step("Enable collector")
     def enable(self):
@@ -202,14 +201,14 @@ class RestCollector(BaseApiObj):
     @allure.step("Wait until running in management")
     def wait_until_running(self, timeout_sec=MAX_WAIT_FOR_STATUS, interval_sec=COLLECTOR_KEEPALIVE_INTERVAL):
         logger.info(f"Wait until {self} is running in management")
-        wait_for_condition(condition_func=self.is_running,
-                           timeout_sec=timeout_sec, interval_sec=interval_sec)
+        wait_for_condition(condition_func=self.is_running, timeout_sec=timeout_sec, interval_sec=interval_sec,
+                           condition_msg=f"{self} is in 'running' state in management")
 
     @allure.step("Wait until isolated in management")
     def wait_until_isolated(self, timeout_sec=MAX_WAIT_FOR_STATUS, interval_sec=COLLECTOR_KEEPALIVE_INTERVAL):
         logger.info(f"Wait until {self} is isolated in management")
-        wait_for_condition(condition_func=self.is_isolated,
-                           timeout_sec=timeout_sec, interval_sec=interval_sec)
+        wait_for_condition(condition_func=self.is_isolated, timeout_sec=timeout_sec, interval_sec=interval_sec,
+                           condition_msg=f"{self} is isolated in management")
 
     @allure.step("Disable collector")
     def disable(self):
@@ -223,8 +222,8 @@ class RestCollector(BaseApiObj):
     @allure.step("Wait until disabled in management")
     def wait_until_disabled(self, timeout_sec=MAX_WAIT_FOR_STATUS, interval_sec=COLLECTOR_KEEPALIVE_INTERVAL):
         logger.info(f"Wait until {self} is disabled in management")
-        wait_for_condition(condition_func=self.is_disabled,
-                           timeout_sec=timeout_sec, interval_sec=interval_sec)
+        wait_for_condition(condition_func=self.is_disabled, timeout_sec=timeout_sec, interval_sec=interval_sec,
+                           condition_msg=f"{self} is in 'disabled' state in management")
 
     def is_exist(self) -> bool:
         """ Check if collector exists in management """

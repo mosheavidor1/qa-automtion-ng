@@ -148,14 +148,14 @@ class WindowsCollector(CollectorAgent):
             wait_for_condition(condition_func=condition,
                                timeout_sec=MAX_WAIT_FOR_NEW_CONFIG_FILE_TO_APPEAR,
                                interval_sec=CONFIG_FILE_APPEAR_INTERVAL,
-                               err_msg="No new configuration file received in standard timeout")
+                               condition_msg=f"{self} got new configuration file")
         except AssertionError as original_error:
             try:
                 wait_for_condition(condition_func=condition,
                                    timeout_sec=MAX_WAIT_FOR_NEW_CONFIG_FILE_TO_APPEAR * 4,
                                    interval_sec=CONFIG_FILE_APPEAR_INTERVAL,
-                                   err_msg="REAL BUG!!! No new configuration file received at all")
-                raise Exception(f"Got an error: {original_error}")
+                                   condition_msg=f"{self} got new configuration file")
+                raise Exception(f"REAL BUG!!! No new configuration file received at all, got error: {original_error}")
             except AssertionError as real_bug_error:
                 raise Exception(f"Didn't receive a new config file, got an error: {real_bug_error}")
 

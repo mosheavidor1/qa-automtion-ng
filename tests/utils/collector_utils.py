@@ -49,14 +49,13 @@ class CollectorUtils:
         time.sleep(WAIT_AFTER_ASSIGN)
 
     @staticmethod
-    @allure.step("Wait for configuration")
-    def wait_for_configuration(collector_agent: CollectorAgent, tenant: Tenant, start_collector=True,
-                               timeout=None, interval_sec=None):
-        """ Wait until collector agent get updated configuration: the indication is a successful stop action
-        with the updated registration password """
+    @allure.step("Wait until {collector_agent} will get the registration password")
+    def wait_for_registration_password(collector_agent: CollectorAgent, tenant: Tenant, start_collector=True,
+                                       timeout=None, interval_sec=None):
+        """ Wait until collector agent will get registration password """
         timeout = timeout or MAX_WAIT_FOR_CONFIGURATION
         interval_sec = interval_sec or KEEPALIVE_INTERVAL
-        logger.info(f"Wait until {collector_agent} will get the new configuration")
+        logger.info(f"Wait until {collector_agent} will get the registration password")
         rest_collector = tenant.rest_components.collectors.get_by_ip(ip=collector_agent.host_ip)
         registration_password = tenant.organization.registration_password
 
@@ -69,7 +68,8 @@ class CollectorUtils:
                 logger.info(f"Failed to stop collector, try again. Got: {e}")
                 return False
 
-        common_utils.wait_for_condition(condition_func=condition, timeout_sec=timeout, interval_sec=interval_sec)
+        common_utils.wait_for_condition(condition_func=condition, timeout_sec=timeout, interval_sec=interval_sec,
+                                        condition_msg=f"{collector_agent} got password: {registration_password}")
         collector_agent.wait_until_agent_down()
         if start_collector:
             collector_agent.start_collector()
@@ -368,5 +368,5 @@ def notify_malwares_on_linux_collector(collector_agent: CollectorAgent):
     logger.info(f"Notify that there are not malwares processes that running on linux collector {collector_agent}, "
                 f"tested malwares are {LINUX_MALWARES_NAMES}")
     for linux_malware_name in LINUX_MALWARES_NAMES:
-        pid = collector_agent.os_station.get_service_process_ids(linux_malware_name)
+        pid = collector_agent.os_station.get_malware_process_id(linux_malware_name)
         assert pid is None, f"{linux_malware_name} already running pid is {pid}"

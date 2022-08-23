@@ -203,7 +203,8 @@ class Management(FortiEdrLinuxStation):
         common_utils.wait_for_condition(
             condition_func=predict_condition_func,
             timeout_sec=timeout,
-            interval_sec=interval
+            interval_sec=interval,
+            condition_msg="Management service is up"
         )
 
     @allure.step("Adding user ID to role ID in the DB")
@@ -281,10 +282,12 @@ class Management(FortiEdrLinuxStation):
         logger.info(f"Delete temp tenant: {temp_tenant}")
         assert temp_tenant.organization.id != self.tenant.organization.id, \
             f"{temp_tenant} is the default tenant of management so can't be deleted"
-        temp_tenant.default_local_admin._delete(rest_client=self._admin_rest_api_client,
-                                                expected_status_code=expected_status_code)
-        temp_tenant.organization._delete(expected_status_code=expected_status_code)
-        self.temp_tenants.remove(temp_tenant)
+        try:
+            temp_tenant.default_local_admin._delete(rest_client=self._admin_rest_api_client,
+                                                    expected_status_code=expected_status_code)
+        finally:
+            temp_tenant.organization._delete(expected_status_code=expected_status_code)
+            self.temp_tenants.remove(temp_tenant)
 
     def get_aggregators(self):
         aggregators = self._admin_rest_api_client.system_inventory.get_aggregator_info()
