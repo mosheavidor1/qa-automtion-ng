@@ -39,6 +39,7 @@ def _is_vm_free_to_use(vm_ops: VsphereMachineOperations,
     Reporter.report(f"VM {vm_ops.vm_obj.name} is busy", logger.info)
     return False
 
+
 def _get_core_config_cmd(desired_hostname: str,
                          date_time: str,
                          date_date: str,
@@ -246,7 +247,9 @@ class EnvironmentCreationHandler:
                         memory=True)
 
             # create clean OS snapshot before installing collector
-            collector.os_station.vm_operations.snapshot_create(collector.os_station.vm_operations.CLEAN_OS_SNAPSHOT_NAME)
+            collector.os_station.vm_operations.snapshot_create(
+                collector.os_station.vm_operations.CLEAN_OS_SNAPSHOT_NAME
+            )
 
             collector.install_collector(version=version,
                                         aggregator_ip=aggregator_ip,
@@ -256,7 +259,10 @@ class EnvironmentCreationHandler:
             if raise_exception_on_failure:
                 raise e
             else:
-                return f"Failed to install version: {version} on {machine_name} with the IP: {new_vm.guest.ipAddress} \n original exception is: {e}"
+                return (
+                    f"Failed to install version: {version} on {machine_name} with the IP: {new_vm.guest.ipAddress} \n "
+                    f"original exception is: {e}"
+                )
 
         return new_vm
 
@@ -358,7 +364,9 @@ class EnvironmentCreationHandler:
 
         if "failed" in result.lower():
             forti_edr_log = linux_station.get_file_content(rf'/var/log/FortiEDR/FortiEDR.log')
-            assert False, f"{component_type.name} component configuration failure. '{desired_name_component}'.\n {forti_edr_log}"
+            assert False, (
+                f"{component_type.name} component configuration failure. '{desired_name_component}'.\n {forti_edr_log}"
+            )
 
         match component_type:
             case ComponentType.AGGREGATOR:
@@ -426,13 +434,15 @@ class EnvironmentCreationHandler:
 
     @staticmethod
     @allure.step("Add specific collector {vm_name} to organization: {organization}")
-    def add_specific_collector_to_setup_from_collectors_pool(vsphere_cluster_handler: VsphereClusterHandler,
-                                                             vm_name: CleanVMsReadyForCollectorInstallation,
-                                                             version: str,
-                                                             aggregator_ip: str,
-                                                             registration_password: str,
-                                                             organization: str,
-                                                             max_timeout: int = 15*60) -> WindowsCollector | LinuxCollector:
+    def add_specific_collector_to_setup_from_collectors_pool(
+            vsphere_cluster_handler: VsphereClusterHandler,
+            vm_name: CleanVMsReadyForCollectorInstallation,
+            version: str,
+            aggregator_ip: str,
+            registration_password: str,
+            organization: str,
+            max_timeout: int = 15*60,
+    ) -> WindowsCollector | LinuxCollector:
 
         vsphere_machine_operations = vsphere_cluster_handler.get_specific_vm_from_cluster(
             vm_search_type=VmSearchTypeEnum.VM_NAME,
@@ -457,11 +467,17 @@ class EnvironmentCreationHandler:
 
             if _is_vm_free_to_use(vm_ops=vsphere_machine_operations, collector_vm=vm_name):
                 time_to_sleep = random.randint(1, 10)
-                logger.info(f"VM - {vm_name.value} - Automation going to sleep {time_to_sleep} seconds before checking again if in use")
+                logger.info(
+                    f"VM - {vm_name.value} - "
+                    f"Automation going to sleep {time_to_sleep} seconds before checking again if in use"
+                )
                 time.sleep(time_to_sleep)
                 if _is_vm_free_to_use(vm_ops=vsphere_machine_operations, collector_vm=vm_name):
-                    logger.info(f"VM - {vm_name.value} is free to use, renaming it to {EnvironmentCreationHandler.BUSY_VM_COLLECTOR}{vsphere_machine_operations.vm_obj.name}")
-                    vsphere_machine_operations.rename_machine_in_vsphere(f"{EnvironmentCreationHandler.BUSY_VM_COLLECTOR}{vsphere_machine_operations.vm_obj.name}")
+                    new_vm_name = (
+                        f"{EnvironmentCreationHandler.BUSY_VM_COLLECTOR}{vsphere_machine_operations.vm_obj.name}"
+                    )
+                    logger.info(f"VM - {vm_name.value} is free to use, renaming it to {new_vm_name}")
+                    vsphere_machine_operations.rename_machine_in_vsphere(new_vm_name)
                     logger.info(f"VM - {vm_name.value} power on")
                     vsphere_machine_operations.power_on()
 
@@ -475,7 +491,9 @@ class EnvironmentCreationHandler:
                 logger.info(f"VM - {vm_name.value} waiting for VM get an IP address")
                 start_time = time.time()
                 get_ip_timeout = 2 * 60
-                while time.time() - start_time < get_ip_timeout and vsphere_machine_operations.vm_obj.guest.ipAddress is None:
+                while time.time() - start_time < get_ip_timeout and (
+                        vsphere_machine_operations.vm_obj.guest.ipAddress is None
+                ):
                     time.sleep(1)
 
                 if vsphere_machine_operations.vm_obj.guest.ipAddress is None:
@@ -500,16 +518,21 @@ class EnvironmentCreationHandler:
                                                password=sut_details.win_password)
 
                 else:
-                    raise Exception(f"Can not decide if {vm_name.value} is a windows or linux OS so can not proceed with the installation")
+                    raise Exception(
+                        f"Can not decide if {vm_name.value} is a windows or linux OS "
+                        f"so can not proceed with the installation"
+                    )
 
                 if collector.is_agent_installed():
-                    logger.info(f"VM - {vm_name.value} IP address: {vsphere_machine_operations.vm_obj.guest.ipAddress} - agent is installed, failing")
+                    logger.info(
+                        f"VM - {vm_name.value} IP address: "
+                        f"{vsphere_machine_operations.vm_obj.guest.ipAddress} - agent is installed, failing"
+                    )
                     assert False, "Can not install collector since there is already installed collector on this system"
 
                 if _is_vm_free_to_use(vm_ops=vsphere_machine_operations, collector_vm=vm_name):
                     logger.info(f"VM - {vm_name.value} is in use, failing")
                     assert False, "VM is not ready to use since it's busy"
-
 
                 # if snapshot with the name "clean_os" does not exist, create it before collector installation
                 if not collector.os_station.vm_operations.is_snapshot_name_exist(
@@ -533,7 +556,6 @@ class EnvironmentCreationHandler:
             vsphere_machine_operations.revert_to_root_snapshot()
             vsphere_machine_operations.power_off()
             raise e
-
 
 
 if __name__ == "__main__":

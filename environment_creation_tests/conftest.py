@@ -17,9 +17,13 @@ from infra.vpshere import vsphere_cluster_details
 from infra.vpshere.vsphere_cluster_handler import VsphereClusterHandler
 
 
-def get_collector_latest_version(version: str, last_versions_dict: dict, collector_template_name: AutomationVmTemplates):
-    build = StringUtils.get_txt_by_regex(text=version, regex="\d+.\d+.\d+.(\w+)", group=1)
-    base_version = StringUtils.get_txt_by_regex(text=version, regex="(\d+.\d+.\d+).\w+", group=1)
+def get_collector_latest_version(
+        version: str,
+        last_versions_dict: dict,
+        collector_template_name: AutomationVmTemplates
+):
+    build = StringUtils.get_txt_by_regex(text=version, regex=r"\d+.\d+.\d+.(\w+)", group=1)
+    base_version = StringUtils.get_txt_by_regex(text=version, regex=r"(\d+.\d+.\d+).\w+", group=1)
     desired_version = None
 
     if build.isdigit():
@@ -67,9 +71,9 @@ def get_collector_latest_version(version: str, last_versions_dict: dict, collect
                 key_to_use = 'openSUSE_collector'
 
             case AutomationVmTemplates.LINUX_ORACLE_83 | \
-                 AutomationVmTemplates.LINUX_ORACLE_82 | \
-                 AutomationVmTemplates.LINUX_ORACLE_81 | \
-                 AutomationVmTemplates.LINUX_ORACLE_80:
+                    AutomationVmTemplates.LINUX_ORACLE_82 | \
+                    AutomationVmTemplates.LINUX_ORACLE_81 | \
+                    AutomationVmTemplates.LINUX_ORACLE_80:
                 key_to_use = 'oracle_8_collector'
 
             case AutomationVmTemplates.LINUX_ORACLE_77:
@@ -85,8 +89,8 @@ def get_collector_latest_version(version: str, last_versions_dict: dict, collect
 
 
 def get_non_collector_latest_version(version: str, last_versions_dict: dict, component_type: ComponentType):
-    build = StringUtils.get_txt_by_regex(text=version, regex="\d+.\d+.\d+.(\w+)", group=1)
-    base_version = StringUtils.get_txt_by_regex(text=version, regex="(\d+.\d+.\d+).\w+", group=1)
+    build = StringUtils.get_txt_by_regex(text=version, regex=r"\d+.\d+.\d+.(\w+)", group=1)
+    base_version = StringUtils.get_txt_by_regex(text=version, regex=r"(\d+.\d+.\d+).\w+", group=1)
     desired_version = None
 
     if build is None:
@@ -116,12 +120,33 @@ def get_non_collector_latest_version(version: str, last_versions_dict: dict, com
 
 
 def get_base_versions_of_all_sys_components_as_dict():
-    base_versions_dict = {}
-    base_versions_dict[StringUtils.get_txt_by_regex(text=desired_env_details.management_version, regex="(\d+.\d+.\d+).\w+", group=1)] = None
-    base_versions_dict[StringUtils.get_txt_by_regex(text=desired_env_details.aggregator_version, regex="(\d+.\d+.\d+).\w+", group=1)] = None
-    base_versions_dict[StringUtils.get_txt_by_regex(text=desired_env_details.core_version, regex="(\d+.\d+.\d+).\w+", group=1)] = None
-    base_versions_dict[StringUtils.get_txt_by_regex(text=desired_env_details.windows_collector_version, regex="(\d+.\d+.\d+).\w+", group=1)] = None
-    base_versions_dict[StringUtils.get_txt_by_regex(text=desired_env_details.linux_collector_version, regex="(\d+.\d+.\d+).\w+", group=1)] = None
+    base_versions_dict = {
+        StringUtils.get_txt_by_regex(
+            text=desired_env_details.management_version,
+            regex=r"(\d+.\d+.\d+).\w+",
+            group=1
+        ): None,
+        StringUtils.get_txt_by_regex(
+            text=desired_env_details.aggregator_version,
+            regex=r"(\d+.\d+.\d+).\w+",
+            group=1
+        ): None,
+        StringUtils.get_txt_by_regex(
+            text=desired_env_details.core_version,
+            regex=r"(\d+.\d+.\d+).\w+",
+            group=1
+        ): None,
+        StringUtils.get_txt_by_regex(
+            text=desired_env_details.windows_collector_version,
+            regex=r"(\d+.\d+.\d+).\w+",
+            group=1
+        ): None,
+        StringUtils.get_txt_by_regex(
+            text=desired_env_details.linux_collector_version,
+            regex=r"(\d+.\d+.\d+).\w+",
+            group=1
+        ): None,
+    }
     return base_versions_dict
 
 
@@ -175,7 +200,9 @@ def deploy_system_components(env_name='automation_env'):
                                               machine_type=machine_type)
             sys_comp_list.append(aggr)
     else:
-        assert False, f"Unknown deployment architecture: {desired_env_details.management_and_aggregator_deployment_architecture}"
+        assert False, (
+            f"Unknown deployment architecture: {desired_env_details.management_and_aggregator_deployment_architecture}"
+        )
 
     for i in range(desired_env_details.cores_amount):
         core = EnvironmentSystemComponent(component_type=ComponentType.CORE,
@@ -198,31 +225,31 @@ def deploy_system_components(env_name='automation_env'):
 
 def get_list_of_desired_collectors() -> List[AutomationVmTemplates]:
     deployment_list = []
-    deployment_list += [AutomationVmTemplates.WIN_11X64 for i in range(desired_env_details.windows_11_64_bit)]
-    deployment_list += [AutomationVmTemplates.WIN10_X64 for i in range(desired_env_details.windows_10_64_bit)]
-    deployment_list += [AutomationVmTemplates.WIN10_X32 for i in range(desired_env_details.windows_10_32_bit)]
-    deployment_list += [AutomationVmTemplates.WIN81_X64 for i in range(desired_env_details.windows_8_64_bit)]
-    deployment_list += [AutomationVmTemplates.WIN81_X32 for i in range(desired_env_details.windows_8_32_bit)]
-    deployment_list += [AutomationVmTemplates.WIN7_X64 for i in range(desired_env_details.windows_7_64_bit)]
-    deployment_list += [AutomationVmTemplates.WIN7_X86 for i in range(desired_env_details.windows_7_32_bit)]
-    # deployment_list += [CollectorTemplateNames.WIN_SERV_2022 for i in range(desired_env_details.)]
-    # deployment_list += [CollectorTemplateNames.WIN_SERV_2020 for i in range(desired_env_details.)]
-    deployment_list += [AutomationVmTemplates.WIN_SERV_2019 for i in range(desired_env_details.windows_server_2019)]
-    deployment_list += [AutomationVmTemplates.WIN_SERV_2016 for i in range(desired_env_details.windows_server_2016)]
-    # deployment_list += [CollectorTemplateNames.WIN_SERV_2012 for i in range(desired_env_details.)]
-    deployment_list += [AutomationVmTemplates.LINUX_CENTOS_8 for i in range(desired_env_details.centOS_8)]
-    deployment_list += [AutomationVmTemplates.LINUX_CENTOS_7 for i in range(desired_env_details.centOS_7)]
-    deployment_list += [AutomationVmTemplates.LINUX_CENTOS_6 for i in range(desired_env_details.centOS_6)]
-    deployment_list += [AutomationVmTemplates.LINUX_UBUNTU_20 for i in range(desired_env_details.ubuntu_20)]
-    deployment_list += [AutomationVmTemplates.LINUX_UBUNTU_18 for i in range(desired_env_details.ubuntu_18)]
-    deployment_list += [AutomationVmTemplates.LINUX_UBUNTU_16 for i in range(desired_env_details.ubuntu_16)]
-    # deployment_list += [CollectorTemplateNames.LINUX_AMAZON for i in range(desired_env_details.windows_11_64_bit)]
-    # deployment_list += [CollectorTemplateNames.LINUX_SUSE for i in range(desired_env_details.windows_11_64_bit)]
-    # deployment_list += [CollectorTemplateNames.LINUX_ORACLE_83 for i in range(desired_env_details.windows_11_64_bit)]
-    # deployment_list += [CollectorTemplateNames.LINUX_ORACLE_82 for i in range(desired_env_details.windows_11_64_bit)]
-    # deployment_list += [CollectorTemplateNames.LINUX_ORACLE_81 for i in range(desired_env_details.windows_11_64_bit)]
-    # deployment_list += [CollectorTemplateNames.LINUX_ORACLE_80 for i in range(desired_env_details.windows_11_64_bit)]
-    # deployment_list += [CollectorTemplateNames.LINUX_ORACLE_77 for i in range(desired_env_details.windows_11_64_bit)]
+    deployment_list += [AutomationVmTemplates.WIN_11X64] * desired_env_details.windows_11_64_bit
+    deployment_list += [AutomationVmTemplates.WIN10_X64] * desired_env_details.windows_10_64_bit
+    deployment_list += [AutomationVmTemplates.WIN10_X32] * desired_env_details.windows_10_32_bit
+    deployment_list += [AutomationVmTemplates.WIN81_X64] * desired_env_details.windows_8_64_bit
+    deployment_list += [AutomationVmTemplates.WIN81_X32] * desired_env_details.windows_8_32_bit
+    deployment_list += [AutomationVmTemplates.WIN7_X64] * desired_env_details.windows_7_64_bit
+    deployment_list += [AutomationVmTemplates.WIN7_X86] * desired_env_details.windows_7_32_bit
+    # deployment_list += [CollectorTemplateNames.WIN_SERV_2022] * desired_env_details.
+    # deployment_list += [CollectorTemplateNames.WIN_SERV_2020] * desired_env_details.
+    deployment_list += [AutomationVmTemplates.WIN_SERV_2019] * desired_env_details.windows_server_2019
+    deployment_list += [AutomationVmTemplates.WIN_SERV_2016] * desired_env_details.windows_server_2016
+    # deployment_list += [CollectorTemplateNames.WIN_SERV_2012] * desired_env_details.
+    deployment_list += [AutomationVmTemplates.LINUX_CENTOS_8] * desired_env_details.centOS_8
+    deployment_list += [AutomationVmTemplates.LINUX_CENTOS_7] * desired_env_details.centOS_7
+    deployment_list += [AutomationVmTemplates.LINUX_CENTOS_6] * desired_env_details.centOS_6
+    deployment_list += [AutomationVmTemplates.LINUX_UBUNTU_20] * desired_env_details.ubuntu_20
+    deployment_list += [AutomationVmTemplates.LINUX_UBUNTU_18] * desired_env_details.ubuntu_18
+    deployment_list += [AutomationVmTemplates.LINUX_UBUNTU_16] * desired_env_details.ubuntu_16
+    # deployment_list += [CollectorTemplateNames.LINUX_AMAZON] * desired_env_details.windows_11_64_bit
+    # deployment_list += [CollectorTemplateNames.LINUX_SUSE] * desired_env_details.windows_11_64_bit
+    # deployment_list += [CollectorTemplateNames.LINUX_ORACLE_83] * desired_env_details.windows_11_64_bit
+    # deployment_list += [CollectorTemplateNames.LINUX_ORACLE_82] * desired_env_details.windows_11_64_bit
+    # deployment_list += [CollectorTemplateNames.LINUX_ORACLE_81] * desired_env_details.windows_11_64_bit
+    # deployment_list += [CollectorTemplateNames.LINUX_ORACLE_80] * desired_env_details.windows_11_64_bit
+    # deployment_list += [CollectorTemplateNames.LINUX_ORACLE_77] * desired_env_details.windows_11_64_bit
 
     return deployment_list
 
