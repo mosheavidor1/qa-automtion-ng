@@ -270,7 +270,7 @@ class FortiEdrLinuxStation(LinuxStation):
                             first_index = tmp_content.index(line_date)
                             content = tmp_content[first_index:]
                             Reporter.attach_str_as_file(file_name=single_file, file_content=content)
-                            continue
+                            break
 
             if content is not None:
                 Reporter.attach_str_as_file(file_name=single_file, file_content=content)

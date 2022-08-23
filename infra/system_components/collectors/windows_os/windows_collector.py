@@ -611,7 +611,7 @@ class WindowsCollector(CollectorAgent):
             file_suffix=file_suffix)
 
         if results_dict is not None and len(results_dict) > 0:
-            for file_name, file_content in results_dict:
+            for file_name, file_content in results_dict.items():
                 Reporter.attach_str_as_file(file_name=file_name, file_content=file_content)
 
     @allure.step("{0} - Create event {malware_name}")
