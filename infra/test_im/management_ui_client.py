@@ -382,6 +382,13 @@ class ManagementUiClient:
                                 data: dict = None,
                                 assert_type: AssertTypeEnum = AssertTypeEnum.HARD,
                                 test_timeout: int = 600):
+            """
+            login to management
+            go to inventory > collectors
+            select a collector and export a EXCEL report
+            verify that the generate report was successful
+            verify that the download process was successful
+            """
             self.parent.start_testim_flow(test_name="collectors | export EXCEL report",
                                           management_ui_ip=self.parent.management_ui_ip,
                                           data=data,
