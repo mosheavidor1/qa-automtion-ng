@@ -313,8 +313,8 @@ def test_collector_with_new_org_registration_password(management, aggregator, co
             assert new_registration_password != old_registration_password
             with revive_collector_agent_on_failure_context(tenant=new_tenant, collector_agent=collector_agent,
                                                            aggregator=aggregator):
-                CollectorUtils.wait_for_configuration(collector_agent=collector_agent, tenant=new_tenant,
-                                                      start_collector=False)
+                CollectorUtils.wait_for_registration_password(collector_agent=collector_agent, tenant=new_tenant,
+                                                              start_collector=False)
                 Reporter.report(f"Validate {collector_agent} stopped successfully with new registration password", INFO)
                 collector_agent.wait_until_agent_down()
                 CollectorUtils.wait_until_rest_collector_is_off(rest_collector=new_tenant_rest_collector)

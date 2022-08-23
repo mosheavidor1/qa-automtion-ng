@@ -202,8 +202,8 @@ class WindowsStation(OsStation):
     def wait_until_machine_is_reachable(self, timeout=None):
         timeout = timeout or WAIT_FOR_STATION_UP_TIMEOUT
         predict_condition_func = self.is_reachable
-        wait_for_condition(condition_func=predict_condition_func,
-                           timeout_sec=timeout, interval_sec=INTERVAL_STATION_KEEPALIVE)
+        wait_for_condition(condition_func=predict_condition_func, timeout_sec=timeout,
+                           interval_sec=INTERVAL_STATION_KEEPALIVE, condition_msg="VM is reachable")
 
     @allure.step("Wait until machine is unreachable")
     def wait_until_machine_is_unreachable(self, timeout=None):
@@ -213,8 +213,8 @@ class WindowsStation(OsStation):
             result = not self.is_reachable()
             return result
 
-        wait_for_condition(condition_func=predict,
-                           timeout_sec=timeout, interval_sec=INTERVAL_STATION_KEEPALIVE)
+        wait_for_condition(condition_func=predict, timeout_sec=timeout,
+                           interval_sec=INTERVAL_STATION_KEEPALIVE, condition_msg="VM is unreachable")
 
     @allure.step("Stop service {service_name}")
     def stop_service(self, service_name: str) -> str:
@@ -547,7 +547,8 @@ class WindowsStation(OsStation):
         common_utils.wait_for_condition(
             condition_func=predict_condition_func,
             timeout_sec=max_timeout,
-            interval_sec=INTERVAL_STATION_KEEPALIVE)
+            interval_sec=INTERVAL_STATION_KEEPALIVE,
+            condition_msg=f"File '{file_name}' exists in {file_path}")
 
     @allure.step("Extracting compressed file")
     def extract_compressed_file(self, file_path_to_extract, file_name):

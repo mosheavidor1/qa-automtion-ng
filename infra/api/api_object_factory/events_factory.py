@@ -96,7 +96,8 @@ def _wait_for_event(get_event_func, timeout=None, interval=None, safe=False):
     def condition():
         return True if get_event_func(safe=True) else False
     try:
-        common_utils.wait_for_condition(condition_func=condition, timeout_sec=timeout, interval_sec=interval)
+        common_utils.wait_for_condition(condition_func=condition, timeout_sec=timeout, interval_sec=interval,
+                                        condition_msg="Wait for specific event")
     except AssertionError:
         if not safe:
             raise Exception(f"Error - No event found after waiting {interval} seconds")

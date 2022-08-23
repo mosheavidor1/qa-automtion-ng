@@ -684,15 +684,17 @@ def reset_driver_verifier_for_all_collectors(collector: CollectorAgent):
 def check_if_collector_has_crashed(collector: CollectorAgent):
     logger.info("Test Start - check if collector has crashes")
     if collector.has_crash():
-        assert False, "Crashes was detected, can not start the test"
+        assert False, "Bug-Crashes were detected at the beginning of the test, so they might be from previous " \
+                      "test or if it the first test in the suite so the environment contained crashes before the suite"
     logger.info("Test Start - did not detected crashes, test starts")
 
     yield
 
+    logger.info("Test end - check if collector has crashes")
     if collector.has_crash(): # if we detected crash, we will take snapshots inside the has_crash() method
         collector.remove_all_crash_dumps_files()
-        assert False, "Crashes was detected, can not start the test"
-    logger.info("Test Start - did not detected crashes at the end of the test :)")
+        assert False, "Real bug - test created crashes, they can be found in the snapshot"
+    logger.info("Test end - did not detected crashes at the end of the test :)")
 
 
 @allure.step("Get collectors machine time at the beginning of the test")
