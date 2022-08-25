@@ -19,7 +19,9 @@ class OrgFieldsNames(Enum):
     ID = 'organizationId'
     EXPIRATION_DATE = 'expirationDate'
     ORG_NAME = 'name'
-    FORENSICS = 'forensicsAndEDR'
+    FORENSICS_AND_EDR = 'forensicsAndEDR'
+    FORENSICS = 'forensics'
+    EDR = 'edr'
     VULNERABILITY = 'vulnerabilityAndIoT'
     REGISTRATION_PASSWORD = 'password'
     PASSWORD_CONFIRMATION = 'passwordConfirmation'
@@ -59,7 +61,7 @@ class Organization(BaseApiObj):
         organization_data = {
             OrgFieldsNames.ORG_NAME.value: name,
             OrgFieldsNames.EXPIRATION_DATE.value: expiration_date,
-            OrgFieldsNames.FORENSICS.value: True,
+            OrgFieldsNames.FORENSICS_AND_EDR.value: True,
             OrgFieldsNames.VULNERABILITY.value: True,
             OrgFieldsNames.REGISTRATION_PASSWORD.value: password,
             OrgFieldsNames.PASSWORD_CONFIRMATION.value: password,
@@ -70,6 +72,8 @@ class Organization(BaseApiObj):
             OrgFieldsNames.IOT_LICENCES.value: optional_data.get(OrgFieldsNames.IOT_LICENCES.value,
                                                                  DEFAULT_LICENSE_CAPACITY)
         }
+        organization_data[OrgFieldsNames.FORENSICS.value] = organization_data[OrgFieldsNames.FORENSICS_AND_EDR.value]
+        organization_data[OrgFieldsNames.EDR.value] = organization_data[OrgFieldsNames.FORENSICS_AND_EDR.value]
         ADMIN_REST.organizations.create_organization(org_data=organization_data,
                                                      expected_status_code=expected_status_code)
         new_org_data = get_organization_fields_by_name(organization_name=name, safe=False)
@@ -156,12 +160,14 @@ class Organization(BaseApiObj):
         updated_data = {
             OrgFieldsNames.EXPIRATION_DATE.value: self.get_expiration_date(from_cache=True),
             OrgFieldsNames.ORG_NAME.value: self.get_name(from_cache=True),
-            OrgFieldsNames.FORENSICS.value: True,
+            OrgFieldsNames.FORENSICS_AND_EDR.value: True,
             OrgFieldsNames.VULNERABILITY.value: True,
             OrgFieldsNames.SERVERS_LICENCES.value: self.get_servers_licences_capacity(from_cache=True),
             OrgFieldsNames.WORK_STATION_LICENCES.value: self.get_works_station_licences_capacity(from_cache=True),
             OrgFieldsNames.IOT_LICENCES.value: self.get_iot_licences_capacity(from_cache=True)
         }
+        updated_data[OrgFieldsNames.FORENSICS.value] = updated_data[OrgFieldsNames.FORENSICS_AND_EDR.value]
+        updated_data[OrgFieldsNames.EDR.value] = updated_data[OrgFieldsNames.FORENSICS_AND_EDR.value]
         for field_name, new_value in new_fields:
             logger.info(f"Update {field_name} from {updated_data[field_name]} to {new_value}")
             updated_data[field_name] = new_value
@@ -207,8 +213,18 @@ def _compare_new_org_data(expected_data: dict, actual_data: dict):
     name = expected_data[OrgFieldsNames.ORG_NAME.value]
     logger.info(f"Validate that organization {name} created with the correct values as were passed")
     not_relevant_fields = [OrgFieldsNames.REGISTRATION_PASSWORD.value, OrgFieldsNames.PASSWORD_CONFIRMATION.value]
+    is_contains_forensicandedr_field = OrgFieldsNames.FORENSICS_AND_EDR.value in actual_data
     for field_name, expected_value in expected_data.items():
         if field_name not in not_relevant_fields:
+            # in newer version of 5.2.0, forensicsAndEDR section was split into forensics and edr fields so needs to
+            # validate which of the sections we need to use
+            if (
+                    field_name in [OrgFieldsNames.FORENSICS.value, OrgFieldsNames.EDR.value]
+                    and is_contains_forensicandedr_field
+            ):
+                continue
+            elif field_name == OrgFieldsNames.FORENSICS_AND_EDR.value and not is_contains_forensicandedr_field:
+                continue
             if field_name == OrgFieldsNames.EXPIRATION_DATE.value:
                 expected_value = StringUtils.get_txt_by_regex(text=expected_value, regex=r'(\d+-\d+-\d+)', group=1)
                 actual_value = StringUtils.get_txt_by_regex(text=actual_data[field_name], regex=r'(\d+-\d+-\d+)',
