@@ -48,7 +48,7 @@ def _generate_params_for_test_policy_mode_with_rule_block():
                ('EN-78359', DefaultPoliciesNames.EXFILTRATION_PREVENTION.value, ModeNames.PREVENTION.value)]
     if 'linux' in collector_type.lower():
         return linux
-    elif 'windows' in collector_type.lower():
+    elif 'win' in collector_type.lower():
         return windows
     else:
         assert False, f"ERROR - Not supported {collector_type}!!!"
@@ -133,7 +133,7 @@ def _generate_params_for_test_policy_rule_action_log():
                ('EN-78448', DefaultPoliciesNames.RANSOMWARE_PREVENTION.value)]
     if 'linux' in collector_type.lower():
         return linux
-    elif 'windows' in collector_type.lower():
+    elif 'win' in collector_type.lower():
         return windows
     else:
         assert False, f"ERROR - Not supported {collector_type}!!!"
@@ -219,7 +219,7 @@ def _generate_params_for_test_disabled_policy_rule_state():
                ('EN-78454', DefaultPoliciesNames.RANSOMWARE_PREVENTION.value)]
     if 'linux' in collector_type.lower():
         return linux
-    elif 'windows' in collector_type.lower():
+    elif 'win' in collector_type.lower():
         return windows
     else:
         assert False, f"ERROR - Not supported {collector_type}!!!"
