@@ -1,12 +1,13 @@
 import logging
 import allure
 import pytest
+
+from tests.utils.collector_utils import is_config_file_received_in_collector
 from tests.utils.tenant_utils import new_tenant_context, new_organization_without_user_context
 from infra.allure_report_handler.reporter import TEST_STEP
-from infra.enums import FortiEdrSystemState
+from infra.enums import FortiEdrSystemState, CollectorConfigurationTypes
 from infra.system_components.collectors.windows_os.windows_collector import WindowsCollector
 from tests.utils.aggregator_utils import revive_aggregator_on_failure_context
-from tests.utils.collector_utils import is_config_file_is_partial_or_full, ConfigurationTypes
 from tests.utils.management_utils import ManagementUtils, revive_management_on_failure_context
 
 logger = logging.getLogger(__name__)
@@ -31,16 +32,16 @@ def test_receive_full_configuration_after_delete_organization_in_windows_os(mana
         new_tenant, target_collector = new_tenant
         new_org_name = new_tenant.organization.get_name()
         with TEST_STEP(f"STEP - Fetch the latest config before deleting the new organization {new_org_name}"):
-            latest_config_file_details_before_delete_org = collector.get_the_latest_config_file_details()
-            first_log_date_time = collector.os_station.get_current_machine_datetime()
+            all_config_files_details_before_delete_org = collector.get_configuration_files_details()
+            collector_datetime_before_delete_org = collector.get_current_datetime()
 
-    with TEST_STEP("STEP - Validate collector received a new full config file that related to the delete organization action"):
-        collector.wait_for_new_config_file(latest_config_file_details=latest_config_file_details_before_delete_org)
+    with TEST_STEP("STEP - Validate collector received a new full config file that related to the delete org action"):
+        collector.wait_for_new_config_file(config_files_details_before_action=all_config_files_details_before_delete_org)
         latest_config_file_details_after_delete_org = collector.get_the_latest_config_file_details()
-        assert is_config_file_is_partial_or_full(collector=collector,
-                                                 config_file_details=latest_config_file_details_after_delete_org,
-                                                 first_log_date_time=first_log_date_time,
-                                                 config_type=ConfigurationTypes.FULL.value), \
+        assert is_config_file_received_in_collector(collector=collector,
+                                                    config_file_details=latest_config_file_details_after_delete_org,
+                                                    first_log_date_time=collector_datetime_before_delete_org,
+                                                    desired_config_type=CollectorConfigurationTypes.FULL), \
             f"Config file after deleting org '{new_org_name}' is not full, these are the details \
             {latest_config_file_details_after_delete_org}"
 
@@ -61,17 +62,18 @@ def test_receive_full_configuration_after_create_organization_in_windows_os(mana
     assert isinstance(collector, WindowsCollector), "This test should run only on windows collector"
 
     with TEST_STEP(f"STEP - Fetch the latest config before creating a new organization"):
-        latest_config_file_details_before_create_org = collector.get_the_latest_config_file_details()
-        first_log_date_time = collector.os_station.get_current_machine_datetime()
+        all_config_files_details_before_create_org = collector.get_configuration_files_details()
+        collector_datetime_before_create_org = collector.get_current_datetime()
 
     with new_organization_without_user_context(management=management) as new_org:
-        with TEST_STEP("STEP - Validate collector received a new full config file that related to the create organization action"):
-            collector.wait_for_new_config_file(latest_config_file_details=latest_config_file_details_before_create_org)
+        with TEST_STEP("STEP - Validate collector received a new full config file that related to the create org action"):
+            collector.wait_for_new_config_file(
+                config_files_details_before_action=all_config_files_details_before_create_org)
             latest_config_file_details_after_create_org = collector.get_the_latest_config_file_details()
-            assert is_config_file_is_partial_or_full(collector=collector,
-                                                     config_file_details=latest_config_file_details_after_create_org,
-                                                     first_log_date_time=first_log_date_time,
-                                                     config_type=ConfigurationTypes.FULL.value), \
+            assert is_config_file_received_in_collector(collector=collector,
+                                                        config_file_details=latest_config_file_details_after_create_org,
+                                                        first_log_date_time=collector_datetime_before_create_org,
+                                                        desired_config_type=CollectorConfigurationTypes.FULL),\
                 f"Config file after creating {new_org} is not full, these are the details\
                 {latest_config_file_details_after_create_org}"
 
@@ -92,8 +94,8 @@ def test_receive_full_configuration_after_restart_management_in_windows_os(manag
     rest_collector = management.tenant.rest_components.collectors.get_by_ip(ip=collector_agent.host_ip)
     with revive_management_on_failure_context(management=management):
         with TEST_STEP("STEP - Restart management and Fetch the latest config file before restart management"):
-            latest_config_file_details_before_restart_mng = collector_agent.get_the_latest_config_file_details()
-            first_log_date_time = collector.os_station.get_current_machine_datetime()
+            all_config_files_details_before_restart_mng = collector_agent.get_configuration_files_details()
+            collector_datetime_before_restart_mng = collector.get_current_datetime()
             logger.info(f"restart management {management}")
             management.restart_service()
 
@@ -103,15 +105,15 @@ def test_receive_full_configuration_after_restart_management_in_windows_os(manag
             rest_collector.wait_until_running()
 
         with TEST_STEP("STEP - Validate collector received a new full config file that related to the restart action"):
-            collector.wait_for_new_config_file(latest_config_file_details=latest_config_file_details_before_restart_mng)
+            collector.wait_for_new_config_file(
+                config_files_details_before_action=all_config_files_details_before_restart_mng)
             latest_config_file_details_after_restart_mng = collector.get_the_latest_config_file_details()
-            assert is_config_file_is_partial_or_full(collector=collector,
-                                                     config_file_details=latest_config_file_details_after_restart_mng,
-                                                     first_log_date_time=first_log_date_time,
-                                                     config_type=ConfigurationTypes.FULL.value), \
+            assert is_config_file_received_in_collector(collector=collector,
+                                                        config_file_details=latest_config_file_details_after_restart_mng,
+                                                        first_log_date_time=collector_datetime_before_restart_mng,
+                                                        desired_config_type=CollectorConfigurationTypes.FULL), \
                 f"Config file after restart management is not full, these are the details: \
                 {latest_config_file_details_after_restart_mng}"
-
 
 
 @allure.epic("Collector Configuration File")
@@ -130,8 +132,8 @@ def test_receive_full_configuration_after_restart_aggregator_in_windows_os(manag
     rest_collector = management.tenant.rest_components.collectors.get_by_ip(ip=collector_agent.host_ip)
     with revive_aggregator_on_failure_context(aggregator=aggregator):
         with TEST_STEP("STEP - Restart aggregator and Fetch the latest config file before restart aggregator"):
-            latest_config_file_details_before_restart_agg = collector_agent.get_the_latest_config_file_details()
-            first_log_date_time = collector.os_station.get_current_machine_datetime()
+            all_config_files_details_before_restart_agg = collector_agent.get_configuration_files_details()
+            collector_datetime_before_restart_agg = collector.get_current_datetime()
             logger.info(f"restart aggregator {aggregator}")
             aggregator.restart_service()
 
@@ -141,11 +143,11 @@ def test_receive_full_configuration_after_restart_aggregator_in_windows_os(manag
             rest_collector.wait_until_running()
 
         with TEST_STEP("STEP - Validate collector received a new full config file that related to the restart action"):
-            collector.wait_for_new_config_file(latest_config_file_details=latest_config_file_details_before_restart_agg)
+            collector.wait_for_new_config_file(config_files_details_before_action=all_config_files_details_before_restart_agg)
             latest_config_file_details_after_restart_agg = collector.get_the_latest_config_file_details()
-            assert is_config_file_is_partial_or_full(collector=collector,
-                                                     config_file_details=latest_config_file_details_after_restart_agg,
-                                                     first_log_date_time=first_log_date_time,
-                                                     config_type=ConfigurationTypes.FULL.value), \
+            assert is_config_file_received_in_collector(collector=collector,
+                                                        config_file_details=latest_config_file_details_after_restart_agg,
+                                                        first_log_date_time=collector_datetime_before_restart_agg,
+                                                        desired_config_type=CollectorConfigurationTypes.FULL), \
                 f"Config file after restart aggregator is not full, these are the details: \
                 {latest_config_file_details_after_restart_agg}"

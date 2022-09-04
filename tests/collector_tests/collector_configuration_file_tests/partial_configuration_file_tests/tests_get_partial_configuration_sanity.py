@@ -3,9 +3,10 @@ import allure
 import pytest
 from infra.allure_report_handler.reporter import TEST_STEP, Reporter, INFO
 from infra.api.management_api.policy import DefaultPoliciesNames
+from infra.enums import CollectorConfigurationTypes
 from infra.system_components.collectors.windows_os.windows_collector import WindowsCollector
 from tests.utils.collector_group_utils import safe_create_groups_context, generate_group_name
-from tests.utils.collector_utils import isolate_collector_context, is_config_file_is_partial_or_full, ConfigurationTypes
+from tests.utils.collector_utils import isolate_collector_context, is_config_file_received_in_collector
 
 logger = logging.getLogger(__name__)
 
@@ -31,18 +32,19 @@ def test_receive_partial_configuration_after_remove_collector_from_isolation_in_
         with TEST_STEP(f"STEP - Isolate collector and Fetch the latest config ,before removing isolation"):
             Reporter.report("Fetch config files before remove from isolation, in order to validate later the diff \
                             after remove from isolation", INFO)
-            current_latest_config_file = collector.get_the_latest_config_file_details()
-            first_log_date_time = collector.os_station.get_current_machine_datetime()
+            all_config_files_details_before_remove_isolation = collector.get_configuration_files_details()
+            collector_datetime_before_remove_isolation = collector.get_current_datetime()
 
     with TEST_STEP("STEP - Validate collector received a new partial config file that related to the remove isolation action"):
-        collector.wait_for_new_config_file(latest_config_file_details=current_latest_config_file)
+        collector.wait_for_new_config_file(
+            config_files_details_before_action=all_config_files_details_before_remove_isolation)
         latest_config_file_details_after_remove_isolation = collector.get_the_latest_config_file_details()
-        assert is_config_file_is_partial_or_full(collector=collector,
-                                                 config_file_details=latest_config_file_details_after_remove_isolation,
-                                                 first_log_date_time=first_log_date_time,
-                                                 config_type=ConfigurationTypes.PARTIAL.value), \
+        assert is_config_file_received_in_collector(collector=collector,
+                                                    config_file_details=latest_config_file_details_after_remove_isolation,
+                                                    first_log_date_time=collector_datetime_before_remove_isolation,
+                                                    desired_config_type=CollectorConfigurationTypes.PARTIAL), \
             f"Config file after remove isolation collector is not partial, these are the details \
-              {latest_config_file_details_after_remove_isolation}"
+            {latest_config_file_details_after_remove_isolation}"
 
 
 @allure.epic("Collector Configuration File")
@@ -86,18 +88,19 @@ def test_receive_partial_configuration_after_assign_collector_to_empty_group_tha
             policy.assign_to_collector_group(group_name=new_group.name)
 
         with TEST_STEP(f"STEP - Fetch the latest config before moving {rest_collector}"):
-            latest_config_file_before_moving_collector = collector_agent.get_the_latest_config_file_details()
-            first_log_date_time = collector.os_station.get_current_machine_datetime()
+            latest_config_files_before_moving_collector = collector_agent.get_configuration_files_details()
+            collector_datetime_before_moving_collector = collector.get_current_datetime()
 
         with TEST_STEP(f"STEP - Move {rest_collector} to the assigned group {new_group.name}"):
             rest_collector.move_to_different_group(target_group_name=new_group.name)
 
         with TEST_STEP("STEP - Validate collector received a new partial config file that related to the last action"):
-            collector.wait_for_new_config_file(latest_config_file_details=latest_config_file_before_moving_collector)
+            collector.wait_for_new_config_file(
+                config_files_details_before_action=latest_config_files_before_moving_collector)
             latest_config_file_after_moving_collector = collector.get_the_latest_config_file_details()
-            assert is_config_file_is_partial_or_full(collector=collector,
-                                                     config_file_details=latest_config_file_after_moving_collector,
-                                                     first_log_date_time=first_log_date_time,
-                                                     config_type=ConfigurationTypes.PARTIAL.value), \
+            assert is_config_file_received_in_collector(collector=collector,
+                                                        config_file_details=latest_config_file_after_moving_collector,
+                                                        first_log_date_time=collector_datetime_before_moving_collector,
+                                                        desired_config_type=CollectorConfigurationTypes.PARTIAL), \
                 f"Config file after move collector to {new_group} that is assigned to {policy} is not partial, \
                 these are the details {latest_config_file_after_moving_collector}"

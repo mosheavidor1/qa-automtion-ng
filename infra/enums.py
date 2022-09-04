@@ -130,3 +130,8 @@ class ManagementUserRoles(Enum):
 class LinuxDistroTypes(Enum):
     UBUNTU = 'UBUNTU'
     CENTOS = 'CENTOS'
+
+
+class CollectorConfigurationTypes(Enum):
+    FULL = 'Full'
+    PARTIAL = 'Partial'
