@@ -2,7 +2,7 @@ import logging
 import allure
 import pytest
 from infra.allure_report_handler.reporter import TEST_STEP, Reporter, INFO
-from infra.api.management_api.policy import DefaultPoliciesNames
+from infra.api.management_api.security_policy import DefaultPoliciesNames
 from infra.enums import CollectorConfigurationTypes
 from infra.system_components.collectors.windows_os.windows_collector import WindowsCollector
 from tests.utils.collector_group_utils import safe_create_groups_context, generate_group_name
@@ -74,7 +74,7 @@ def test_receive_partial_configuration_after_assign_collector_to_empty_group_tha
     user = tenant.default_local_admin
     collector_agent = collector
     rest_collector = tenant.rest_components.collectors.get_by_ip(ip=collector_agent.host_ip)
-    policy = user.rest_components.policies.get_by_name(policy_name=DefaultPoliciesNames.EXECUTION_PREVENTION.value)
+    policy = user.rest_components.security_policies.get_by_name(policy_name=DefaultPoliciesNames.EXECUTION_PREVENTION.value)
 
     with safe_create_groups_context(management=management, rest_collector=rest_collector) as new_groups:
         with TEST_STEP(f"Setup - Create new group, without assigned policies, and move there {rest_collector}"):

@@ -4,6 +4,7 @@ import allure
 from typing import List
 
 from infra.api.api_object_factory.ip_sets_factory import IpSetFactory
+from infra.api.management_api.base_policy import WAIT_AFTER_SET_POLICY_MODE
 from infra.api.management_api.ip_set import IpSet
 from infra.api.nslo_wrapper.rest_commands import RestCommands
 from infra.api.api_object_factory.organizations_factory import OrganizationsFactory
@@ -12,7 +13,7 @@ from infra.api.api_object_factory.rest_collectors_factory import RestCollectorsF
 from infra.api.management_api.user import User
 from infra.api.management_api.organization import Organization
 from infra.api import ADMIN_REST
-from infra.api.management_api.policy import Policy, WAIT_AFTER_SET_POLICY_MODE
+from infra.api.management_api.security_policy import SecurityPolicy
 from infra.api.management_api.collector import RestCollector
 from infra.utils.policy_utils import get_default_policies
 import sut_details
@@ -60,14 +61,14 @@ class Tenant:
         return self._rest_components
 
     @allure.step("Turn on prevention mode of this tenant")
-    def turn_on_prevention_mode(self, policies: List[Policy] = None):
+    def turn_on_prevention_mode(self, policies: List[SecurityPolicy] = None):
         policies = policies or self.get_default_policies()
         logger.info(f"Turn on prevention mode for organization {self.organization} via policies: \n {policies}")
         for policy in policies:
             policy.set_to_prevention_mode(safe=True, wait=False)
         time.sleep(WAIT_AFTER_SET_POLICY_MODE)
 
-    def get_default_policies(self) -> List[Policy]:
+    def get_default_policies(self) -> List[SecurityPolicy]:
         policies = get_default_policies(rest_client=self._rest_api_client,
                                         organization_name=self.organization.get_name())
         return policies

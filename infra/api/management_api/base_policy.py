@@ -6,6 +6,7 @@ from enum import Enum
 
 from infra.allure_report_handler.reporter import Reporter
 from infra.api.api_object import BaseApiObj
+from infra.api.management_api.collector_group import PolicyDefaultCollectorGroupsNames
 from infra.api.nslo_wrapper.rest_commands import RestCommands
 from ensilo.platform.rest.nslo_management_rest import NsloRest
 from infra.common_utils import WAIT_FOR_COLLECTOR_NEW_CONFIGURATION
@@ -34,24 +35,6 @@ class RuleFieldsNames(Enum):
     ACTION = 'securityAction'
 
 
-class DefaultPoliciesNames(Enum):
-    EXECUTION_PREVENTION = NsloRest.NsloPolicies.NSLO_POLICY_EXECUTION_PREVENTION
-    EXFILTRATION_PREVENTION = NsloRest.NsloPolicies.NSLO_POLICY_EXFILTRATION_PREVENTION
-    RANSOMWARE_PREVENTION = NsloRest.NsloPolicies.NSLO_POLICY_RANSOMWARE_PREVENTION
-
-
-class ExternalPoliciesNames(Enum):
-  DEVICE_CONTROL = 'Device Control'
-  EXTENDED_DETECTION = 'eXtended Detection'
-
-
-class RulesNames(Enum):
-    MALICIOUS_FILE_DETECTED = 'Malicious File Detected'
-    STACK_PIVOT = 'Stack Pivot'
-    DYNAMIC_CODE = 'Dynamic Code'
-    UNCONFIRMED_EXECUTABLE = 'Unconfirmed Executable'
-
-
 class ModeNames(Enum):
     PREVENTION = NsloRest.NSLO_PREVENTION_MODE
     SIMULATION = NsloRest.NSLO_SIMULATION_MODE
@@ -62,18 +45,14 @@ class RuleStates(Enum):
     DISABLED = NsloRest.NSLO_DISABLED_MODE
 
 
-class RuleActions(Enum):
-    BLOCK = 'Block'
-    LOG = 'Log'
-
-
-class Policy(BaseApiObj):
+class BasePolicy(BaseApiObj):
     """ A wrapper of our internal rest client for working with policies.
         Each policy will have its own rest credentials based on user password and name """
 
-    def __init__(self, rest_client: RestCommands, initial_data: dict):
+    def __init__(self, rest_client: RestCommands, initial_data: dict, policy_rest):
         super().__init__(rest_client=rest_client, initial_data=initial_data)
         self._name = initial_data[PolicyFieldsNames.NAME.value]  # Static, unique identifier
+        self._policy_rest = policy_rest
 
     def __repr__(self):
         return f"Policy {self.name} in '{self.get_organization_name(from_cache=True)}'"
@@ -128,6 +107,10 @@ class Policy(BaseApiObj):
         assigned_groups_names = self.get_collector_groups()
         return group_name in assigned_groups_names
 
+    def is_default_group_assigned(self) -> bool:
+        assigned_groups_names = self.get_collector_groups()
+        return PolicyDefaultCollectorGroupsNames.DEFAULT_COLLECTOR_GROUP_NAME.value in assigned_groups_names
+
     def _get_field(self, field_name, from_cache, update_cache):
         from_cache = from_cache if from_cache is not None else self._use_cache
         if from_cache:
@@ -142,9 +125,8 @@ class Policy(BaseApiObj):
     def create(self):
         raise NotImplemented("Policy can't be created")
 
-    def get_fields(self, safe=False, update_cache_data=False, rest_client=None) -> dict:
-        rest_client = rest_client or self._rest_client
-        policies_fields = rest_client.policies.get_policies()
+    def get_fields(self, safe=False, update_cache_data=False) -> dict:
+        policies_fields = self._policy_rest.get_policies()
         for policy_fields in policies_fields:
             if policy_fields[PolicyFieldsNames.NAME.value] == self.name:
                 logger.debug(f"{self} updated data from management: \n {policy_fields}")
@@ -186,7 +168,7 @@ class Policy(BaseApiObj):
                 group_names_to_assign.append(group_name)
         logger.info(f"Assign {self} to these collector groups {group_names_to_assign}")
         if len(group_names_to_assign):
-            self._rest_client.policies.assign_policy(policy_name=self.name, group_name=group_names_to_assign)
+            self._policy_rest.assign_policy(policy_name=self.name, group_name=group_names_to_assign)
             logger.info(f"Sleep {wait_sec} seconds after assigning policy")
             time.sleep(wait_sec)
 
@@ -213,7 +195,7 @@ class Policy(BaseApiObj):
             logger.info(f"{self} already in {mode_name} mode!")
         else:
             logger.info(f"Set {self} mode to {mode_name}")
-            self._rest_client.policies.set_policy_mode(name=self.name, mode=mode_name)
+            self._policy_rest.set_policy_mode(name=self.name, mode=mode_name)
             if wait:
                 logger.info(f"Sleep {wait_sec} seconds after set policy mode to {mode_name}")
                 time.sleep(wait_sec)
@@ -239,40 +221,13 @@ class Policy(BaseApiObj):
         else:
 
             logger.info(f"Set {self}'s rule '{rule_name}' to {state} state")
-            self._rest_client.policies.set_policy_rule_state(policy_name=self.name, rule_name=rule_name,
-                                                             state=state)
+            self._policy_rest.set_policy_rule_state(policy_name=self.name, rule_name=rule_name, state=state)
             if wait:
                 logger.info(f"Sleep {wait_sec} seconds after set rule state")
                 time.sleep(wait_sec)
 
-    @allure.step("Set policy rule action to Log")
-    def set_rule_action_to_log(self, rule_name, wait=True, safe=False):
-        self.set_rule_action(rule_name=rule_name, action=RuleActions.LOG.value,
-                             wait=wait, safe=safe)
 
-    @allure.step("Set policy rule action to Block")
-    def set_rule_action_to_block(self, rule_name, wait=True, safe=False):
-        self.set_rule_action(rule_name=rule_name, action=RuleActions.BLOCK.value,
-                             wait=wait, safe=safe)
-
-    @allure.step("Set policy rule action")
-    def set_rule_action(self, rule_name, action, wait=True, safe=False,
-                        wait_sec=None):
-        is_in_expected_mode = True if self.get_rule_action(rule_name=rule_name) == action else False
-        wait_sec = wait_sec or WAIT_AFTER_SET_RULE_ACTION_STATE
-        if is_in_expected_mode:
-            assert safe, f"{self}'s rule '{rule_name}' already in {action} action !"
-            logger.info(f"{self}'s rule '{rule_name}' already in {action} action !")
-        else:
-            logger.info(f"Set {self}'s rule '{rule_name}' to {action} action")
-            self._rest_client.policies.set_policy_rule_action(policy_name=self.name, rule_name=rule_name,
-                                                              action=action)
-            if wait:
-                logger.info(f"Sleep {wait_sec} seconds after set rule action")
-                time.sleep(wait_sec)
-
-
-def set_policies_rule_state_to_disabled(policies: list[Policy], rule_name):
+def set_policies_rule_state_to_disabled(policies: list[BasePolicy], rule_name):
     policies_rules_states = []
     for policy in policies:
         policy_rule_state = (policy, rule_name, RuleStates.DISABLED.value)
@@ -280,7 +235,7 @@ def set_policies_rule_state_to_disabled(policies: list[Policy], rule_name):
     set_policies_rules_states(policies_rules_states=policies_rules_states)
 
 
-def set_policies_rule_state_to_enabled(policies: list[Policy], rule_name):
+def set_policies_rule_state_to_enabled(policies: list[BasePolicy], rule_name):
     policies_rules_states = []
     for policy in policies:
         policy_rule_state = (policy, rule_name, RuleStates.ENABLED.value)
@@ -299,9 +254,8 @@ def set_policies_rules_states(policies_rules_states: List[tuple]):
     time.sleep(WAIT_AFTER_SET_RULE_ACTION_STATE)
 
 
-def set_policies_to_prevention(policies: List[Policy]):
+def set_policies_to_prevention(policies: List[BasePolicy]):
     for policy in policies:
         policy.set_to_prevention_mode(safe=True, wait=False)
     logger.info(f"Sleep {WAIT_AFTER_SET_POLICY_MODE} seconds after set policies mode to prevention")
     time.sleep(WAIT_AFTER_SET_POLICY_MODE)
-
