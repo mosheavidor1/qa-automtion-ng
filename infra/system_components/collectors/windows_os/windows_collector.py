@@ -110,54 +110,58 @@ class WindowsCollector(CollectorAgent):
 
     def get_configuration_files_details(self) -> List[dict]:
         """
-        return these data of the configuration files: names, sizes, datetime
+        return these data of the configuration files: names, sizes, datetime, sorted by timestamp.
         """
         folder_path = self.__collector_config_updates_folder
-        config_files_details = self.os_station.get_folder_json_files_details(folder_path=folder_path)
+        config_files_details = self.os_station.get_files_details_in_folder(folder_path=folder_path,
+                                                                           desired_files_suffix='.jsn',
+                                                                           ignore_file_suffix='.jsn.failed',
+                                                                           ordered_by_date_time=True)
         return config_files_details
 
     def get_the_latest_config_file_details(self) -> dict:
         """
         return these data of the latest created configuration file: names, sizes, datetime
         """
-        current_config_files_details = self.get_configuration_files_details()
-        latest_file_details = current_config_files_details[0]
-        for file_details in current_config_files_details:
-            if file_details['file_datetime'] > latest_file_details['file_datetime']:
-                latest_file_details = file_details
-        return latest_file_details
+        config_files_details = self.get_configuration_files_details()  # sorted by timestamp
+        return config_files_details[-1]
 
     @allure.step("Wait for a new configuration file")
-    def wait_for_new_config_file(self, latest_config_file_details=None):
+    def wait_for_new_config_file(self, config_files_details_before_action: List[dict] = None):
         """
-        Wait for a new configuration file received.
+        Wait for a new configuration file received by datetime according to the resolution of minutes,
+        If the size of the new config file is smaller than the size of the last config file then it is a bug in Infra
+        because the list of config files received sorted by datetime.
+        If the new config file was received in the same minute as the last config file, check that the new config
+        file didn't exist in the list of recent config files to validate that it is a new file and not and not actually
+        the last config, because then no new file was received.
+        And if the size of the latest config file is larger than the size of the last file, then a new file has been received.
         """
-        latest_config_file_details = latest_config_file_details or self.get_the_latest_config_file_details()
+        config_files_details_before_action = config_files_details_before_action or self.get_configuration_files_details()
+        latest_config_file_details = config_files_details_before_action[-1]
         latest_config_file_datetime = latest_config_file_details['file_datetime']
         logger.info(f"the current latest file datetime is: {latest_config_file_datetime},wait for a new config")
 
         def condition():
             updated_latest_config_file_details = self.get_the_latest_config_file_details()
             updated_latest_config_file_datetime = updated_latest_config_file_details['file_datetime']
-            logger.info(f"time of the latest config is {updated_latest_config_file_datetime}")
-            return updated_latest_config_file_datetime > latest_config_file_datetime
+            logger.info(f"time of the updated latest config is {updated_latest_config_file_datetime}")
+            if updated_latest_config_file_datetime < latest_config_file_datetime:
+                raise Exception("Infra bug! The configuration files list are not sorted by creation datetime")
+            elif updated_latest_config_file_datetime == latest_config_file_datetime:
+                return not any(updated_latest_config_file_details['file_name'] == config_file['file_name'] and \
+                               updated_latest_config_file_details['file_datetime'] == config_file['file_datetime']
+                               for config_file in config_files_details_before_action)
+            elif updated_latest_config_file_datetime > latest_config_file_datetime:
+                return True
 
         logger.info(f"Wait until a new latest configuration file received,"
                     f" current latest is {latest_config_file_details}")
-        try:
-            wait_for_condition(condition_func=condition,
-                               timeout_sec=MAX_WAIT_FOR_NEW_CONFIG_FILE_TO_APPEAR,
-                               interval_sec=CONFIG_FILE_APPEAR_INTERVAL,
-                               condition_msg=f"{self} got new configuration file")
-        except AssertionError as original_error:
-            try:
-                wait_for_condition(condition_func=condition,
-                                   timeout_sec=MAX_WAIT_FOR_NEW_CONFIG_FILE_TO_APPEAR * 4,
-                                   interval_sec=CONFIG_FILE_APPEAR_INTERVAL,
-                                   condition_msg=f"{self} got new configuration file")
-                raise Exception(f"REAL BUG!!! No new configuration file received at all, got error: {original_error}")
-            except AssertionError as real_bug_error:
-                raise Exception(f"Didn't receive a new config file, got an error: {real_bug_error}")
+
+        wait_for_condition(condition_func=condition,
+                           timeout_sec=MAX_WAIT_FOR_NEW_CONFIG_FILE_TO_APPEAR,
+                           interval_sec=CONFIG_FILE_APPEAR_INTERVAL,
+                           condition_msg=f"{self} got new configuration file")
 
     def get_qa_files_path(self):
         return self.__qa_files_path
@@ -461,9 +465,10 @@ class WindowsCollector(CollectorAgent):
     def _remove_all_irrelevant_blg2log_parsers(self):
         parsers = self.os_station.get_list_of_files_in_folder(folder_path=fr'{self.__target_logs_folder}\blg2log_*')
         current_version = self.get_version()
-        for file in parsers:
-            if current_version not in file:
-                self.os_station.remove_file(file_path=fr'{self.__target_logs_folder}\{file}')
+        if parsers is not None and len(parsers) > 0:
+            for file in parsers:
+                if current_version not in file:
+                    self.os_station.remove_file(file_path=fr'{self.__target_logs_folder}\{file}')
 
     @allure.step("{0} - Clear logs")
     def clear_logs(self):
@@ -726,3 +731,18 @@ class WindowsCollector(CollectorAgent):
         Reporter.report(rf"{self.__collector_config_folder}\*.*.bak")
         self.os_station.remove_file(rf"{self.__collector_config_folder}\*.*.bak")
 
+    @allure.step("Search for a given string {string_to_find} appears in logs after a given timestamp {first_log_date_time}")
+    def is_string_in_logs(self, string_to_find: str, first_log_date_time: str) -> bool:
+        logger.info(f"Get parsed logs from {first_log_date_time}")
+        log_files_dict = self.get_parsed_logs_after_specified_time_stamp(
+            first_log_timestamp_to_append=first_log_date_time,
+            file_suffix='.blg')
+        for file_name, file_content in log_files_dict.items():
+            Reporter.report(f"Checking if '{string_to_find}' received in the parsed log {file_name}", logger_func=logger.info)
+            result = StringUtils.get_txt_by_regex(text=file_content.lower(),
+                                                  regex=string_to_find.lower(),
+                                                  group=0)
+            if result is not None:
+                Reporter.report(f"Received from '{file_name}' log file: '{result}'", logger_func=logger.info)
+                return True
+        return False

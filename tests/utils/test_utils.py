@@ -1,5 +1,3 @@
-import time
-import allure
 from infra.system_components.collectors.reporter_utils import attach_log_to_allure_report
 from contextlib import contextmanager
 from infra.allure_report_handler.reporter import Reporter

@@ -141,6 +141,9 @@ class CollectorAgent:
     def get_current_process_id(self):
         pass
 
+    def get_current_datetime(self):
+        return self.os_station.get_current_machine_datetime()
+
     def copy_log_parser_to_machine(self):
         pass
 
@@ -215,4 +218,8 @@ class CollectorAgent:
     @abstractmethod
     def cleanup_edr_simulation_tester(self, edr_event_tester_path, filename):
         """This function performs a cleanup of the leftovers of the EDR event tester."""
+        pass
+
+    @abstractmethod
+    def is_string_in_logs(self, string_to_find, first_log_date_time):
         pass

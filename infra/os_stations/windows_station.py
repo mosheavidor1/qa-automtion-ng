@@ -138,7 +138,11 @@ class WindowsStation(OsStation):
                 if return_output:
                     if output is not None:
                         output = output.strip()
-                    logger.debug(f"Finall Output is: {output}")
+                        if len(output) < 1000:
+                            logger.debug(f"Final Output is: {output}")
+                        else:
+                            logger.debug(f"command {cmd} output size is: {len(output)} - skip write to log")
+
                     return output
 
         except SCMRException as e:
@@ -394,23 +398,44 @@ class WindowsStation(OsStation):
 
         return files
 
-    def get_folder_json_files_details(self, folder_path: str) -> List[dict]:
+    def get_files_details_in_folder(self,
+                                    folder_path: str,
+                                    desired_files_suffix: str,
+                                    ignore_file_suffix: str = None,
+                                    ordered_by_date_time: bool = True) -> List[dict]:
         """
-        Get files inside {folder path} include name, size and datetime.
+        Get files inside {folder path} include name, size and datetime, sorted by timestamp
         """
+
+        if desired_files_suffix is None:
+            raise Exception("desired_files_suffix - must pass this param - for example, .json")
+
+        command = rf'dir {folder_path}# | find "{desired_files_suffix}"'
+        if ordered_by_date_time:
+            command = command.replace('#', ' /OD') # sorted by timestamp
+        else:
+            command = command.replace('#', '')
+
+        date_index = 0
+        time_index = 1
+        pm_am_index = 2
+        size_index = 3
+        name_index = 4
         logger.info(f"Get details of the json files inside {folder_path}: size, name and datetime")
-        result = self.execute_cmd(cmd=rf'dir {folder_path} | find ".jsn"')
+        result = self.execute_cmd(cmd=command)
+
         files_details = result.split('\r\n')
         logger.debug(f"{folder_path} contains these files details {files_details}")
         formatted_files_details = []
         for file_details in files_details:
             formatted_file_details = re.split('\s+', file_details)
-            file_details_dict = {}
-            file_create_date = f"{formatted_file_details[0]} {formatted_file_details[1]} {formatted_file_details[2]}"
-            file_details_dict["file_datetime"] = datetime.strptime(f"{file_create_date}", '%m/%d/%Y %I:%M %p')
-            file_details_dict["file_name"] = formatted_file_details[4]
-            file_details_dict["file_size"] = int(formatted_file_details[3].replace(",", ""))
-            formatted_files_details.append(file_details_dict)
+            if ignore_file_suffix not in formatted_file_details[name_index]:
+                file_details_dict = {}
+                file_create_date = f"{formatted_file_details[date_index]} {formatted_file_details[time_index]} {formatted_file_details[pm_am_index]}"
+                file_details_dict["file_datetime"] = datetime.strptime(f"{file_create_date}", '%m/%d/%Y %I:%M %p')
+                file_details_dict["file_name"] = formatted_file_details[name_index]
+                file_details_dict["file_size"] = int(formatted_file_details[size_index].replace(",", ""))
+                formatted_files_details.append(file_details_dict)
 
         return formatted_files_details
 
