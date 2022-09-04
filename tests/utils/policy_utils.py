@@ -3,8 +3,8 @@ from contextlib import contextmanager
 
 import allure
 
-from infra.api.management_api.policy import DefaultPoliciesNames, RulesNames, set_policies_rule_state_to_disabled, \
-     set_policies_rules_states
+from infra.api.management_api.base_policy import set_policies_rule_state_to_disabled, set_policies_rules_states
+from infra.api.management_api.security_policy import DefaultPoliciesNames, RulesNames
 from infra.api.management_api.user import User
 from typing import List
 from enum import Enum
@@ -53,7 +53,7 @@ def change_policy_rule_fields_context(user: User, policy_name, rule_name):
     """
        Change policy rule's fields:state, action and finally return to previous rule's fields
     """
-    policy = user.rest_components.policies.get_by_name(policy_name=policy_name)
+    policy = user.rest_components.security_policies.get_by_name(policy_name=policy_name)
     old_state = policy.get_rule_state(rule_name=rule_name)
     old_action = policy.get_rule_action(rule_name=rule_name)
     try:
@@ -66,7 +66,7 @@ def change_policy_rule_fields_context(user: User, policy_name, rule_name):
 
 @contextmanager
 def change_policy_mode_context(user: User, policy_name):
-    policy = user.rest_components.policies.get_by_name(policy_name=policy_name)
+    policy = user.rest_components.security_policies.get_by_name(policy_name=policy_name)
     old_mode = policy.get_operation_mode()
     try:
         yield
@@ -84,7 +84,7 @@ def disable_rule_in_policies_context(user: User, policies_names: List[str], rule
         policies = []
         original_rule_state_by_policy_name = {}
         for policy_name in policies_names:
-            policy = user.rest_components.policies.get_by_name(policy_name=policy_name)
+            policy = user.rest_components.security_policies.get_by_name(policy_name=policy_name)
             if policy.get_rule_by_name(rule_name=rule_name, safe=True) is not None:
                 original_rule_state_by_policy_name[policy_name] = policy.get_rule_state(rule_name=rule_name)
                 policies.append(policy)

@@ -13,12 +13,12 @@ from infra.multi_tenancy.tenant import Tenant
 from infra import common_utils
 from infra.system_components.collectors.windows_os.windows_collector import WindowsCollector
 from infra.system_components.management import Management
-from infra.api.management_api.policy import WAIT_AFTER_ASSIGN
-from tests.utils.policy_utils import LINUX_MALWARES_NAMES
+from infra.api.management_api.base_policy import WAIT_AFTER_ASSIGN
+from tests.utils.policy_utils import WINDOWS_MALWARES_NAMES, LINUX_MALWARES_NAMES
 
 from infra.utils.utils import StringUtils
 from infra.system_components.aggregator import Aggregator
-from tests.utils.policy_utils import WINDOWS_MALWARES_NAMES
+
 
 logger = logging.getLogger(__name__)
 

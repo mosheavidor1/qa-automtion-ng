@@ -3,10 +3,11 @@ import logging
 import allure
 import pytest
 from infra.allure_report_handler.reporter import TEST_STEP, Reporter, INFO
+from infra.api.management_api.base_policy import ModeNames
 from infra.api.management_api.event import EventActionNames
 from infra.system_components.collector import CollectorAgent
 from infra.system_components.collectors.linux_os.linux_collector import LinuxCollector
-from infra.api.management_api.policy import DefaultPoliciesNames, RulesNames, ModeNames, RuleActions, \
+from infra.api.management_api.security_policy import DefaultPoliciesNames, RulesNames, RuleActions, \
     ExternalPoliciesNames
 from infra.system_components.collectors.windows_os.windows_collector import WindowsCollector
 from sut_details import collector_type
@@ -86,7 +87,7 @@ def test_policy_mode_with_rule_block(fx_system_without_events_and_exceptions, co
     malware_name = get_relevant_malware_name(policy_name=policy_name, rule_name=rule_name)
     management = fx_system_without_events_and_exceptions
     user = management.tenant.default_local_admin
-    policy = user.rest_components.policies.get_by_name(policy_name=policy_name)
+    policy = user.rest_components.security_policies.get_by_name(policy_name=policy_name)
 
     with new_group_with_collector_context(management=management,
                                           collector_agent=collector) as group_with_collector:
@@ -172,7 +173,7 @@ def test_policy_rule_action_log(fx_system_without_events_and_exceptions, collect
     malware_name = get_relevant_malware_name(policy_name=policy_name, rule_name=rule_name)
     management = fx_system_without_events_and_exceptions
     user = management.tenant.default_local_admin
-    policy = user.rest_components.policies.get_by_name(policy_name=policy_name)
+    policy = user.rest_components.security_policies.get_by_name(policy_name=policy_name)
 
     with new_group_with_collector_context(management=management,
                                           collector_agent=collector) as group_with_collector:
@@ -259,7 +260,7 @@ def test_disabled_policy_rule_state(fx_system_without_events_and_exceptions, col
     malware_name = get_relevant_malware_name(policy_name=policy_name, rule_name=rule_name)
     management = fx_system_without_events_and_exceptions
     user = management.tenant.default_local_admin
-    policy = user.rest_components.policies.get_by_name(policy_name=policy_name)
+    policy = user.rest_components.security_policies.get_by_name(policy_name=policy_name)
 
     with new_group_with_collector_context(management=management,
                                           collector_agent=collector) as group_with_collector:
@@ -324,7 +325,7 @@ def test_can_not_delete_main_policy(management, xray, policy_name):
         management.ui_client.security_policies.validate_cannot_delete_default_policies(data=test_im_params)
 
     with TEST_STEP(f"Validate that the policy '{policy_name}' is exists"):
-        user.rest_components.policies.get_by_name(policy_name=policy_name)
+        user.rest_components.security_policies.get_by_name(policy_name=policy_name)
 
 
 
