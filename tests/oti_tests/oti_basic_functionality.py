@@ -81,3 +81,5 @@ def test_basic_oti(management, aggregator, collector, jenkins_handler):
             Reporter.report(
                 f"Collector was upgraded successfully via OTI and now the version is: {collector_agent.get_version()}",
                 logger_func=logger.info)
+
+    collector_agent.update_process_id()
