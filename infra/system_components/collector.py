@@ -79,7 +79,7 @@ class CollectorAgent:
         pass
 
     @abstractmethod
-    def wait_for_new_config_file(self, latest_config_file_details=None):
+    def wait_for_new_config_file(self, config_files_details_before_action=None):
         """
         wait until a new latest configuration file details received
         """
