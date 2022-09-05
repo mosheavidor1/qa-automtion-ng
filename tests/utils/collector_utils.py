@@ -222,7 +222,7 @@ def is_config_file_received_in_collector(collector: CollectorAgent,
     full_in_logs = collector.is_string_in_logs(string_to_find=full_string, first_log_date_time=first_log_date_time)
     partial_in_logs = collector.is_string_in_logs(string_to_find=partial_string, first_log_date_time=first_log_date_time)
 
-    if desired_config_type == CollectorConfigurationTypes.FULL:
+    if desired_config_type == CollectorConfigurationTypes.FULL.value:
         if full_in_logs:
             assert config_file_details['file_size'] >= MIN_FULL_CONFIG_SIZE_IN_KB, f"log saying {full_string} \
                        but config file size is actually of partial config, size:{config_file_details['file_size']}"
@@ -231,7 +231,7 @@ def is_config_file_received_in_collector(collector: CollectorAgent,
         elif partial_in_logs:
             assert False, f"log saying '{partial_string}' but the expected configuration is {desired_config_type}"
 
-    elif desired_config_type == CollectorConfigurationTypes.PARTIAL:
+    elif desired_config_type == CollectorConfigurationTypes.PARTIAL.value:
         if partial_in_logs:
             assert config_file_details['file_size'] < MIN_FULL_CONFIG_SIZE_IN_KB, f"log saying {partial_string} \
                    but config file size is actually of full config, size:{config_file_details['file_size']}"
