@@ -291,13 +291,16 @@ def _change_collector_version(management: Management, aggregator: Aggregator,
         CollectorUtils.validate_collector_installed_successfully(tenant=management.tenant,
                                                                  collector_agent=collector_agent,
                                                                  expected_version=target_version)
+        collector_agent.update_process_id()
 
 
 @contextmanager
-def downgrade_collector_context(management: Management, aggregator: Aggregator, collector_agent: CollectorAgent):
-    """ Downgrade collector to 1 build lower, finally return to the start version """
+def downgrade_collector_context(management: Management,
+                                aggregator: Aggregator,
+                                collector_agent: CollectorAgent,
+                                version_to_downgrade: str):
+    """ Downgrade collector to the desired version to downgrade, finally return to the initial version """
     source_version = collector_agent.get_version()
-    version_to_downgrade = get_previous_build_version_number(collector=collector_agent)
     with allure.step(f"Setup - Downgrade {collector_agent} version from {source_version} to {version_to_downgrade}"):
         logger.info(f"Downgrade {collector_agent} version from {source_version} to {version_to_downgrade}")
         _change_collector_version(management=management, aggregator=aggregator,

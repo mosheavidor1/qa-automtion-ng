@@ -8,6 +8,7 @@ USER_NAME_DOMAIN = f'ensilo\\{USER_NAME}'
 SHARED_DRIVE_PATH = r'\\ens-fs01.ensilo.local'
 SHARED_DRIVE_QA_PATH = fr'{SHARED_DRIVE_PATH}\qa'
 SHARED_DRIVE_VERSIONS_PATH = fr'{SHARED_DRIVE_PATH}\Versions'
+SHARED_DRIVE_COLLECTORS_CONTENT = fr"{SHARED_DRIVE_VERSIONS_PATH}\Collector_Content"
 SHARED_DRIVE_LINUX_VERSIONS_PATH = fr"{SHARED_DRIVE_VERSIONS_PATH}\linux-collector"
 
 JENKINS_JOB = fr'{os.getenv("BUILD_URL")}allure/' if os.getenv("BUILD_URL") is not None else None

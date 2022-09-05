@@ -8,6 +8,7 @@ from infra.allure_report_handler.reporter import Reporter
 from infra import common_utils
 from infra.containers.postgresql_over_ssh_details import PostgresqlOverSshDetails
 from infra.containers.ssh_details import SshDetails
+from infra.forti_edr_versions_service_handler.forti_edr_versions_service_handler import FortiEdrVersionsServiceHandler
 from infra.multi_tenancy.tenant import Tenant
 from infra.posgresql_db.postgresql_db import PostgresqlOverSshDb
 from infra.api.nslo_wrapper.rest_commands import RestCommands
@@ -21,6 +22,8 @@ from infra.system_components.forti_edr_linux_station import FortiEdrLinuxStation
 
 from infra.test_im.management_ui_client import ManagementUiClient
 from infra.utils.utils import StringUtils
+from third_party_details import SHARED_DRIVE_COLLECTORS_CONTENT
+
 logger = logging.getLogger(__name__)
 
 
@@ -296,6 +299,58 @@ class Management(FortiEdrLinuxStation):
     def get_cores(self):
         cores = self._admin_rest_api_client.system_inventory.get_core_info()
         return cores
+
+    @allure.step("Upload content to management")
+    def upload_content(self, desired_content_num: int):
+        """
+        :param desired_content_num: content version to upgrade.
+        :return: True if the content uploaded successfully or if the content already exist.
+                 False if the content failed uploading or if file doesn't exist.
+        """
+        content_version = str(desired_content_num)
+        result = FortiEdrVersionsServiceHandler.get_latest_content_files_from_shared_folder(num_last_content_files=100)
+        content_file_name = f"FortiEDRCollectorContent-{content_version}.nslo"
+
+        if f"FortiEDRCollectorContent-{content_version}.nslo" not in result:
+            assert False, f"Can not find content file {content_file_name} in shared folder"
+
+        else:
+            path = fr"{SHARED_DRIVE_COLLECTORS_CONTENT}\{content_file_name}"
+            Reporter.report(f"Upload content file from: {path}", logger_func=logger.info)
+
+            status = self._admin_rest_api_client.rest.admin.UploadContent(path)
+
+            if not status:
+                assert False, "Failed to upload content to management"
+
+        Reporter.report("Content uploaded successfully :)", logger_func=logger.info)
+
+    @allure.step("Upgrade collector with selected version")
+    def update_collector_installer(self,
+                                   collector_groups: str,
+                                   organization: str,
+                                   windows_version: str,
+                                   osx_version: str,
+                                   linux_version: str):
+        """
+        :param collector_groups: What collector group is going to be upgrade.
+                organization: In what organization is the collector group.
+                windows_version, osx_version, linux_version: Fill the version according to collector OS.
+
+        :return: True if collector succeeded to upgrade.
+                 False if the upgrade collector failed.
+        """
+        status, response = self._admin_rest_api_client.rest.admin.UpdateCollectorInstaller(
+            collector_groups=collector_groups,
+            organization=organization, windows_version=windows_version, osx_version=osx_version,
+            linux_version=linux_version)
+
+        if response.status_code != 200:
+            assert False, f"Update collector installer API - expected response code: {200}, actual:{response.status_code}"
+
+        if not status:
+            assert False, f'Could not get response from the management. \n{response}'
+        return True
 
 
 def reduce_default_org_license_capacity():

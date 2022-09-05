@@ -22,7 +22,7 @@ def build_content_according_to_specific_collector(management: Management,
     management_version = management.get_version()
 
     build_content_job_params = get_build_content_params_as_dict_according_to_collector_current_version(
-        management=management_version,
+        management_version=management_version,
         collector=collector,
         collector_version=collector.initial_version)
 
