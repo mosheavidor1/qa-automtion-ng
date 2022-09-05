@@ -107,6 +107,12 @@ pipeline {
                 defaultValue: 'Default',
                 description: '')
 
+        separator( name: 'oti_params')
+
+        string( name: 'oti_base_version',
+                defaultValue: '5.1.0.590',
+                description: 'base version that we are going to upgrade from')
+
     }
     triggers {
         parameterizedCron('''
