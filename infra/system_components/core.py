@@ -84,7 +84,7 @@ class Core(FortiEdrLinuxStation):
 
         blg_log_files = self.get_list_of_files_in_folder(log_folder, file_suffix=file_suffix)
 
-        parsed_log_paths = self._parse_blg_log_files(blg_log_files_paths=blg_log_files)
+        parsed_log_paths = self.get_parsed_blg_log_files(blg_log_files_paths=blg_log_files)
 
         for single_file in parsed_log_paths:
             content = self.get_file_content(file_path=single_file)
@@ -101,17 +101,17 @@ class Core(FortiEdrLinuxStation):
         blg_log_files = self.get_list_of_files_in_folder(log_folder, file_suffix='.blg')
 
         # parse only files that was last modified after the first_log_timestamp
-        parsed_log_paths = self._parse_blg_log_files(blg_log_files_paths=blg_log_files,
-                                                     modified_after_date_time=first_log_timestamp,
-                                                     machine_datetime_format=machine_datetime_format)
+        parsed_log_paths = self.get_parsed_blg_log_files(blg_log_files_paths=blg_log_files,
+                                                         modified_after_date_time=first_log_timestamp,
+                                                         machine_datetime_format=machine_datetime_format)
         return parsed_log_paths
 
     @allure.step("{0} - Get parsed log files")
-    def _parse_blg_log_files(self,
-                             blg_log_files_paths: List[str],
-                             default_blg_version_parser: str = '5.0.10.202',
-                             modified_after_date_time=None,
-                             machine_datetime_format="%d/%m/%Y %H:%M:%S"):
+    def get_parsed_blg_log_files(self,
+                                 blg_log_files_paths: List[str],
+                                 default_blg_version_parser: str = '5.0.10.202',
+                                 modified_after_date_time=None,
+                                 machine_datetime_format="%d/%m/%Y %H:%M:%S"):
 
         version = self.get_version()
 

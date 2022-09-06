@@ -3,11 +3,12 @@ import time
 import allure
 from enum import Enum
 from infra.api.api_object import BaseApiObj
+from infra.api.api_object_factory.comm_control_policies_factory import CommControlPoliciesFactory
 from infra.api.nslo_wrapper.rest_commands import RestCommands
 from infra.api.api_object_factory.exceptions_factory import ExceptionsFactory
 from infra.api.api_object_factory.events_factory import EventsFactory
 from infra.api.api_object_factory.rest_collectors_factory import RestCollectorsFactory
-from infra.api.api_object_factory.policies_factory import PoliciesFactory
+from infra.api.api_object_factory.security_policies_factory import SecurityPoliciesFactory
 from infra.api.api_object_factory.groups_factory import GroupsFactory
 import sut_details
 
@@ -52,8 +53,10 @@ class UserRestComponentsFactory:
                                                                        factory_rest_client=rest_client)
         self.events: EventsFactory = EventsFactory(organization_name=organization_name,
                                                    factory_rest_client=rest_client)
-        self.policies: PoliciesFactory = PoliciesFactory(organization_name=organization_name,
-                                                         factory_rest_client=rest_client)
+        self.security_policies: SecurityPoliciesFactory = SecurityPoliciesFactory(organization_name=organization_name,
+                                                                                  factory_rest_client=rest_client)
+        self.comm_control_policies: CommControlPoliciesFactory = CommControlPoliciesFactory(
+            organization_name=organization_name, factory_rest_client=rest_client)
         self.collector_groups: GroupsFactory = GroupsFactory(organization_name=organization_name,
                                                              factory_rest_client=rest_client)
 
@@ -67,8 +70,8 @@ class User(BaseApiObj):
         self._id = initial_data[UserFieldsNames.ID.value]  # Static, unique identifier
         self._organization_name = initial_data[UserFieldsNames.ORGANIZATION.value]
         super().__init__(rest_client=RestCommands(management_ip=sut_details.management_host,
-                                                  management_user=initial_data[UserFieldsNames.USERNAME.value],
-                                                  management_password=self._password,
+                                                  rest_api_user_name=initial_data[UserFieldsNames.USERNAME.value],
+                                                  rest_api_user_password=self._password,
                                                   organization=self._organization_name),
                          initial_data=initial_data)
         self._rest_components = UserRestComponentsFactory(organization_name=self._organization_name,

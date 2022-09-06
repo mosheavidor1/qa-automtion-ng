@@ -26,7 +26,7 @@ class OsXCollector(CollectorAgent):
     def get_current_process_id(self):
         pass
 
-    def get_version(self):
+    def get_version(self, safe: bool = False):
         pass
 
 
@@ -59,6 +59,9 @@ class OsXCollector(CollectorAgent):
         pass
 
     def uninstall_collector(self, registration_password: str = '12345678', append_log_to_report=True):
+        pass
+
+    def get_logs_content(self, file_suffix='.blg', filter_regex=None):
         pass
 
     def append_logs_to_report(self, first_log_timestamp_to_append: str = None, file_suffix='.blg'):

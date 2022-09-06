@@ -145,6 +145,27 @@ def get_latest_versions_according_to_versions_path_as_dict(versions_path: str,
     return all_versions_dict
 
 
+@app.route('/list_content', methods=['GET'])
+def list_content():
+    num_last_content_files = int(request.args.get('num_last_content_files'))
+    all_dirs_in_version = os.listdir(r'X:\Collector_Content')
+    filtered_nslo = [x for x in all_dirs_in_version if 'FortiEDRCollectorContent' in x and 'nslo' in x and 'tmp' not in x]
+    # filtered_json = [x for x in all_dirs_in_version if 'FortiEDRCollectorContent' in x and 'json' in x and 'tmp' not in x]
+
+    filtered_nslo.sort(key=lambda o: int(o.split('FortiEDRCollectorContent-')[1].split('.nslo')[0]))
+    filtered_nslo.reverse()
+
+    # filtered_json.sort(key=lambda o: int(o.split('FortiEDRCollectorContent-')[1].split('.json')[0]))
+    # filtered_json.reverse()
+
+    response = app.response_class(
+        response=json.dumps(filtered_nslo[:num_last_content_files]),
+        status=200,
+        mimetype='application/json'
+    )
+    return response
+
+
 # The route() function of the Flask class is a decorator,
 # which tells the application which URL should call
 # the associated function.

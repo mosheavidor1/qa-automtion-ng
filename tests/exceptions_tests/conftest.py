@@ -1,6 +1,7 @@
 from enum import Enum
 import pytest
 from infra.system_components.collectors.linux_os.linux_collector import LinuxCollector
+from tests.utils.tenant_utils import generate_group_name
 
 WINDOWS_MALWARE_NAME = "DynamicCodeTests.exe"
 LINUX_MALWARE_NAME = "listen"
@@ -26,7 +27,7 @@ def exception_function_fixture(management, collector, request):
     user = management.tenant.default_local_admin
     test_flow = request.param
     malware_name = LINUX_MALWARE_NAME if isinstance(collector, LinuxCollector) else WINDOWS_MALWARE_NAME
-    group_name = "empty"
+    group_name = generate_group_name()
     destination = "Internal Destinations"
     user.rest_components.exceptions.delete_all(safe=True, wait_sec=1)
     user.rest_components.events.delete_all(safe=True)
@@ -41,7 +42,9 @@ def exception_function_fixture(management, collector, request):
              ExceptionTestType.EDIT_FULL_COVERED_EXCEPTION | \
              ExceptionTestType.EDIT_PARTIALLY_COVERED_EXCEPTION | \
              ExceptionTestType.CREATE_PARTIALLY_COVERED_EXCEPTION_EVENT_CREATED:
-            user.rest_components.collector_groups.create_collector_group(group_name=group_name)
+
+            if user.rest_components.collector_groups.get_by_name(name=group_name, safe=True) is None:
+                user.rest_components.collector_groups.create_collector_group(group_name=group_name)
 
     test_resources = {
         'management': management,
@@ -59,16 +62,20 @@ def exception_function_fixture(management, collector, request):
 
     match test_flow:
         case ExceptionTestType.CREATE_PARTIALLY_COVERED_EXCEPTION | \
+             ExceptionTestType.EDIT_FULL_COVERED_EXCEPTION | \
+             ExceptionTestType.EDIT_PARTIALLY_COVERED_EXCEPTION | \
              ExceptionTestType.CREATE_PARTIALLY_COVERED_EXCEPTION_EVENT_CREATED:
-
-            management.tenant.rest_api_client.system_inventory.move_collector(
-                validation_data={'ipAddress': collector.os_station.host_ip},
-                group_name=start_group)
+            if test_flow == ExceptionTestType.CREATE_PARTIALLY_COVERED_EXCEPTION:
+                rest_collector.move_to_different_group(target_group_name=start_group)
 
             match test_flow:
-                case ExceptionTestType.CREATE_PARTIALLY_COVERED_EXCEPTION:
+                case ExceptionTestType.CREATE_PARTIALLY_COVERED_EXCEPTION | \
+                     ExceptionTestType.EDIT_FULL_COVERED_EXCEPTION | \
+                     ExceptionTestType.EDIT_PARTIALLY_COVERED_EXCEPTION | \
+                     ExceptionTestType.CREATE_PARTIALLY_COVERED_EXCEPTION_EVENT_CREATED:
+
                     test_im_params = {
-                        "groupName": [group_name],
+                        "groupName": group_name,
                         "loginUser": management.tenant.default_local_admin.get_username(),
                         "loginPassword": management.tenant.default_local_admin.password,
                         "loginOrganization": management.tenant.default_local_admin.password,

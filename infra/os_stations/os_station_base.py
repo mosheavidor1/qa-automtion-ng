@@ -14,6 +14,7 @@ from infra.vpshere.vsphere_vm_operations import VsphereMachineOperations
 EXTRACT_EDR_EVENT_TESTER_TIMEOUT = 60
 MAX_WAIT_FOR_FILE_TO_APPEAR = 60
 
+
 class OsStation(metaclass=ABCMeta):
 
     def __init__(self, host_ip: str, user_name: str, password: str):
@@ -167,7 +168,15 @@ class OsStation(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def get_file_content(self, file_path: str) -> str:
+    def is_file(self, path: str) -> bool:
+        pass
+
+    @abstractmethod
+    def is_folder(self, path: str) -> bool:
+        pass
+
+    @abstractmethod
+    def get_file_content(self, file_path: str, filter_regex: str = None) -> str:
         pass
 
     @abstractmethod
@@ -223,6 +232,10 @@ class OsStation(metaclass=ABCMeta):
 
     @abstractmethod
     def overwrite_file_content(self, content: str, file_path: str):
+        pass
+
+    @abstractmethod
+    def append_text_to_file(self, content: str, file_path: str):
         pass
 
     @abstractmethod

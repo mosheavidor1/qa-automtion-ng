@@ -75,7 +75,7 @@ class RestCollector(BaseApiObj):
         value = self._get_field(field_name=field_name, from_cache=from_cache, update_cache=update_cache)
         return value
 
-    def get_operating_system(self, from_cache=None, update_cache=True):
+    def get_operating_system(self, from_cache=None, update_cache=True) -> str:
         field_name = CollectorFieldsNames.OPERATING_SYSTEM.value
         value = self._get_field(field_name=field_name, from_cache=from_cache, update_cache=update_cache)
         return value
@@ -85,7 +85,7 @@ class RestCollector(BaseApiObj):
         value = self._get_field(field_name=field_name, from_cache=from_cache, update_cache=update_cache)
         return value
 
-    def get_version(self, from_cache=None, update_cache=True):
+    def get_version(self, from_cache=None, update_cache=True) -> str:
         field_name = CollectorFieldsNames.VERSION.value
         value = self._get_field(field_name=field_name, from_cache=from_cache, update_cache=update_cache)
         return value
@@ -137,8 +137,17 @@ class RestCollector(BaseApiObj):
     def export(self):
         raise NotImplemented("Should be implemented")
 
-    def isolate(self):
-        raise NotImplemented("Should be implemented")
+    @allure.step("Isolate collector")
+    def isolate(self, wait=True, ):
+        self._rest_client.system_inventory.isolate_collector_by_name_and_id(collector_name=self.get_name(),
+                                                                            collector_id=self.id,
+                                                                            organization_name=self.get_organization_name())
+
+    @allure.step("Remove collector from isolation")
+    def remove_from_isolation(self):
+        self._rest_client.system_inventory.remove_isolation_from_collector(collector_name=self.get_name(),
+                                                                           collector_id=self.id,
+                                                                           organization_name=self.get_organization_name())
 
     def enable_or_disable(self):
         raise NotImplemented("Should be implemented")
@@ -155,26 +164,26 @@ class RestCollector(BaseApiObj):
     @allure.step("Wait until is Disconnected in management")
     def wait_until_disconnected(self, timeout_sec=MAX_WAIT_FOR_STATUS, interval_sec=COLLECTOR_KEEPALIVE_INTERVAL):
         logger.info(f"Wait until {self} is Disconnected in management")
-        wait_for_condition(condition_func=self.is_disconnected,
-                           timeout_sec=timeout_sec, interval_sec=interval_sec)
+        wait_for_condition(condition_func=self.is_disconnected, timeout_sec=timeout_sec, interval_sec=interval_sec,
+                           condition_msg=f"{self} is in disconnected state in management")
 
     @allure.step("Wait until is Degraded in management")
     def wait_until_degraded(self, timeout_sec=MAX_WAIT_FOR_STATUS, interval_sec=COLLECTOR_KEEPALIVE_INTERVAL):
-        logger.info(f"Wait until {self} is Disconnected in management")
-        wait_for_condition(condition_func=self.is_degraded,
-                           timeout_sec=timeout_sec, interval_sec=interval_sec)
+        logger.info(f"Wait until {self} is degraded in management")
+        wait_for_condition(condition_func=self.is_degraded, timeout_sec=timeout_sec, interval_sec=interval_sec,
+                           condition_msg=f"{self} is in Degraded state in management")
 
     @allure.step("Wait for status 'uninstalling' in management")
     def wait_for_uninstalling(self, timeout_sec=MAX_WAIT_FOR_STATUS, interval_sec=COLLECTOR_KEEPALIVE_INTERVAL):
         logger.info(f"Wait until {self} is in status 'uninstalling' in management")
-        wait_for_condition(condition_func=self.is_uninstalling,
-                           timeout_sec=timeout_sec, interval_sec=interval_sec)
+        wait_for_condition(condition_func=self.is_uninstalling, timeout_sec=timeout_sec, interval_sec=interval_sec,
+                           condition_msg=f"{self} is in 'uninstalling' state in management")
 
     @allure.step("Wait until deleted from management")
     def wait_until_deleted(self, timeout_sec=MAX_WAIT_FOR_DELETION, interval_sec=COLLECTOR_KEEPALIVE_INTERVAL):
         logger.info(f"Wait until {self} is deleted from management")
-        wait_for_condition(condition_func=self.is_not_exist,
-                           timeout_sec=timeout_sec, interval_sec=interval_sec)
+        wait_for_condition(condition_func=self.is_not_exist, timeout_sec=timeout_sec, interval_sec=interval_sec,
+                           condition_msg=f"{self} does not appear in management")
 
     @allure.step("Enable collector")
     def enable(self):
@@ -186,11 +195,20 @@ class RestCollector(BaseApiObj):
     def is_running(self):
         return self.get_status(from_cache=False) == FortiEdrSystemState.RUNNING.value
 
+    def is_isolated(self):
+        return self.get_status(from_cache=False) == FortiEdrSystemState.RUNNING.value
+
     @allure.step("Wait until running in management")
     def wait_until_running(self, timeout_sec=MAX_WAIT_FOR_STATUS, interval_sec=COLLECTOR_KEEPALIVE_INTERVAL):
         logger.info(f"Wait until {self} is running in management")
-        wait_for_condition(condition_func=self.is_running,
-                           timeout_sec=timeout_sec, interval_sec=interval_sec)
+        wait_for_condition(condition_func=self.is_running, timeout_sec=timeout_sec, interval_sec=interval_sec,
+                           condition_msg=f"{self} is in 'running' state in management")
+
+    @allure.step("Wait until isolated in management")
+    def wait_until_isolated(self, timeout_sec=MAX_WAIT_FOR_STATUS, interval_sec=COLLECTOR_KEEPALIVE_INTERVAL):
+        logger.info(f"Wait until {self} is isolated in management")
+        wait_for_condition(condition_func=self.is_isolated, timeout_sec=timeout_sec, interval_sec=interval_sec,
+                           condition_msg=f"{self} is isolated in management")
 
     @allure.step("Disable collector")
     def disable(self):
@@ -204,8 +222,8 @@ class RestCollector(BaseApiObj):
     @allure.step("Wait until disabled in management")
     def wait_until_disabled(self, timeout_sec=MAX_WAIT_FOR_STATUS, interval_sec=COLLECTOR_KEEPALIVE_INTERVAL):
         logger.info(f"Wait until {self} is disabled in management")
-        wait_for_condition(condition_func=self.is_disabled,
-                           timeout_sec=timeout_sec, interval_sec=interval_sec)
+        wait_for_condition(condition_func=self.is_disabled, timeout_sec=timeout_sec, interval_sec=interval_sec,
+                           condition_msg=f"{self} is in 'disabled' state in management")
 
     def is_exist(self) -> bool:
         """ Check if collector exists in management """
@@ -216,3 +234,15 @@ class RestCollector(BaseApiObj):
         """ Check if collector doesn't exist in management """
         logger.info(f"Check if {self} doesn't exist in management")
         return not self.is_exist()
+
+    @allure.step("Move to different group in same organization")
+    def move_to_different_group(self, target_group_name, expected_status_code: int = 200):
+        current_group_name = self.get_group_name()
+        assert target_group_name != current_group_name
+        logger.info(f"Move {self} from group {current_group_name} to group {target_group_name} in same organization")
+        self._rest_client.system_inventory.move_collector_to_group(collector_name=self.get_name(),
+                                                                   group_name=target_group_name,
+                                                                   expected_status_code=expected_status_code)
+        updated_group_name = self.get_group_name(from_cache=False)
+        assert updated_group_name == target_group_name, f"{self} didn't move to group: {target_group_name}"
+

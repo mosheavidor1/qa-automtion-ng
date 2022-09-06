@@ -1,5 +1,5 @@
+from datetime import datetime
 import functools
-import os
 import random
 import re
 import logging
@@ -14,7 +14,7 @@ from smbprotocol.exceptions import PipeBroken
 import third_party_details
 from infra import common_utils
 from infra.allure_report_handler.reporter import Reporter
-from infra.decorators import retry
+from infra.decorators import retry, short_retry
 from infra.common_utils import wait_for_condition
 
 from infra.os_stations.os_station_base import OsStation
@@ -60,14 +60,15 @@ class WindowsStation(OsStation):
         except Exception as e:
             Reporter.report("The connections will be removed in background, can continue")
 
-    @retry
+    @short_retry
     @allure.step("Connect To remote machine")
     def connect(self):
         try:
             # here we are using wrapper because this library creates always same service name in the remote machine
             # and we want to ensure that it will create always unique process id in case that something will get wrong
             # with the original service.
-            self._connect_with_retry_on_different_encrypted_option()
+            if self._remote_connection_session is None:
+                self._connect_with_retry_on_different_encrypted_option()
 
         except Exception as e:
             logger.debug(f"Failed to connect to windows machine, original exception: {e}")
@@ -97,7 +98,7 @@ class WindowsStation(OsStation):
             self._remote_connection_session.create_service()
             self.__encrypted_connection = not self.__encrypted_connection
 
-    @retry
+    @short_retry
     @allure.step("Executing command: {cmd}")
     def execute_cmd(self, cmd: str, return_output: bool = True, fail_on_err: bool = False, timeout=180,
                     attach_output_to_report: bool = True,
@@ -137,7 +138,11 @@ class WindowsStation(OsStation):
                 if return_output:
                     if output is not None:
                         output = output.strip()
-                    logger.debug(f"Finall Output is: {output}")
+                        if len(output) < 1000:
+                            logger.debug(f"Final Output is: {output}")
+                        else:
+                            logger.debug(f"command {cmd} output size is: {len(output)} - skip write to log")
+
                     return output
 
         except SCMRException as e:
@@ -159,7 +164,6 @@ class WindowsStation(OsStation):
             raise e
 
         except Exception as e:
-            self._remote_connection_session = None
             Reporter.report(f"Failed to execute command: {cmd} on remote windows machine, original exception: {e}")
             raise e
 
@@ -202,8 +206,8 @@ class WindowsStation(OsStation):
     def wait_until_machine_is_reachable(self, timeout=None):
         timeout = timeout or WAIT_FOR_STATION_UP_TIMEOUT
         predict_condition_func = self.is_reachable
-        wait_for_condition(condition_func=predict_condition_func,
-                           timeout_sec=timeout, interval_sec=INTERVAL_STATION_KEEPALIVE)
+        wait_for_condition(condition_func=predict_condition_func, timeout_sec=timeout,
+                           interval_sec=INTERVAL_STATION_KEEPALIVE, condition_msg="VM is reachable")
 
     @allure.step("Wait until machine is unreachable")
     def wait_until_machine_is_unreachable(self, timeout=None):
@@ -213,8 +217,8 @@ class WindowsStation(OsStation):
             result = not self.is_reachable()
             return result
 
-        wait_for_condition(condition_func=predict,
-                           timeout_sec=timeout, interval_sec=INTERVAL_STATION_KEEPALIVE)
+        wait_for_condition(condition_func=predict, timeout_sec=timeout,
+                           interval_sec=INTERVAL_STATION_KEEPALIVE, condition_msg="VM is unreachable")
 
     @allure.step("Stop service {service_name}")
     def stop_service(self, service_name: str) -> str:
@@ -328,9 +332,11 @@ class WindowsStation(OsStation):
         return False
 
     @allure.step("Get {file_path} content")
-    def get_file_content(self, file_path: str) -> str:
+    def get_file_content(self, file_path: str, filter_regex: str = None) -> str:
         # cmd = f'type {file_path}'
         cmd = f'powershell "get-content -path {file_path}"'
+        if filter_regex is not None:
+            cmd = f'powershell "select-string -pattern "{filter_regex}" -path {file_path} | ForEach-Object Line"'
         file_content = self.execute_cmd(cmd=cmd,
                                         return_output=True,
                                         fail_on_err=True,
@@ -392,6 +398,47 @@ class WindowsStation(OsStation):
 
         return files
 
+    def get_files_details_in_folder(self,
+                                    folder_path: str,
+                                    desired_files_suffix: str,
+                                    ignore_file_suffix: str = None,
+                                    ordered_by_date_time: bool = True) -> List[dict]:
+        """
+        Get files inside {folder path} include name, size and datetime, sorted by timestamp
+        """
+
+        if desired_files_suffix is None:
+            raise Exception("desired_files_suffix - must pass this param - for example, .json")
+
+        command = rf'dir {folder_path}# | find "{desired_files_suffix}"'
+        if ordered_by_date_time:
+            command = command.replace('#', ' /OD') # sorted by timestamp
+        else:
+            command = command.replace('#', '')
+
+        date_index = 0
+        time_index = 1
+        pm_am_index = 2
+        size_index = 3
+        name_index = 4
+        logger.info(f"Get details of the json files inside {folder_path}: size, name and datetime")
+        result = self.execute_cmd(cmd=command)
+
+        files_details = result.split('\r\n')
+        logger.debug(f"{folder_path} contains these files details {files_details}")
+        formatted_files_details = []
+        for file_details in files_details:
+            formatted_file_details = re.split('\s+', file_details)
+            if ignore_file_suffix not in formatted_file_details[name_index]:
+                file_details_dict = {}
+                file_create_date = f"{formatted_file_details[date_index]} {formatted_file_details[time_index]} {formatted_file_details[pm_am_index]}"
+                file_details_dict["file_datetime"] = datetime.strptime(f"{file_create_date}", '%m/%d/%Y %I:%M %p')
+                file_details_dict["file_name"] = formatted_file_details[name_index]
+                file_details_dict["file_size"] = int(formatted_file_details[size_index].replace(",", ""))
+                formatted_files_details.append(file_details_dict)
+
+        return formatted_files_details
+
     def __is_valid_content_to_write(self, content: str):
         if content is None or content.isspace() or content == '':
             return False
@@ -416,6 +463,10 @@ class WindowsStation(OsStation):
         if self.__is_valid_content_to_write(rows[len(rows) - 1]):
             cmd_builder += f"& ECHO {rows[len(rows) - 1]} >> {file_path}"
         self.execute_cmd(cmd=cmd_builder, fail_on_err=True)
+
+    @allure.step("append text to file {file_path}")
+    def append_text_to_file(self, content: str, file_path: str):
+        raise Exception("Not implemented yet")
 
     @allure.step("Copy files from shared folder to local machine")
     @retry
@@ -521,7 +572,8 @@ class WindowsStation(OsStation):
         common_utils.wait_for_condition(
             condition_func=predict_condition_func,
             timeout_sec=max_timeout,
-            interval_sec=INTERVAL_STATION_KEEPALIVE)
+            interval_sec=INTERVAL_STATION_KEEPALIVE,
+            condition_msg=f"File '{file_name}' exists in {file_path}")
 
     @allure.step("Extracting compressed file")
     def extract_compressed_file(self, file_path_to_extract, file_name):
@@ -552,3 +604,20 @@ class WindowsStation(OsStation):
         Reporter.report(f"Command Expand-Archive output:\n {command_output}")
 
         return output_path
+
+    @allure.step("Check if {path} is file")
+    def is_folder(self, path: str) -> bool:
+        cmd = f'powershell "(Get-Item {path}) -is [System.IO.DirectoryInfo]"'
+        output = self.execute_cmd(cmd=cmd,
+                                  return_output=True,
+                                  fail_on_err=True,
+                                  attach_output_to_report=True,
+                                  asynchronous=False)
+        if 'true' in output.lower():
+            return True
+
+        return False
+
+    @allure.step("Check if {path} is folder")
+    def is_file(self, path: str) -> bool:
+        return not self.is_folder(path=path)

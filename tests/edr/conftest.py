@@ -1,9 +1,10 @@
 import logging
 
 import pytest
+
 import third_party_details
-from infra.allure_report_handler.reporter import Reporter, INFO
 from infra.system_components.collector import CollectorAgent
+
 
 COLLECTOR_RUNNING_STATE_AFTER_BOOTSTRAP_RESTORED_TIMEOUT = 180
 COLLECTOR_STOPPED_STATE_TIMEOUT = 60
@@ -23,11 +24,14 @@ def prepare_working_folder_edr_event_tester(management, collector: CollectorAgen
     """
     collector_agent: CollectorAgent = collector
 
-    edr_event_tester_path = rf'{third_party_details.SHARED_DRIVE_QA_PATH}\QATools\EdrEventTester'
-    edr_event_tester_file_name = 'eventTester.zip'
+    # edr_event_tester_path = rf'{third_party_details.SHARED_DRIVE_QA_PATH}\QATools\EdrEventTester'
+    # edr_event_tester_file_name = 'eventTester.zip'
+
+    edr_event_tester_path = rf'{third_party_details.SHARED_DRIVE_QA_PATH}\automation_ng\reference_versions'
+    edr_event_tester_file_name = 'eventTester-v1.zip'
     logger.debug(f"eventTester path: {edr_event_tester_path}, file name: {edr_event_tester_file_name}")
 
-    logger.info("Starting preperation of working edr event tester folder")
+    logger.info("Starting preparation of working edr event tester folder")
     extracted_path = collector_agent.prepare_edr_event_tester_folder(
         network_path=edr_event_tester_path,
         filename=edr_event_tester_file_name)
@@ -54,5 +58,3 @@ def prepare_working_folder_edr_event_tester(management, collector: CollectorAgen
     collector_agent.wait_until_agent_running(
         timeout_sec=COLLECTOR_RUNNING_STATE_AFTER_BOOTSTRAP_RESTORED_TIMEOUT,
         interval_sec=COLLECTOR_KEEP_ALIVE_INTERVAL)
-
-

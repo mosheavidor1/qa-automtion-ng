@@ -6,30 +6,69 @@ TARGET_BAT_FILES_PATH = "C:\\HelperBatFiles"
 TARGET_VERSIONS_FOLDER_PATH = "C:\\Versions"
 
 
-@allure.step("Creating script for uninstalling the {collector}")
-def create_uninstallation_script(collector, registration_password, logs_file_path):
+@allure.step("Create script that stop collector")
+def create_stop_collector_script(collector_agent,
+                                 registration_password: str):
+    """
+    Creating script for stopping the collector,
+    we can stop it directly with the "collector.stop_collector" but it can cause remote connection issues against
+    windows station because the status code is not 0 (means that command didn't finished succesfully) so we wrap the
+    command with .bat file which return the output of the "FortiEdrService --stop -rp:{password}" and exit code 0 anyway
+    :param collector_agent: collector agent
+    :param registration_password: registration password we want to try stop collector with
+    :return: script full path on OS
+    """
+    script_name = 'stop_collector.bat'
+    script_content = _get_stop_collector_script_content(regsitration_password=registration_password)
+
+    full_path = _create_bat_script_on_os(collector_agent=collector_agent,
+                                         script_name=script_name,
+                                         script_content=script_content)
+    return full_path
+
+
+@allure.step("Creating script for uninstalling the {collector_agent}")
+def create_uninstallation_script(collector_agent, registration_password: str, logs_file_path: str):
     """ Creating script for uninstalling the collector """
     script_name = 'uninstall_collector.bat'
-    script_folder_path = collector.os_station.create_new_folder(folder_path=fr'{TARGET_BAT_FILES_PATH}')
+    script_content = _get_uninstallation_script_content(registration_password, logs_file_path)
+
+    full_path = _create_bat_script_on_os(collector_agent=collector_agent,
+                                         script_name=script_name,
+                                         script_content=script_content)
+    Reporter.report(f"Created uninstallation script in {full_path} with logs to "
+                    f"{logs_file_path}")
+
+    return full_path
+
+
+def _create_bat_script_on_os(collector_agent,
+                             script_name: str,
+                             script_content: str):
+    script_folder_path = collector_agent.os_station.create_new_folder(folder_path=fr'{TARGET_BAT_FILES_PATH}')
     script_full_path = fr'{script_folder_path}\{script_name}'
 
-    if collector.os_station.is_path_exist(path=script_full_path):
-        collector.os_station.remove_file(file_path=script_full_path)
+    if collector_agent.os_station.is_path_exist(path=script_full_path):
+        collector_agent.os_station.remove_file(file_path=script_full_path)
 
-    script_content = _generate_uninstallation_script(registration_password, logs_file_path)
-    collector.os_station.overwrite_file_content(content=script_content, file_path=script_full_path)
-    Reporter.report(f"Created uninstallation script in {script_full_path} with logs to "
-                    f"{logs_file_path}")
+    collector_agent.os_station.overwrite_file_content(content=script_content, file_path=script_full_path)
     return script_full_path
 
 
-def _generate_uninstallation_script(registration_password, logs_file_path):
+def _get_uninstallation_script_content(registration_password, logs_file_path):
     script_content = f"""for /f %%a in (
     'wmic product where "Name='Fortinet Endpoint Detection and Response Platform'" get IdentifyingNumber^^^|findstr "{{"'
     ) do set "val=%%a"
     msiexec.exe /x %val% /qn UPWD="{registration_password}" RMCONFIG=1 /l*vx {logs_file_path}
     """
 
+    return script_content
+
+
+def _get_stop_collector_script_content(regsitration_password):
+    script_content = fr"""cd C:\Program Files\Fortinet\FortiEDR\
+FortiEDRCollectorService.exe --stop -rp:{regsitration_password}
+exit /b 0"""
     return script_content
 
 

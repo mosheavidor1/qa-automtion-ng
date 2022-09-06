@@ -90,6 +90,7 @@ class LinuxStation(OsStation):
                         Reporter.report(f"command output: {output}")
 
                 if fail_on_err and stderr_err_output != '':
+                    logger.info(f"Failing because stderr was returned, error is: {stderr_err_output}")
                     assert False, f"Failing because stderr was returned, error is: {stderr_err_output}"
 
                 if return_output:
@@ -191,15 +192,15 @@ class LinuxStation(OsStation):
             result = not self.is_reachable()
             return result
 
-        wait_for_condition(condition_func=predict,
-                           timeout_sec=timeout, interval_sec=INTERVAL_STATION_KEEPALIVE)
+        wait_for_condition(condition_func=predict, timeout_sec=timeout,
+                           interval_sec=INTERVAL_STATION_KEEPALIVE, condition_msg="VM is unreachable")
 
     @allure.step("Wait until machine is reachable")
     def wait_until_machine_is_reachable(self, timeout=None):
         timeout = timeout or WAIT_FOR_STATION_UP_TIMEOUT
         predict_condition_func = self.is_reachable
-        wait_for_condition(condition_func=predict_condition_func,
-                           timeout_sec=timeout, interval_sec=INTERVAL_STATION_KEEPALIVE)
+        wait_for_condition(condition_func=predict_condition_func, timeout_sec=timeout,
+                           interval_sec=INTERVAL_STATION_KEEPALIVE, condition_msg="VM is reachable")
 
     @allure.step("Get current linux machine date time")
     def get_current_machine_datetime(self, date_format="%d/%m/%Y %H:%M:%S"):
@@ -217,8 +218,10 @@ class LinuxStation(OsStation):
         return int(result[0])
 
     @allure.step("Get file content of the file {file_path}")
-    def get_file_content(self, file_path):
+    def get_file_content(self, file_path, filter_regex: str = None):
         cmd = f"cat {file_path}"
+        if filter_regex is not None:
+            cmd = f'grep -E "{filter_regex}" {file_path}'
         output = self.execute_cmd(cmd=cmd)
         return output
 
@@ -256,6 +259,10 @@ class LinuxStation(OsStation):
             files_names = [file_name for file_name in files_names if file_suffix in file_name]
         files_paths = [f'{folder_path}/{file_name}' for file_name in files_names]
         return files_paths
+
+    @allure.step("Get files inside {folder_path} include file size and datetime")
+    def get_files_details(self, folder_path: str) -> List[dict]:
+        raise NotImplemented("Should be implemented")
 
     @allure.step("Combine multiple text files into one file")
     def combine_text_file_into_single_file(self,
@@ -311,6 +318,15 @@ class LinuxStation(OsStation):
             return None
         pids = [int(pid)]
         return pids
+
+    @allure.step("Get malware {malware_name} process ID")
+    def get_malware_process_id(self, malware_name: str) -> int:
+        cmd = f"ps aux | grep -w '{malware_name}' | grep -v grep | awk '{{print $2}}'"
+        pid = self.execute_cmd(cmd=cmd)
+        if pid is None:
+            return None
+        pid = int(pid)
+        return pid
 
     @allure.step("Kill process with the id: {pid}")
     def kill_process_by_id(self, pid):
@@ -371,8 +387,15 @@ class LinuxStation(OsStation):
         cmd = f"rm -rf {folder_path}"
         self.execute_cmd(cmd=cmd, return_output=False, fail_on_err=True)
 
+    @allure.step("Overwrite {file_path} content")
     def overwrite_file_content(self, content: str, file_path: str):
-        raise Exception("Not implemented yet")
+        cmd = f'echo "{content}" > {file_path}'
+        self.execute_cmd(cmd=cmd, return_output=False, fail_on_err=True)
+
+    @allure.step("append text to file {file_path}")
+    def append_text_to_file(self, content: str, file_path: str):
+        cmd = f'echo "" >> {file_path} && echo "{content}" >> {file_path}'
+        self.execute_cmd(cmd=cmd, return_output=False, fail_on_err=True)
 
     @allure.step("Copy files from shared folder to local machine")
     @retry
@@ -475,3 +498,11 @@ class LinuxStation(OsStation):
 
     def wait_for_file_to_appear_in_specified_folder(self, file_path: str, file_name: str, timeout: int, interval: int):
         raise NotImplementedError()
+
+    @allure.step("Check if {path} is file")
+    def is_file(self, path: str) -> bool:
+        raise Exception("Not Implemented yet")
+
+    @allure.step("Check if {path} is folder")
+    def is_folder(self, path: str) -> bool:
+        raise Exception("Not Implemented yet")

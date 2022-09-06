@@ -1,5 +1,6 @@
 from abc import abstractmethod
 import logging
+from typing import List
 import allure
 
 import third_party_details
@@ -30,12 +31,17 @@ class CollectorAgent:
 
     @property
     @abstractmethod
+    def initial_version(self) -> str:
+        pass
+
+    @property
+    @abstractmethod
     def cached_process_id(self) -> int:
         """ Caching the current process id in order later validate if it changed """
         pass
 
     @abstractmethod
-    def get_version(self):
+    def get_version(self, safe: bool = False):
         pass
 
     @abstractmethod
@@ -58,6 +64,27 @@ class CollectorAgent:
     def get_agent_status(self) -> FortiEdrSystemState:
         pass
 
+    @abstractmethod
+    def get_configuration_files_details(self) -> List[dict]:
+        """
+        return these data of the configuration files: names, sizes, datetime
+        """
+        pass
+
+    @abstractmethod
+    def get_the_latest_config_file_details(self) -> dict:
+        """
+        return these data of the latest created configuration file: names, sizes, datetime
+        """
+        pass
+
+    @abstractmethod
+    def wait_for_new_config_file(self, config_files_details_before_action=None):
+        """
+        wait until a new latest configuration file details received
+        """
+        pass
+
     def is_agent_installed(self) -> bool:
         pid = self.get_current_process_id()
         if pid is None and not self.is_collector_files_exist():
@@ -68,11 +95,20 @@ class CollectorAgent:
     def is_agent_running(self):
         return self.get_agent_status() == FortiEdrSystemState.RUNNING
 
+    def is_agent_isolated(self):
+        return self.get_agent_status() == FortiEdrSystemState.ISOLATED
+
     @allure.step("Wait until agent is running")
     def wait_until_agent_running(self, timeout_sec=MAX_WAIT_FOR_STATUS, interval_sec=COLLECTOR_KEEPALIVE_INTERVAL):
         logger.info(f"Wait until {self} is running")
-        wait_for_condition(condition_func=self.is_agent_running,
-                           timeout_sec=timeout_sec, interval_sec=interval_sec)
+        wait_for_condition(condition_func=self.is_agent_running, timeout_sec=timeout_sec,
+                           interval_sec=interval_sec, condition_msg=f"{self} is running")
+
+    @allure.step("Wait until agent is isolated")
+    def wait_until_agent_isolated(self, timeout_sec=MAX_WAIT_FOR_STATUS, interval_sec=COLLECTOR_KEEPALIVE_INTERVAL):
+        logger.info(f"Wait until {self} is isolated")
+        wait_for_condition(condition_func=self.is_agent_isolated, timeout_sec=timeout_sec,
+                           interval_sec=interval_sec, condition_msg=f"{self} is isolated")
 
     def is_agent_down(self):
         return self.get_agent_status() == FortiEdrSystemState.DOWN
@@ -80,8 +116,8 @@ class CollectorAgent:
     @allure.step("Wait until agent is down")
     def wait_until_agent_down(self, timeout_sec=MAX_WAIT_FOR_STATUS, interval_sec=COLLECTOR_KEEPALIVE_INTERVAL):
         logger.info(f"Wait until {self} is down")
-        wait_for_condition(condition_func=self.is_agent_down,
-                           timeout_sec=timeout_sec, interval_sec=interval_sec)
+        wait_for_condition(condition_func=self.is_agent_down, timeout_sec=timeout_sec,
+                           interval_sec=interval_sec, condition_msg=f"{self} is down")
 
     def is_agent_disabled(self):
         return self.get_agent_status() == FortiEdrSystemState.DISABLED
@@ -89,8 +125,8 @@ class CollectorAgent:
     @allure.step("Wait until agent is disabled")
     def wait_until_agent_disabled(self, timeout_sec=MAX_WAIT_FOR_STATUS, interval_sec=COLLECTOR_KEEPALIVE_INTERVAL):
         logger.info(f"Wait until {self} is disabled")
-        wait_for_condition(condition_func=self.is_agent_disabled,
-                           timeout_sec=timeout_sec, interval_sec=interval_sec)
+        wait_for_condition(condition_func=self.is_agent_disabled, timeout_sec=timeout_sec,
+                           interval_sec=interval_sec, condition_msg=f"{self} is disabled")
 
     @abstractmethod
     def reboot(self):
@@ -104,6 +140,9 @@ class CollectorAgent:
     @abstractmethod
     def get_current_process_id(self):
         pass
+
+    def get_current_datetime(self):
+        return self.os_station.get_current_machine_datetime()
 
     def copy_log_parser_to_machine(self):
         pass
@@ -123,7 +162,17 @@ class CollectorAgent:
     def clear_logs(self):
         pass
 
+    @abstractmethod
+    def get_logs_content(self, file_suffix='.blg', filter_regex: str = None):
+        pass
+
     def append_logs_to_report(self, first_log_timestamp_to_append, file_suffix='.blg'):
+        pass
+
+    def create_event(self, malware_name: str):
+        pass
+
+    def get_parsed_logs_after_specified_time_stamp(self, first_log_timestamp_to_append: str, file_suffix='.blg'):
         pass
 
     def create_event(self):
@@ -169,4 +218,8 @@ class CollectorAgent:
     @abstractmethod
     def cleanup_edr_simulation_tester(self, edr_event_tester_path, filename):
         """This function performs a cleanup of the leftovers of the EDR event tester."""
+        pass
+
+    @abstractmethod
+    def is_string_in_logs(self, string_to_find, first_log_date_time):
         pass

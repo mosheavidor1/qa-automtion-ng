@@ -8,6 +8,7 @@ from infra.allure_report_handler.reporter import Reporter
 from infra import common_utils
 from infra.containers.postgresql_over_ssh_details import PostgresqlOverSshDetails
 from infra.containers.ssh_details import SshDetails
+from infra.forti_edr_versions_service_handler.forti_edr_versions_service_handler import FortiEdrVersionsServiceHandler
 from infra.multi_tenancy.tenant import Tenant
 from infra.posgresql_db.postgresql_db import PostgresqlOverSshDb
 from infra.api.nslo_wrapper.rest_commands import RestCommands
@@ -16,15 +17,15 @@ from infra.api.management_api.organization import DEFAULT_LICENSE_CAPACITY
 import sut_details
 from infra.containers.system_component_containers import ManagementDetails
 from infra.enums import ComponentType, FortiEdrSystemState, ManagementUserRoles
-from infra.singleton import Singleton
 from infra.system_components.forti_edr_linux_station import FortiEdrLinuxStation
 
 from infra.test_im.management_ui_client import ManagementUiClient
 from infra.utils.utils import StringUtils
+from third_party_details import SHARED_DRIVE_COLLECTORS_CONTENT
+
 logger = logging.getLogger(__name__)
 
 
-@Singleton
 class Management(FortiEdrLinuxStation):
     APPLICATION_PROPERTIES_FILE_PATH = '/opt/FortiEDR/webapp/application.properties'
 
@@ -34,61 +35,63 @@ class Management(FortiEdrLinuxStation):
     _DB_TBL_ADM_USERS_ROLES = 'adm_users_roles'
     _DB_TBL_ADM_ROLES = 'adm_roles'
 
-    def __init__(self):
-        self._config = sut_details
+    def __init__(
+            self,
+            host_ip: str,
+            ssh_user_name: str,
+            ssh_password: str,
+            rest_api_user: str,
+            rest_api_user_password: str,
+            default_organization_registration_password: str,
+            is_licensed: bool = True,
+            forced_version: str = None,
+    ):
         logger.info(
-            f"Trying to init management object with user_name: {self._config.management_ssh_user_name},"
-            f" password: {self._config.management_ssh_password}")
+            f"Trying to init management object with user_name: {ssh_user_name},"
+            f" password: {ssh_password}")
 
         super().__init__(
-            host_ip=self._config.management_host,
-            user_name=self._config.management_ssh_user_name,
-            password=self._config.management_ssh_password,
+            host_ip=host_ip,
+            user_name=ssh_user_name,
+            password=ssh_password,
             component_type=ComponentType.MANAGEMENT)
 
-        self._ui_admin_user_name = self._config.management_ui_admin_user_name
-        self._ui_admin_password = self._config.management_ui_admin_password
-        self._registration_password = self._config.management_registration_password
+        self._rest_api_user_name = rest_api_user
+        self._rest_api_user_password = rest_api_user_password
+        self._registration_password = default_organization_registration_password
 
         self._postgresql_db: PostgresqlOverSshDb = self._get_postgresql_db_obj()
-        self.enable_rest_api_for_user_via_db(user_name=self._ui_admin_user_name)
+        self.enable_rest_api_for_user_via_db(user_name=self._rest_api_user_name)
 
-        self._admin_rest_api_client = RestCommands(self.host_ip,
-                                                   self._ui_admin_user_name,
-                                                   self._ui_admin_password,
-                                                   organization=None)
+        self._admin_rest_api_client = RestCommands(
+            management_ip=host_ip,
+            rest_api_user_name=rest_api_user,
+            rest_api_user_password=rest_api_user_password,
+            organization=None,
+            forced_version=forced_version,
+        )
 
-        self._details: ManagementDetails = self._get_management_details()
-        reduce_default_org_license_capacity()
         self._temp_tenants = []
-        self._default_tenant: Tenant = self._create_default_tenant()
-        self._ui_client = ManagementUiClient(management_ui_ip=self.host_ip,
-                                             tenant=self._default_tenant)
+        self._details: ManagementDetails | None = None
+        self._default_tenant: Tenant | None = None
+        self._ui_client: ManagementUiClient | None = None
+
+        if is_licensed:
+            self.finish_init_with_license()
+
 
     @property
-    def ui_admin_user_name(self) -> str:
-        return self._ui_admin_user_name
-
-    @ui_admin_user_name.setter
-    def ui_admin_user_name(self, ui_admin_user_name: str):
-        self._ui_admin_user_name = ui_admin_user_name
+    def rest_api_user_name(self) -> str:
+        return self._rest_api_user_name
 
     @property
-    def ui_admin_password(self) -> str:
-        return self._ui_admin_password
+    def rest_api_user_password(self) -> str:
+        return self._rest_api_user_password
 
     @property
     def registration_password(self) -> str:
         """ Password for registering collectors to this MGMT """
         return self._registration_password
-
-    @ui_admin_password.setter
-    def ui_admin_password(self, ui_admin_password: str):
-        self._ui_admin_password = ui_admin_password
-
-    @property
-    def admin_rest_api_client(self) -> RestCommands:
-        return self._admin_rest_api_client
 
     @property
     def ui_client(self) -> ManagementUiClient:
@@ -115,6 +118,15 @@ class Management(FortiEdrLinuxStation):
     def __repr__(self):
         return f"Management {self._host_ip}"
 
+    def finish_init_with_license(self):
+        self._details = self._get_management_details()
+        reduce_default_org_license_capacity()
+        self._default_tenant = self._create_default_tenant()
+        self._ui_client = ManagementUiClient(
+            management_ui_ip=self.host_ip,
+            tenant=self._default_tenant,
+        )
+
     def get_logs_folder_path(self):
         return '/opt/FortiEDR/webapp/logs'
 
@@ -124,7 +136,10 @@ class Management(FortiEdrLinuxStation):
                                  management_version=as_dict.get('managementVersion'),
                                  management_hostname=as_dict.get('managementHostname'),
                                  management_external_ip=as_dict.get('managementExternalIP'),
-                                 management_internal_ip=as_dict.get('managementInternalIP'))
+                                 management_internal_ip=as_dict.get('managementInternalIP'),
+                                 work_stations_collectors_in_use=as_dict.get('workstationsCollectorsInUse'),
+                                 work_station_collectors_license_capacity=as_dict.get('workstationCollectorsLicenseCapacity')
+                                 )
 
     def _get_postgresql_db_obj(self) -> PostgresqlOverSshDb:
         ssh_details = SshDetails(host_ip=self.host_ip, user_name=self.user_name, password=self.password)
@@ -204,7 +219,8 @@ class Management(FortiEdrLinuxStation):
         common_utils.wait_for_condition(
             condition_func=predict_condition_func,
             timeout_sec=timeout,
-            interval_sec=interval
+            interval_sec=interval,
+            condition_msg="Management service is up"
         )
 
     @allure.step("Adding user ID to role ID in the DB")
@@ -245,22 +261,22 @@ class Management(FortiEdrLinuxStation):
         return role_id
 
     @allure.step("Wait until rest api available")
-    def wait_until_rest_api_available(self, timeout: int = 60):
+    def wait_until_rest_api_available(self, timeout: int = 60, interval: int = 5):
         start_time = time.time()
         aggregators = None
         while time.time() - start_time < timeout and aggregators is None:
             try:
-                aggregators = self.admin_rest_api_client.system_inventory.get_aggregator_info()
+                aggregators = self._admin_rest_api_client.system_inventory.get_aggregator_info()
             except Exception as e:
                 logger.info("Rest API is not available yet, going to sleep 5 sceonds")
-                time.sleep(5)
+                time.sleep(interval)
 
         assert aggregators is not None, f"REST API is not available within timeout of {timeout}"
 
     def _create_default_tenant(self) -> Tenant:
         """ This is the main tenant in the test session, can't be deleted """
         logger.info("Create the default tenant")
-        collector_type_name = self._config.collector_type
+        collector_type_name = sut_details.collector_type
         default_tenant = Tenant.create(username=collector_type_name, user_password=collector_type_name,
                                        organization_name=collector_type_name, registration_password=collector_type_name)
         return default_tenant
@@ -282,10 +298,77 @@ class Management(FortiEdrLinuxStation):
         logger.info(f"Delete temp tenant: {temp_tenant}")
         assert temp_tenant.organization.id != self.tenant.organization.id, \
             f"{temp_tenant} is the default tenant of management so can't be deleted"
-        temp_tenant.default_local_admin._delete(rest_client=self.admin_rest_api_client,
-                                                expected_status_code=expected_status_code)
-        temp_tenant.organization._delete(expected_status_code=expected_status_code)
-        self.temp_tenants.remove(temp_tenant)
+        try:
+            temp_tenant.default_local_admin._delete(rest_client=self._admin_rest_api_client,
+                                                    expected_status_code=expected_status_code)
+        finally:
+            temp_tenant.organization._delete(expected_status_code=expected_status_code)
+            self.temp_tenants.remove(temp_tenant)
+
+    def get_aggregators(self):
+        aggregators = self._admin_rest_api_client.system_inventory.get_aggregator_info()
+        return aggregators
+
+    def get_cores(self):
+        cores = self._admin_rest_api_client.system_inventory.get_core_info()
+        return cores
+
+    @allure.step("Upload content to management")
+    def upload_content(self, desired_content_num: int):
+        """
+        :param desired_content_num: content version to upgrade.
+        :return: True if the content uploaded successfully or if the content already exist.
+                 False if the content failed uploading or if file doesn't exist.
+        """
+        content_version = str(desired_content_num)
+        result = FortiEdrVersionsServiceHandler.get_latest_content_files_from_shared_folder(num_last_content_files=100)
+        content_file_name = f"FortiEDRCollectorContent-{content_version}.nslo"
+
+        if f"FortiEDRCollectorContent-{content_version}.nslo" not in result:
+            assert False, f"Can not find content file {content_file_name} in shared folder"
+
+        else:
+            path = fr"{SHARED_DRIVE_COLLECTORS_CONTENT}\{content_file_name}"
+            Reporter.report(f"Upload content file from: {path}", logger_func=logger.info)
+
+            status = self._admin_rest_api_client.rest.admin.UploadContent(path)
+
+            if not status:
+                assert False, "Failed to upload content to management"
+
+        Reporter.report("Content uploaded successfully :)", logger_func=logger.info)
+
+    @allure.step("Upgrade collector with selected version")
+    def update_collector_installer(self,
+                                   collector_groups: str,
+                                   organization: str,
+                                   windows_version: str,
+                                   osx_version: str,
+                                   linux_version: str):
+        """
+        :param collector_groups: What collector group is going to be upgrade.
+                organization: In what organization is the collector group.
+                windows_version, osx_version, linux_version: Fill the version according to collector OS.
+
+        :return: True if collector succeeded to upgrade.
+                 False if the upgrade collector failed.
+        """
+        status, response = self._admin_rest_api_client.rest.admin.UpdateCollectorInstaller(
+            collector_groups=collector_groups,
+            organization=organization, windows_version=windows_version, osx_version=osx_version,
+            linux_version=linux_version)
+
+        if response.status_code != 200:
+            assert False, f"Update collector installer API - expected response code: {200}, actual:{response.status_code}"
+
+        if not status:
+            assert False, f'Could not get response from the management. \n{response}'
+        return True
+
+    @allure.step("Upload new license")
+    def upload_license_blob(self, license_blob: str):
+        uploaded = self._admin_rest_api_client.administrator.upload_license(license_blob=license_blob)
+        assert uploaded, "License upload failed"
 
 
 def reduce_default_org_license_capacity():

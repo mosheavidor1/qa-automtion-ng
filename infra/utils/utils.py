@@ -31,8 +31,8 @@ class StringUtils:
 
     @staticmethod
     def generate_random_string(length=10):
-        characters = string.ascii_letters + string.digits#+ string.punctuation
-        rand_str = ''.join(random.choice(characters) for i in range(length))
+        characters = string.ascii_letters + string.digits  # + string.punctuation
+        rand_str = ''.join(random.choice(characters) for _ in range(length))
         return rand_str
 
     @staticmethod
@@ -102,7 +102,9 @@ class HttpRequesterUtils:
                      auth: tuple = None,
                      headers: dict = None,
                      body: dict = None,
-                     expected_status_code: int = 200):
+                     expected_status_code: int = 200,
+                     verify_tls_certificate: bool = True,
+                     dumps_the_body=True):
 
         Reporter.attach_str_as_file(file_name='request_method', file_content=request_method.name)
         Reporter.attach_str_as_file(file_name='url', file_content=url)
@@ -117,30 +119,34 @@ class HttpRequesterUtils:
         match request_method:
 
             case HttpRequestMethodsEnum.GET:
-                response = requests.get(url=url, auth=auth, headers=headers)
+                response = requests.get(url=url, auth=auth, headers=headers, verify=verify_tls_certificate)
 
             case HttpRequestMethodsEnum.POST:
-                body = json.dumps(body) if body is not None else body
-                response = requests.post(url=url, auth=auth, headers=headers, data=body)
+                if dumps_the_body is True:
+                    body = json.dumps(body) if body is not None else body
+                response = requests.post(url=url, auth=auth, headers=headers, data=body, verify=verify_tls_certificate)
 
             case HttpRequestMethodsEnum.PUT:
-                body = json.dumps(body) if body is not None else body
-                response = requests.put(url=url, auth=auth, headers=headers, data=body)
+                if dumps_the_body is True:
+                    body = json.dumps(body) if body is not None else body
+                response = requests.put(url=url, auth=auth, headers=headers, data=body, verify=verify_tls_certificate)
 
             case HttpRequestMethodsEnum.DELETE:
-                response = requests.delete(url=url, auth=auth, headers=headers)
+                response = requests.delete(url=url, auth=auth, headers=headers, verify=verify_tls_certificate)
 
             case HttpRequestMethodsEnum.CONNECT | \
-                 HttpRequestMethodsEnum.HEAD | \
-                 HttpRequestMethodsEnum.OPTIONS | \
-                 HttpRequestMethodsEnum.TRACE:
+                    HttpRequestMethodsEnum.HEAD | \
+                    HttpRequestMethodsEnum.OPTIONS | \
+                    HttpRequestMethodsEnum.TRACE:
                 raise Exception(f"There is not implementation for {request_method.name}, sorry :(")
 
         Reporter.attach_str_as_file(file_name='response status code', file_content=str(response.status_code))
 
         if expected_status_code != response.status_code:
             if not (expected_status_code == 200 and response.status_code == 201):
-                assert False, f"expected status code is: {expected_status_code}, actual status code is: {response.status_code}"
+                assert False, (
+                    f"expected status code is: {expected_status_code}, actual status code is: {response.status_code}"
+                )
 
         try:
             content = json.loads(response.content)

@@ -70,6 +70,6 @@ def get_collectors_without_org(safe=True):
     """ Return collectors that don't have organization, the returned collectors have admin credentials because
         they are under admin user (no organization) """
     logger.debug(f"Find all rest collectors that don't have organizations")
-    collectors_factory = RestCollectorsFactory(organization_name=None, factory_rest_client=ADMIN_REST)
+    collectors_factory = RestCollectorsFactory(organization_name=None, factory_rest_client=ADMIN_REST())
     rest_collectors = collectors_factory.get_all(safe=safe)
     return rest_collectors

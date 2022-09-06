@@ -9,20 +9,21 @@ logger = logging.getLogger(__name__)
 
 
 @allure.step("Wait until pid of {collector} appears")
-def wait_until_collector_pid_appears(collector: CollectorAgent, timeout=None):
-    _wait_for_process_id(collector=collector, is_alive=True, timeout=timeout)
+def wait_until_collector_pid_appears(collector: CollectorAgent, timeout=None, interval=None):
+    _wait_for_process_id(collector=collector, is_alive=True, timeout=timeout, interval=interval)
 
 
 @allure.step("Wait until pid of {collector} disappears")
-def wait_until_collector_pid_disappears(collector: CollectorAgent, timeout=None):
-    _wait_for_process_id(collector=collector, is_alive=False, timeout=timeout)
+def wait_until_collector_pid_disappears(collector: CollectorAgent, timeout=None, interval=None):
+    _wait_for_process_id(collector=collector, is_alive=False, timeout=timeout, interval=interval)
 
 
-def _wait_for_process_id(collector: CollectorAgent, is_alive, timeout=None):
+def _wait_for_process_id(collector: CollectorAgent, is_alive, timeout=None, interval=None):
     """ If collector is alive so pid should not be None """
     log_msg = "appear" if is_alive else "disappear"
     logger.info(f"Wait for collector pid to {log_msg}")
     timeout = timeout or MAX_WAIT_FOR_PID
+    interval = interval or PID_INTERVAL
 
     def is_expected_pid():
         current_pid = collector.get_current_process_id()
@@ -32,8 +33,8 @@ def _wait_for_process_id(collector: CollectorAgent, is_alive, timeout=None):
             is_correct_pid = current_pid is None
         return is_correct_pid
 
-    wait_for_condition(condition_func=is_expected_pid,
-                       timeout_sec=timeout, interval_sec=PID_INTERVAL)
+    wait_for_condition(condition_func=is_expected_pid, timeout_sec=timeout, interval_sec=interval,
+                       condition_msg=f"Wait for collector pid to {log_msg}")
 
 
 @contextmanager

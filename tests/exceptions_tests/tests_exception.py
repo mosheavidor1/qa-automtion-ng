@@ -19,6 +19,7 @@ class ExceptionsTests:
                              ],
                              indirect=True)
     @pytest.mark.sanity
+    @pytest.mark.exception_sanity
     @pytest.mark.linux_sanity
     @pytest.mark.management_sanity
     @pytest.mark.management_linux_sanity
@@ -43,6 +44,7 @@ class ExceptionsTests:
                              [('EN-68890', ExceptionTestType.CREATE_PARTIALLY_COVERED_EXCEPTION)],
                              indirect=True)
     @pytest.mark.sanity
+    @pytest.mark.exception_sanity
     @pytest.mark.linux_sanity
     @pytest.mark.management_sanity
     @pytest.mark.management_linux_sanity
@@ -73,6 +75,7 @@ class ExceptionsTests:
                              [('EN-68891', ExceptionTestType.CREATE_PARTIALLY_COVERED_EXCEPTION_EVENT_CREATED)],
                              indirect=True)
     @pytest.mark.sanity
+    @pytest.mark.exception_sanity
     @pytest.mark.linux_sanity
     @pytest.mark.management_sanity
     @pytest.mark.management_linux_sanity
@@ -96,6 +99,7 @@ class ExceptionsTests:
                              [('EN-68885', ExceptionTestType.EDIT_FULL_COVERED_EXCEPTION)],
                              indirect=True)
     @pytest.mark.sanity
+    @pytest.mark.exception_sanity
     @pytest.mark.linux_sanity
     @pytest.mark.management_sanity
     @pytest.mark.management_linux_sanity
@@ -138,6 +142,7 @@ class ExceptionsTests:
                              [('EN-68888', ExceptionTestType.EDIT_PARTIALLY_COVERED_EXCEPTION)],
                              indirect=True)
     @pytest.mark.sanity
+    @pytest.mark.exception_sanity
     @pytest.mark.linux_sanity
     @pytest.mark.management_sanity
     @pytest.mark.management_linux_sanity
@@ -179,6 +184,7 @@ class ExceptionsTests:
                              [('EN-68892', ExceptionTestType.GENERAL)],
                              indirect=True)
     @pytest.mark.sanity
+    @pytest.mark.exception_sanity
     @pytest.mark.linux_sanity
     @pytest.mark.management_sanity
     @pytest.mark.management_linux_sanity
@@ -193,11 +199,10 @@ class ExceptionsTests:
         malware_name = exception_function_fixture.get('malware_name')
         event_id = exception_function_fixture.get("event_id")
         user = management.tenant.default_local_admin
-        user.rest_components.exceptions.create_exception_for_event(event_id=event_id)
+        exception = user.rest_components.exceptions.create_exception_for_event(event_id=event_id)
         exception_id = ManagementUtils.validate_exception(management, process=malware_name, event_id=event_id)
         assert exception_id, "exception validation failed,exception wasn't created properly"
-
-        management.tenant.rest_api_client.exceptions.delete_exception(exception_id)
+        exception.delete()
         exception_id = ManagementUtils.validate_exception(management, process=malware_name, event_id=event_id)
         if exception_id:
             Assertion.invoke_assertion(expected=False, actual=exception_id,
@@ -205,9 +210,10 @@ class ExceptionsTests:
                                        assert_type=AssertTypeEnum.SOFT)
 
     @pytest.mark.parametrize('xray, exception_function_fixture',
-                             [('EN-68992', ExceptionTestType.GENERAL)],
+                             [('EN-68992', ExceptionTestType.EDIT_PARTIALLY_COVERED_EXCEPTION)],
                              indirect=True)
     @pytest.mark.sanity
+    @pytest.mark.exception_sanity
     @pytest.mark.linux_sanity
     @pytest.mark.management_sanity
     @pytest.mark.management_linux_sanity
@@ -247,6 +253,7 @@ class ExceptionsTests:
                              [('EN-68989', ExceptionTestType.GENERAL)],
                              indirect=True)
     @pytest.mark.sanity
+    @pytest.mark.exception_sanity
     @pytest.mark.linux_sanity
     @pytest.mark.management_sanity
     @pytest.mark.management_linux_sanity

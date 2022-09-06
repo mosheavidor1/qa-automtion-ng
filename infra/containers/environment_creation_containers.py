@@ -21,9 +21,11 @@ class EnvironmentSystemComponent:
                  component_version: str,
                  machine_type: MachineType):
 
-        self.ComponentType = component_type.value
-        self.ComponentVersion = component_version
-        self.MachineType = machine_type
+        self.component_type = component_type
+        self.component_version = component_version
+        self.machine_type = machine_type
+        self.aggregators: List[EnvironmentSystemComponent] = []
+        self.cores: List[EnvironmentSystemComponent] = []
 
 
 class DeployedEnvInfo:
@@ -87,6 +89,21 @@ class DeployedEnvInfo:
         return None
 
     @property
+    def management_ips(self):
+        ips = []
+        if self._components_created is None:
+            return None
+
+        if len(self._components_created) == 0:
+            return None
+
+        for comp in self._components_created:
+            if comp.get('ComponentType') == 'both' or comp.get('ComponentType' == 'manager'):
+                ips.append(comp.get('MachineIp'))
+
+        return ips
+
+    @property
     def aggregator_ips(self):
         ips = []
         if self._components_created is None:
@@ -97,6 +114,21 @@ class DeployedEnvInfo:
 
         for comp in self._components_created:
             if comp.get('ComponentType') == 'both' or comp.get('ComponentType') == 'aggregator':
+                ips.append(comp.get('MachineIp'))
+
+        return ips
+
+    @property
+    def core_ips(self):
+        ips = []
+        if self._components_created is None:
+            return None
+
+        if len(self._components_created) == 0:
+            return None
+
+        for comp in self._components_created:
+            if comp.get('ComponentType') == 'core':
                 ips.append(comp.get('MachineIp'))
 
         return ips

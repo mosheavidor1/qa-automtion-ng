@@ -2,7 +2,8 @@ import uuid
 from typing import List
 import logging
 import allure
-
+from tests.utils.collector_utils import CollectorUtils, \
+    notify_or_kill_malwares_on_windows_collector, notify_malwares_on_linux_collector
 import sut_details
 import third_party_details
 from infra.allure_report_handler.reporter import Reporter
@@ -249,16 +250,22 @@ def create_results_json(session, tests_results: dict):
 
 @pytest.fixture(scope="session")
 def jenkins_handler() -> JenkinsHandler:
-    instance = JenkinsHandler(jenkins_url='',
-                              user_name=third_party_details.JENKINS_JOB,
+    instance = JenkinsHandler(jenkins_url=third_party_details.JENKINS_URL,
+                              user_name=third_party_details.USER_NAME,
                               password=third_party_details.JENKINS_API_TOKEN)
+    instance.connect_to_jenkins_server()
     return instance
 
 
 @pytest.fixture(scope="session")
 def management():
     logger.info("Session start - Going to create MGMT instance")
-    management: Management = Management.instance()
+    management: Management = Management(host_ip=sut_details.management_host,
+                                        ssh_user_name=sut_details.management_ssh_user_name,
+                                        ssh_password=sut_details.management_ssh_password,
+                                        rest_api_user=sut_details.rest_api_user,
+                                        rest_api_user_password=sut_details.rest_api_user_password,
+                                        default_organization_registration_password=sut_details.default_organization_registration_password)
     logger.info("Management instance was created successfully")
 
     if sut_details.upgrade_management_to_latest_build:
@@ -393,7 +400,7 @@ def create_snapshot_for_collector(snapshot_name: str,
     Reporter.report("Stop because we want to take snapshot of a collector in a static mode")
     collector.stop_collector(password=management.tenant.organization.registration_password)
     assert collector.is_agent_down(), "Collector agent was not stopped on host"
-    rest_collector.wait_until_degraded()
+    CollectorUtils.wait_until_rest_collector_is_off(rest_collector=rest_collector)
     collector.os_station.vm_operations.remove_all_snapshots()
     collector.remove_all_crash_dumps_files()
     collector.os_station.vm_operations.snapshot_create(snapshot_name=snapshot_name)
@@ -420,44 +427,6 @@ def create_snapshot_for_collector_at_the_beginning_of_the_run(management: Manage
     create_snapshot_for_collector(snapshot_name=f'beginning_pytest_session_snapshot_{time.time()}',
                                   management=management,
                                   collector=collector)
-
-
-# @pytest.fixture(scope="session", autouse=sut_details.upgrade_management_to_latest_build)
-# def upgrade_to_latest_build(management: Management,
-#                             aggregator: Aggregator,
-#                             core: Core,
-#                             collector: Collector,
-#                             create_snapshot_for_collector_at_the_beginning_of_the_run):
-#     """
-#     The role of this fixture is to upgrade environment to latest builds.
-#     should run after creating snapshot of the system components which gives us the ability to revert in case of
-#     upgrade failure or broken version
-#     """
-#     management.upgrade_to_specific_build(desired_build=None, create_snapshot_before_upgrade=True)
-#
-#     if management.host_ip != aggregator.host_ip:
-#         aggregator.upgrade_to_specific_build(desired_build=None, create_snapshot_before_upgrade=True)
-#
-#     core.upgrade_to_specific_build(desired_build=None, create_snapshot_before_upgrade=True)
-#
-#     collector_latest_version = get_collector_latest_version(collector=collector)
-#     if collector.get_version() != collector_latest_version:
-#         collector.uninstall_collector(registration_password=management.tenant.registration_password)
-#         collector.install_collector(version=collector_latest_version,
-#                                     aggregator_ip=aggregator.host_ip,
-#                                     organization=management.tenant.organization,
-#                                     registration_password=management.tenant.registration_password)
-#
-#         wait_for_running_collector_status_in_cli(collector)
-#         wait_for_running_collector_status_in_mgmt(management, collector)
-#
-#         # in case of installation of the new version passed successfully we need to create new snapshot
-#         # for future purposes such as revert to first snapshot (revert to the new version)
-#         first_snapshot_name = collector.os_station.vm_operations.snapshot_list[0][0]
-#         collector.os_station.vm_operations.remove_all_snapshots()
-#         create_snapshot_for_collector(snapshot_name=first_snapshot_name,
-#                                       management=management,
-#                                       collector=collector)
 
 
 @pytest.fixture(scope="function", autouse=False)
@@ -488,7 +457,32 @@ def collector_health_check(management: Management, collector: CollectorAgent):
     updated_rest_collector = management.tenant.rest_components.collectors.get_by_ip(ip=collector.host_ip)
     logger.info(f"Test end - {updated_rest_collector} cleanup")
     assert updated_rest_collector.is_running(), f"{collector} is not running in {management}"
+
+    logger.info(f"Test end - {rest_collector} cleanup")
+    rest_collector = management.tenant.rest_components.collectors.get_by_ip(ip=collector.host_ip)
+    assert rest_collector.is_running(), f"{collector} is not running in {management}"
     assert collector.is_agent_running(), f"{collector} status is not running"
+
+
+@pytest.fixture(scope="function", autouse=True)
+def collector_malware_check(management: Management, collector: CollectorAgent):
+    if isinstance(collector, WindowsCollector):
+        logger.info(f"Test start- validate there are not malware processes that running on {collector} ")
+        notify_or_kill_malwares_on_windows_collector(collector_agent=collector)
+    elif isinstance(collector, LinuxCollector):
+        logger.info(f"Test start- validate there are not malware processes that running on {collector} ")
+        notify_malwares_on_linux_collector(collector_agent=collector)
+    else:
+        assert False, f"ERROR - Not supported {collector}!!!"
+    yield collector
+    if isinstance(collector, WindowsCollector):
+        logger.info(f"Test end - kill all windows malwares processes that running on {collector}")
+        notify_or_kill_malwares_on_windows_collector(collector_agent=collector, safe=True)
+    elif isinstance(collector, LinuxCollector):
+        logger.info(f"Test end - validate there are not malware processes that running on {collector}")
+        notify_malwares_on_linux_collector(collector_agent=collector)
+    else:
+        assert False, f"ERROR - Not supported {collector}!!!"
 
 
 @pytest.fixture(scope="function", autouse=True)
@@ -555,6 +549,65 @@ def append_logs_from_forti_edr_linux_station(initial_timestamps_dict: dict,
                                                              log_file_datetime_regex_python=log_file_datetime_regex_python)
         except Exception as e:
             Reporter.report(f"Failed to add logs from core to report, original exception: {str(e)}")
+
+
+@allure.step("Get logs content")
+def get_forti_edr_log_files(
+        forti_edr_stations: List[FortiEdrLinuxStation],
+        collectors: List[CollectorAgent],
+        filter_regex: str = None,
+):
+    log_files = {}
+    for station in forti_edr_stations:
+        log_files[f'{station}'] = {}
+        log_folder = station.get_logs_folder_path()
+        tmp_log_files = station.get_list_of_files_in_folder(folder_path=log_folder, file_suffix='.log')
+
+        if isinstance(station, Core):
+            blg_log_files = station.get_list_of_files_in_folder(log_folder, file_suffix='.blg')
+            tmp_log_files = station.get_parsed_blg_log_files(blg_log_files_paths=blg_log_files,
+                                                             modified_after_date_time=None)
+
+        for log_file in tmp_log_files:
+            content = station.get_file_content(log_file, filter_regex)
+            if content is not None:
+                log_files[f'{station}'][log_file] = content.splitlines()
+
+    for collector in collectors:
+        log_files[f'{collector}'] = {}
+        logs_content = collector.get_logs_content(filter_regex=filter_regex)
+        for log_file, content in logs_content.items():
+            if content:
+                log_files[f'{collector}'][log_file] = content.splitlines()
+
+    return log_files
+
+
+@pytest.fixture(scope="session", autouse=False)
+def check_errors_and_exceptions_in_logs(
+        management: Management,
+        aggregator: Aggregator,
+        core: Core,
+        collector: CollectorAgent,
+):
+    logger.info("Session start - prepare logs for analysis")
+    forti_edr_stations = [management, aggregator, core]
+    if not sut_details.debug_mode:
+        date_format = "%Y-%m-%d %H:%M:%S"
+        # core_date_format = "%d/%m/%Y %H:%M:%S"
+
+        start_time_dict = get_forti_edr_machines_time_stamp_as_dict(
+            forti_edr_stations=forti_edr_stations,
+            machine_date_format=date_format
+        )
+        start_time_dict.update(get_collectors_machine_time(collectors=[collector]))
+    yield
+    logger.info(f"Session end - start logs analysis")
+    all_logs_files = get_forti_edr_log_files(forti_edr_stations, [collector], filter_regex=r'\[E\]')
+    with allure.step(f"Analyze all logs"):
+        have_errors = any(file for file in all_logs_files.values())
+        Reporter.attach_str_as_json_file(file_name='LogErrors.json', file_content=json.dumps(all_logs_files, indent=2))
+        assert not have_errors, "Some of the log files contains errors"
 
 
 @pytest.fixture(scope="function", autouse=sut_details.debug_mode)
@@ -634,9 +687,19 @@ def reset_driver_verifier_for_all_collectors(collector: CollectorAgent):
 
 @pytest.fixture(scope="function", autouse=True)
 def check_if_collector_has_crashed(collector: CollectorAgent):
+    logger.info("Test Start - check if collector has crashes")
+    if collector.has_crash():
+        assert False, "Bug-Crashes were detected at the beginning of the test, so they might be from previous " \
+                      "test or if it the first test in the suite so the environment contained crashes before the suite"
+    logger.info("Test Start - did not detected crashes, test starts")
+
     yield
+
     logger.info("Test end - check if collector has crashes")
-    check_if_collectors_has_crashed([collector])
+    if collector.has_crash(): # if we detected crash, we will take snapshots inside the has_crash() method
+        collector.remove_all_crash_dumps_files()
+        assert False, "Real bug - test created crashes, they can be found in the snapshot"
+    logger.info("Test end - did not detected crashes at the end of the test :)")
 
 
 @allure.step("Get collectors machine time at the beginning of the test")
@@ -677,7 +740,7 @@ def revert_to_first_snapshot_for_all_collectors(management: Management, collecto
                         logger.info)
         assert collector.is_agent_down(), "Collector was not stopped"
         rest_collector = management.tenant.rest_components.collectors.get_by_ip(ip=collector.host_ip)
-        rest_collector.wait_until_degraded()
+        CollectorUtils.wait_until_rest_collector_is_off(rest_collector=rest_collector)
         Reporter.report("Sometimes the revert action creates a crash files so we want to remove them",
                         logger.info)
         collector.remove_all_crash_dumps_files()
@@ -750,39 +813,15 @@ def init_jira_xray_object(management, aggregator, core, collector):
     jira_xray_handler.collector = collector
 
 
-######################## dynamic system components fixtures ################################
 @pytest.fixture(scope="function")
-def dynamic_windows_collector(collector, management, aggregator) -> WindowsCollector:
-    vspere_details = ENSILO_VCSA_40
-    vsphere_handler = VsphereClusterHandler(vspere_details)
-    clean_vms_list = [CleanVMsReadyForCollectorInstallation.WIN_10_32_1,
-                      CleanVMsReadyForCollectorInstallation.WIN_10_64_1,
-                      CleanVMsReadyForCollectorInstallation.WIN_10_64_2,
-                      CleanVMsReadyForCollectorInstallation.WIN_10_64_3,
-                      CleanVMsReadyForCollectorInstallation.WIN_11_64_1,
-                      CleanVMsReadyForCollectorInstallation.WIN_11_64_2,
-                      CleanVMsReadyForCollectorInstallation.WIN_11_64_3,
-                      CleanVMsReadyForCollectorInstallation.WIN_SRV_2016_64_1,
-                      CleanVMsReadyForCollectorInstallation.WIN_SRV_2019_64_1]
-
-    collector = EnvironmentCreationHandler.add_random_collector_to_setup_from_collectors_pool(
-        vsphere_cluster_handler=vsphere_handler,
-        clean_vms_list=clean_vms_list,
-        version=collector.get_version(),
-        aggregator_ip=aggregator.host_ip,
-        registration_password=management.registration_password,
-        organization=sut_details.default_organization)
-
-    rest_collector = _wait_util_rest_collector_appear(host_ip=collector.host_ip, tenant=management.tenant, timeout=120)
-    rest_collector.wait_until_running()
-
-    yield collector
-
-    collector.os_station.vm_operations.revert_to_root_snapshot()
-    original_name = collector.os_station.vm_operations.vm_obj.name.replace(EnvironmentCreationHandler.BUSY_VM_COLLECTOR, '')
-    collector.os_station.vm_operations.rename_machine_in_vsphere(new_name=original_name)
-    collector.os_station.vm_operations.power_off()
-
-    rest_collector = _find_rest_collector(host_ip=collector.host_ip, tenant=management.tenant)
-    rest_collector.wait_until_degraded()
-    rest_collector.delete()
+def fx_system_without_events_and_exceptions(management):
+    """
+    This fixture making sure that the system is clear from events and exceptions
+    And make cleanup after the test
+    """
+    exceptions = management.tenant.default_local_admin.rest_components.exceptions.get_all(safe=True)
+    assert len(exceptions) == 0, 'ERROR--- There are exceptions, we do not get clear system!!!'
+    management.tenant.default_local_admin.rest_components.events.delete_all(safe=True)
+    yield management
+    management.tenant.default_local_admin.rest_components.events.delete_all(safe=True)
+    management.tenant.default_local_admin.rest_components.exceptions.delete_all(safe=True)

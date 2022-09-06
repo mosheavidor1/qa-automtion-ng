@@ -35,6 +35,7 @@ class ManagementUiClient:
         self.file_not_excluded_check = self.FortiEdrFileIsNotExcludedCheck(self)
         self.file_excluded_check = self.FortiEdrFileIsExcludedCheck(self)
 
+
     def start_testim_flow(self,
                           test_name: str,
                           management_ui_ip=sut_details.management_host,
@@ -368,6 +369,13 @@ class ManagementUiClient:
                               data: dict = None,
                               assert_type: AssertTypeEnum = AssertTypeEnum.HARD,
                               test_timeout: int = 600):
+            """
+            login to management
+            go to inventory > collectors
+            select a collector and try to export a pdf report
+            verify that the generate report was successful
+            verify that the download process was successful
+            """
             self.parent.start_testim_flow(test_name="collectors | export PDF report",
                                           management_ui_ip=self.parent.management_ui_ip,
                                           data=data,
@@ -386,6 +394,13 @@ class ManagementUiClient:
                                 data: dict = None,
                                 assert_type: AssertTypeEnum = AssertTypeEnum.HARD,
                                 test_timeout: int = 600):
+            """
+            login to management
+            go to inventory > collectors
+            select a collector and export a EXCEL report
+            verify that the generate report was successful
+            verify that the download process was successful
+            """
             self.parent.start_testim_flow(test_name="collectors | export EXCEL report",
                                           management_ui_ip=self.parent.management_ui_ip,
                                           data=data,
@@ -422,6 +437,66 @@ class ManagementUiClient:
                                           assert_type=assert_type,
                                           test_timeout=test_timeout)
 
+        def delete_collector_group_without_the_collectors(self,
+                                                          data: dict = None,
+                                                          assert_type: AssertTypeEnum = AssertTypeEnum.HARD,
+                                                          test_timeout: int = 600):
+            """
+            Login to management
+            go to the inventory collectors page
+            select collector group and delete it , without deleting the collector itself
+            """
+            self.parent.start_testim_flow(test_name="Collectors | Delete group without collectors",
+                                          management_ui_ip=self.parent.management_ui_ip,
+                                          data=data,
+                                          assert_type=assert_type,
+                                          test_timeout=test_timeout)
+
+        def delete_collector_group_with_the_collectors(self,
+                                                       data: dict = None,
+                                                       assert_type: AssertTypeEnum = AssertTypeEnum.HARD,
+                                                       test_timeout: int = 600):
+            """
+            Login to management
+            go to the inventory collectors page
+            select collector group and delete it including the collectors inside
+            """
+            self.parent.start_testim_flow(test_name="Collectors | Delete a group with collectors",
+                                          management_ui_ip=self.parent.management_ui_ip,
+                                          data=data,
+                                          assert_type=assert_type,
+                                          test_timeout=test_timeout)
+
+        def validate_the_collector_group_not_exist(self,
+                                                   data: dict = None,
+                                                   assert_type: AssertTypeEnum = AssertTypeEnum.HARD,
+                                                   test_timeout: int = 600):
+            """
+            Login to management
+            go to the inventory collectors page
+            validate the collector group don't exist in collector group list
+            """
+            self.parent.start_testim_flow(test_name="Collectors | Verify that group don't exist",
+                                          management_ui_ip=self.parent.management_ui_ip,
+                                          data=data,
+                                          assert_type=assert_type,
+                                          test_timeout=test_timeout)
+
+        def validate_the_collector_display_under_the_default_group(self,
+                                                                   data: dict = None,
+                                                                   assert_type: AssertTypeEnum = AssertTypeEnum.HARD,
+                                                                   test_timeout: int = 600):
+            """
+            Login to management
+            go to the inventory collectors page
+            validate the collector is in the default collector group
+            """
+            self.parent.start_testim_flow(test_name="Collectors | Validate the collectors is in the default group",
+                                          management_ui_ip=self.parent.management_ui_ip,
+                                          data=data,
+                                          assert_type=assert_type,
+                                          test_timeout=test_timeout)
+
     class FortiEdrIpSet:
         def __init__(self, parent):
             self.parent = parent
@@ -440,11 +515,71 @@ class ManagementUiClient:
         def __init__(self, parent):
             self.parent = parent
 
+        def set_ldap_server(self,
+                            data: dict = None,
+                            assert_type: AssertTypeEnum = AssertTypeEnum.HARD,
+                            test_timeout: int = 600):
+            """
+            login to the management
+            go to ldap page
+            configure the ldap server
+            validate the connection success by test button
+            """
+            self.parent.start_testim_flow(test_name="LDAP | Set LDAP server",
+                                          management_ui_ip=self.parent.management_ui_ip,
+                                          data=data,
+                                          assert_type=assert_type,
+                                          test_timeout=test_timeout)
+
         def set_ldap_server_plus_users_authentication(self,
                                                       data: dict = None,
                                                       assert_type: AssertTypeEnum = AssertTypeEnum.HARD,
                                                       test_timeout: int = 600):
             self.parent.start_testim_flow(test_name="LDAP | Set LDAP server plus users authentication",
+                                          management_ui_ip=self.parent.management_ui_ip,
+                                          data=data,
+                                          assert_type=assert_type,
+                                          test_timeout=test_timeout)
+
+        def reset_ldap_server_configuration(self,
+                                            data: dict = None,
+                                            assert_type: AssertTypeEnum = AssertTypeEnum.HARD,
+                                            test_timeout: int = 600):
+            """
+            login to the management
+            go to ldap page
+            clean all ldap configuration by click on reset button
+            """
+            self.parent.start_testim_flow(test_name="LDAP | reset LDAP server configuration",
+                                          management_ui_ip=self.parent.management_ui_ip,
+                                          data=data,
+                                          assert_type=assert_type,
+                                          test_timeout=test_timeout)
+
+        def validate_ldap_non_admin_user_privileges(self,
+                                                    data: dict = None,
+                                                    assert_type: AssertTypeEnum = AssertTypeEnum.HARD,
+                                                    test_timeout: int = 600):
+            """
+            perform login
+            Verify that the user has user-only permissions by making sure he cannot see the 'administrator' page
+            """
+            self.parent.start_testim_flow(test_name="users | basic validate non admin user privileges",
+                                          management_ui_ip=self.parent.management_ui_ip,
+                                          data=data,
+                                          assert_type=assert_type,
+                                          test_timeout=test_timeout)
+
+        def validate_ldap_local_admin_privileges(self,
+                                                 data: dict = None,
+                                                 assert_type: AssertTypeEnum = AssertTypeEnum.HARD,
+                                                 test_timeout: int = 600):
+            """
+            perform login
+            Verify that the user has local-admin permissions by making sure he can see the 'administrator' page
+            but it not see other organizations
+            """
+            self.parent.start_testim_flow(test_name="users | basic validate local admin privileges",
                                           management_ui_ip=self.parent.management_ui_ip,
                                           data=data,
                                           assert_type=assert_type,
@@ -459,6 +594,16 @@ class ManagementUiClient:
                          assert_type: AssertTypeEnum = AssertTypeEnum.HARD,
                          test_timeout: int = 600):
             self.parent.start_testim_flow(test_name="Security policies | Set policies",
+                                          management_ui_ip=self.parent.management_ui_ip,
+                                          data=data,
+                                          assert_type=assert_type,
+                                          test_timeout=test_timeout)
+
+        def validate_cannot_delete_default_policies(self,
+                                                    data: dict = None,
+                                                    assert_type: AssertTypeEnum = AssertTypeEnum.HARD,
+                                                    test_timeout: int = 600):
+            self.parent.start_testim_flow(test_name="Security policies | validate that cant delete default policy",
                                           management_ui_ip=self.parent.management_ui_ip,
                                           data=data,
                                           assert_type=assert_type,

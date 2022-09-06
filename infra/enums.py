@@ -17,6 +17,7 @@ class FortiEdrSystemState(Enum):
     DISABLED = 'Disabled'  # Status name from management
     ENABLED = 'ENABLED'
     UNINSTALLING = 'Uninstalling'
+    ISOLATED = 'Isolated'
 
 
 class ComponentType(Enum):
@@ -98,7 +99,6 @@ class CleanVMsReadyForCollectorInstallation(Enum):
     this enum holds VMs (not templates) that are ready for collector agent installations
     just connect to machines and do whatever you want
     """
-    WIN_SRV_2016_64_1 = 'WIN_SRV_2016_64_1'
     WIN_SRV_2019_64_1 = 'WIN_SRV_2019_64_1'
     WIN_10_32_1 = 'WIN_10_32_1'
     WIN_10_64_1 = 'WIN_10_64_1'
@@ -130,3 +130,13 @@ class ManagementUserRoles(Enum):
 class LinuxDistroTypes(Enum):
     UBUNTU = 'UBUNTU'
     CENTOS = 'CENTOS'
+
+
+class CollectorConfigurationTypes(Enum):
+    FULL = 'Full'
+    PARTIAL = 'Partial'
+
+
+class DeploymentMethods(Enum):
+    EXTERNAL = 'external'
+    DIRECT = 'direct'

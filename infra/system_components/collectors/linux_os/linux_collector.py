@@ -1,10 +1,6 @@
-from logging import DEBUG
-
 import allure
 import time
 from typing import List
-
-import sut_details
 import third_party_details
 from infra.os_stations.linux_station import LinuxStation, COLLECTOR_TEMP_PATH
 from infra.enums import FortiEdrSystemState, LinuxDistroTypes
@@ -15,7 +11,7 @@ from infra.system_components.collectors.collectors_agents_utils import (
     wait_until_collector_pid_disappears,
     wait_until_collector_pid_appears
 )
-from sut_details import management_registration_password
+from sut_details import default_organization_registration_password
 
 PREFIX_INSTALLER_FILE_NAME = "FortiEDRCollectorInstaller"
 SERVICE_NAME = "FortiEDRCollector"
@@ -32,7 +28,7 @@ COLLECTOR_CONFIG_SCRIPT_PATH = f"{COLLECTOR_SCRIPTS_FOLDER_PATH}/fortiedrconfig.
 COLLECTOR_BIN_PATH = f"{COLLECTOR_INSTALLATION_FOLDER_PATH}/bin/{SERVICE_NAME}"
 CRASH_FOLDERS_PATHS = ["/var/crash", COLLECTOR_CRASH_DUMPS_FOLDER_PATH]
 
-REGISTRATION_PASS = management_registration_password
+REGISTRATION_PASS = default_organization_registration_password
 DEFAULT_AGGREGATOR_PORT = 8081
 
 SUPPORTED_MALWARE_FOLDER_NAME = "listen"
@@ -46,6 +42,7 @@ class LinuxCollector(CollectorAgent):
         self.distro_type = self.os_station.distro_type
         self._process_id = self.get_current_process_id()
         self.__qa_files_path = "/home/qa"
+        self._initial_version = self.get_version()
 
     @property
     def cached_process_id(self) -> int:
@@ -66,6 +63,10 @@ class LinuxCollector(CollectorAgent):
     def get_qa_files_path(self):
         return self.__qa_files_path
 
+    @property
+    def initial_version(self) -> str:
+        return self._initial_version
+
     @allure.step("Update process ID")
     def update_process_id(self):
         Reporter.report(f"Cached process ID is: {self._process_id}")
@@ -73,27 +74,39 @@ class LinuxCollector(CollectorAgent):
         Reporter.report(f"Collector process ID updated to: {self._process_id}")
 
     @allure.step("{0} - Get collector version")
-    def get_version(self):
-        cmd = f"{COLLECTOR_CONTROL_PATH} --version"
-        result = self.os_station.execute_cmd(cmd=cmd,
-                                             return_output=True,
-                                             fail_on_err=True,
-                                             attach_output_to_report=True)
-        version = StringUtils.get_txt_by_regex(text=result, regex='FortiEDR\s+Collector\s+version\s+(\d+.\d+.\d+.\d+)', group=1)
+    def get_version(self, safe: bool = False):
+        try:
+            cmd = f"{COLLECTOR_CONTROL_PATH} --version"
+            result = self.os_station.execute_cmd(cmd=cmd,
+                                                 return_output=True,
+                                                 fail_on_err=True,
+                                                 attach_output_to_report=True)
+            version = StringUtils.get_txt_by_regex(text=result, regex='FortiEDR\s+Collector\s+version\s+(\d+.\d+.\d+.\d+)', group=1)
+        except Exception as e:
+            if safe:
+                return None
+            else:
+                raise e
 
         return version
+
+    def get_configuration_files_details(self) -> List[dict]:
+        raise NotImplemented("should be implemented")
+
+    def get_the_latest_config_file_details(self):
+        raise NotImplemented("should be implemented")
+
+    def wait_for_new_config_file(self, config_files_details_before_action=None):
+        """
+        wait until a new latest configuration file details received (latest from {current_config_file_details})
+        """
+        raise NotImplemented("Should be implemented")
 
     @allure.step("{0} - Stop collector")
     def stop_collector(self, password=None):
         password = password or REGISTRATION_PASS
-
-        try:
-            cmd = f"{COLLECTOR_CONTROL_PATH} --stop {password}"
-            result = self.os_station.execute_cmd(cmd=cmd, fail_on_err=True)
-        except:
-            cmd = f"{COLLECTOR_CONTROL_PATH} --stop {sut_details.management_registration_password}"
-            result = self.os_station.execute_cmd(cmd=cmd, fail_on_err=True)
-
+        cmd = f"{COLLECTOR_CONTROL_PATH} --stop {password}"
+        result = self.os_station.execute_cmd(cmd=cmd, fail_on_err=True)
         assert "stop operation succeeded" in result.lower(), f"Wrong output when stopping collector got: {result}"
         wait_until_collector_pid_disappears(self)
         self.update_process_id()
@@ -260,6 +273,9 @@ class LinuxCollector(CollectorAgent):
     def copy_log_parser_to_machine(self):
         pass
 
+    def get_logs_content(self, file_suffix='.blg', filter_regex=None):
+        pass
+
     def append_logs_to_report(self, first_log_timestamp_to_append: str = None, file_suffix='.blg'):
         pass
 
@@ -306,7 +322,7 @@ class LinuxCollector(CollectorAgent):
         return package_name_to_uninstall
 
     @allure.step("{0} - Create event {malware_name}")
-    def create_event(self, malware_name=SUPPORTED_MALWARE_FOLDER_NAME):
+    def create_event(self, malware_name: str=SUPPORTED_MALWARE_FOLDER_NAME):
         """ If the malware simulator does not exist on local machine, we will copy it from the shared drive """
         malware_folder_name = malware_name
         assert malware_folder_name == SUPPORTED_MALWARE_FOLDER_NAME, \
@@ -328,7 +344,7 @@ class LinuxCollector(CollectorAgent):
         self.os_station.execute_cmd(cmd=chmod_cmd, fail_on_err=True, return_output=True,
                                     attach_output_to_report=True)
         self.os_station.execute_cmd(cmd="ps aux")
-        pid = self.os_station.get_service_process_ids(malware_file_path)
+        pid = self.os_station.get_malware_process_id(malware_name)
         assert pid is None, f"{malware_name} already running pid is {pid}"
         trigger_event_cmd = f"cd {local_malware_folder_path}; {malware_file_path}"
         result = self.os_station.execute_cmd(cmd=trigger_event_cmd, fail_on_err=False, return_output=True,

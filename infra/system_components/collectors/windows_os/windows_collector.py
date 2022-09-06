@@ -1,11 +1,11 @@
 import time
 from datetime import datetime
-from typing import List
+from typing import List, Dict
 import logging
 import allure
 
-import sut_details
 import third_party_details
+from infra.common_utils import wait_for_condition
 from infra.os_stations.windows_station import WindowsStation
 from infra.system_components.collectors.collectors_agents_utils import (
     wait_until_collector_pid_disappears,
@@ -14,8 +14,10 @@ from infra.system_components.collectors.collectors_agents_utils import (
 from infra.allure_report_handler.reporter import Reporter, INFO
 from infra.system_components.collector import CollectorAgent, FILENAME_EDR_TESTER
 from infra.enums import FortiEdrSystemState
+from infra.system_components.collectors.default_values import MAX_WAIT_FOR_NEW_CONFIG_FILE_TO_APPEAR, \
+    CONFIG_FILE_APPEAR_INTERVAL
 from infra.utils.utils import StringUtils
-from sut_details import management_registration_password
+from sut_details import default_organization_registration_password
 from infra.system_components.collectors.windows_os.windows_collector_installation_utils import (
     create_uninstallation_script,
     get_installer_path,
@@ -26,12 +28,13 @@ logger = logging.getLogger(__name__)
 
 INTERVAL_WAIT_FOR_SERVICE = 5
 MAX_WAIT_FOR_SERVICE = 60
-REGISTRATION_PASS = management_registration_password
+REGISTRATION_PASS = default_organization_registration_password
 DEFAULT_AGGREGATOR_PORT = 8081
 SERVICE_NAME = "FortiEDRCollectorService."
 INSTALL_UNINSTALL_LOGS_FOLDER_PATH = "C:\\InstallUninstallLogs"
 EXTRACT_EDR_EVENT_TESTER_TIMEOUT = 30
 EDR_EVENT_TESTER_TIMEOUT = 1200
+
 
 class WindowsCollector(CollectorAgent):
 
@@ -44,19 +47,24 @@ class WindowsCollector(CollectorAgent):
         self.__program_data: str = r"C:\ProgramData\FortiEdr"
         self.__counters_file: str = fr"{self.__program_data}\Logs\Driver\counters.txt"
         self.__crash_dumps_dir: str = fr"{self.program_data}\CrashDumps\Collector"
-        self.__crash_dumps_info: str = fr"{self.__crash_dumps_dir}\crash_dumps_info.txt"
         self.__target_logs_folder: str = "C:\\ParsedLogsFolder"
         self.__memory_dmp_file_path: str = r'C:\WINDOWS\memory.dmp'
         self.__collected_crash_dump_dedicated_folder: str = r'C:\CrashDumpsCollected'
         self.__collector_logs_folder: str = f"{self.__program_data}\Logs"
         self.__collector_config_folder: str = f"{self.__program_data}\Config\Collector"
+        self.__collector_config_updates_folder: str = fr"{self.__collector_config_folder}\Updates"
         self.__bootstrap_file_name: str = "CollectorBootstrap.jsn"
         self.__qa_files_path: str = r"C:\qa"
         self._kill_all_undesired_processes()
+        self._initial_version = self.get_version(safe=True)
 
     @property
     def os_station(self) -> WindowsStation:
         return self._os_station
+
+    @property
+    def initial_version(self) -> str:
+        return self._initial_version
 
     @allure.step("Kill all undesired process that running on windows collector")
     def _kill_all_undesired_processes(self):
@@ -86,12 +94,12 @@ class WindowsCollector(CollectorAgent):
         return self.__program_data
 
     @property
-    def counters_file(self) -> str:
-        return self.__counters_file
+    def collector_config_folder(self) -> str:
+        return self.__collector_config_folder
 
     @property
-    def crash_dumps_dir(self) -> str:
-        return self.__crash_dumps_dir
+    def counters_file(self) -> str:
+        return self.__counters_file
 
     @allure.step("Get current collector process ID")
     def get_current_process_id(self):
@@ -100,6 +108,61 @@ class WindowsCollector(CollectorAgent):
         Reporter.report(f"Current process ID is: {process_id}")
         return process_id
 
+    def get_configuration_files_details(self) -> List[dict]:
+        """
+        return these data of the configuration files: names, sizes, datetime, sorted by timestamp.
+        """
+        folder_path = self.__collector_config_updates_folder
+        config_files_details = self.os_station.get_files_details_in_folder(folder_path=folder_path,
+                                                                           desired_files_suffix='.jsn',
+                                                                           ignore_file_suffix='.jsn.failed',
+                                                                           ordered_by_date_time=True)
+        return config_files_details
+
+    def get_the_latest_config_file_details(self) -> dict:
+        """
+        return these data of the latest created configuration file: names, sizes, datetime
+        """
+        config_files_details = self.get_configuration_files_details()  # sorted by timestamp
+        return config_files_details[-1]
+
+    @allure.step("Wait for a new configuration file")
+    def wait_for_new_config_file(self, config_files_details_before_action: List[dict] = None):
+        """
+        Wait for a new configuration file received by datetime according to the resolution of minutes,
+        If the size of the new config file is smaller than the size of the last config file then it is a bug in Infra
+        because the list of config files received sorted by datetime.
+        If the new config file was received in the same minute as the last config file, check that the new config
+        file didn't exist in the list of recent config files to validate that it is a new file and not and not actually
+        the last config, because then no new file was received.
+        And if the size of the latest config file is larger than the size of the last file, then a new file has been received.
+        """
+        config_files_details_before_action = config_files_details_before_action or self.get_configuration_files_details()
+        latest_config_file_details = config_files_details_before_action[-1]
+        latest_config_file_datetime = latest_config_file_details['file_datetime']
+        logger.info(f"the current latest file datetime is: {latest_config_file_datetime},wait for a new config")
+
+        def condition():
+            updated_latest_config_file_details = self.get_the_latest_config_file_details()
+            updated_latest_config_file_datetime = updated_latest_config_file_details['file_datetime']
+            logger.info(f"time of the updated latest config is {updated_latest_config_file_datetime}")
+            if updated_latest_config_file_datetime < latest_config_file_datetime:
+                raise Exception("Infra bug! The configuration files list are not sorted by creation datetime")
+            elif updated_latest_config_file_datetime == latest_config_file_datetime:
+                return not any(updated_latest_config_file_details['file_name'] == config_file['file_name'] and \
+                               updated_latest_config_file_details['file_datetime'] == config_file['file_datetime']
+                               for config_file in config_files_details_before_action)
+            elif updated_latest_config_file_datetime > latest_config_file_datetime:
+                return True
+
+        logger.info(f"Wait until a new latest configuration file received,"
+                    f" current latest is {latest_config_file_details}")
+
+        wait_for_condition(condition_func=condition,
+                           timeout_sec=MAX_WAIT_FOR_NEW_CONFIG_FILE_TO_APPEAR,
+                           interval_sec=CONFIG_FILE_APPEAR_INTERVAL,
+                           condition_msg=f"{self} got new configuration file")
+
     def get_qa_files_path(self):
         return self.__qa_files_path
 
@@ -107,17 +170,26 @@ class WindowsCollector(CollectorAgent):
         """
         :return: the directories that crash files written to
         """
-        return [r'C:\WINDOWS\system32\crashdumps', r'C:\WINDOWS\crashdumps', r'C:\WINDOWS\minidump',
-                r'C:\WINDOWS\system32\config\systemprofile\AppData\Local\crashdumps']
+        return [r'C:\WINDOWS\system32\crashdumps',
+                r'C:\WINDOWS\crashdumps',
+                r'C:\WINDOWS\minidump',
+                r'C:\WINDOWS\system32\config\systemprofile\AppData\Local\crashdumps',
+                r'C:\ProgramData\FortiEDR\Dumps\Collector']
 
     @allure.step("{0} - Get collector version")
-    def get_version(self):
-        cmd = f'"{self.__collector_service_exe}" -v'
-        result = self.os_station.execute_cmd(cmd=cmd,
-                                             return_output=True,
-                                             fail_on_err=True,
-                                             attach_output_to_report=True)
-        version = StringUtils.get_txt_by_regex(text=result, regex='FortiEDR\s+Collector\s+Service\s+version\s+(\d+.\d+.\d+.\d+)', group=1)
+    def get_version(self, safe: bool = False):
+        try:
+            cmd = f'"{self.__collector_service_exe}" -v'
+            result = self.os_station.execute_cmd(cmd=cmd,
+                                                 return_output=True,
+                                                 fail_on_err=True,
+                                                 attach_output_to_report=True)
+            version = StringUtils.get_txt_by_regex(text=result, regex='FortiEDR\s+Collector\s+Service\s+version\s+(\d+.\d+.\d+.\d+)', group=1)
+        except Exception as e:
+            if safe:
+                return None
+            else:
+                raise e
 
         return version
 
@@ -126,12 +198,8 @@ class WindowsCollector(CollectorAgent):
         logger.info(f"Stop {self}")
         password = password or REGISTRATION_PASS
 
-        try:
-            cmd = f'"{self.__collector_service_exe}" --stop -rp:{password}'
-            self.os_station.execute_cmd(cmd=cmd, fail_on_err=True)
-        except:
-            cmd = f'"{self.__collector_service_exe}" --stop -rp:{sut_details.management_registration_password}'
-            self.os_station.execute_cmd(cmd=cmd, fail_on_err=True)
+        cmd = f'"{self.__collector_service_exe}" --stop -rp:{password}'
+        self.os_station.execute_cmd(cmd=cmd, fail_on_err=True, asynchronous=False)
 
         wait_until_collector_pid_disappears(self)
         self.update_process_id()
@@ -199,11 +267,12 @@ class WindowsCollector(CollectorAgent):
     def has_crash_dumps(self, append_to_report: bool = False) -> bool:
         crash_dump_files = self.get_crash_dumps_files()
 
-        found_crash_dumps = True if crash_dump_files is not None and len(crash_dump_files) else False
+        found_crash_dumps = True if crash_dump_files is not None and len(crash_dump_files) > 0 else False
         if found_crash_dumps:
+            logger.info(f"Found crash dumps: {crash_dump_files}")
             Reporter.attach_str_as_file(file_name='crash_dumps', file_content=str('\r\n'.join(crash_dump_files)))
         else:
-            Reporter.report(f"No crash dump file found in {self}")
+            Reporter.report(f"No crash dump file found in {self}", logger_func=logger.info)
 
         return found_crash_dumps
 
@@ -217,7 +286,12 @@ class WindowsCollector(CollectorAgent):
             if is_folder_exist:
                 files_in_folder = self.os_station.get_list_of_files_in_folder(folder_path=single_folder)
                 if files_in_folder is not None and len(files_in_folder) > 0:
-                    files_in_folder = [f'{single_folder}\{single_file}' for single_file in files_in_folder]
+                    files_in_folder = [fr'{single_folder}\{single_file}' for single_file in files_in_folder]
+                    if 'C:\ProgramData\FortiEDR\Dumps\Collector\TMP' in files_in_folder:
+                        files_in_folder.remove('C:\ProgramData\FortiEDR\Dumps\Collector\TMP')
+
+                    if single_folder == 'C:\ProgramData\FortiEDR\Dumps\Collector':
+                        files_in_folder = [file for file in files_in_folder if not file.endswith('.exe.mem')]
 
                     if crash_dumps_list is None:
                         crash_dumps_list = []
@@ -235,11 +309,15 @@ class WindowsCollector(CollectorAgent):
 
     @allure.step("Remove crash dumps files")
     def remove_all_crash_dumps_files(self):
-        files_to_remove = self.get_crash_dumps_files()
-        if files_to_remove is not None and isinstance(files_to_remove, list) and len(files_to_remove) > 0:
-            Reporter.report(f"Remove crash files: {files_to_remove}")
-            for file in files_to_remove:
-                self.os_station.remove_file(file_path=file)
+        paths = self.get_crash_dumps_files()
+        if paths is not None and isinstance(paths, list) and len(paths) > 0:
+            for path in paths:
+                if self.os_station.is_folder(path=path):
+                    Reporter.report(f"Removing folder: {path}", logger_func=logger.info)
+                    self.os_station.remove_folder(folder_path=path)
+                else:
+                    Reporter.report(f"Removing file: {path}", logger_func=logger.info)
+                    self.os_station.remove_file(file_path=path)
 
     @allure.step("{0} - Get collector status via cli")
     def get_agent_status(self) -> FortiEdrSystemState:
@@ -257,6 +335,8 @@ class WindowsCollector(CollectorAgent):
             system_state = FortiEdrSystemState.DOWN
         elif forti_edr_service_status == 'Up' and forti_edr_driver_status == 'Up' and forti_edr_status == 'Disabled':
             system_state = FortiEdrSystemState.DISABLED
+        elif forti_edr_service_status == 'Up' and forti_edr_driver_status == 'Up' and forti_edr_status == 'Isolated':
+            system_state = FortiEdrSystemState.ISOLATED
         return system_state
 
     @allure.step('{0} - Start health mechanism')
@@ -301,7 +381,9 @@ class WindowsCollector(CollectorAgent):
         logs_path = self._get_logs_path(collector=self, prefix="Uninstallation_logs")
         Reporter.report(f"Installation logs can be found here: {logs_path}")
 
-        uninstall_script_path = create_uninstallation_script(self, registration_password, logs_path)
+        uninstall_script_path = create_uninstallation_script(collector_agent=self,
+                                                             registration_password=registration_password,
+                                                             logs_file_path=logs_path)
         self.os_station.execute_cmd(cmd=uninstall_script_path, asynchronous=False)
         wait_until_collector_pid_disappears(self)
         self.update_process_id()
@@ -374,7 +456,19 @@ class WindowsCollector(CollectorAgent):
             self.os_station.remove_file(file_path=fr'{self.__target_logs_folder}\*.log')
 
         if self.os_station.is_path_exist(path=fr'{self.__target_logs_folder}\*.blg'):
-            self.os_station.remove_file(file_path=fr'{self.__target_logs_folder}\*.blg')
+            try:
+                self.os_station.remove_file(file_path=fr'{self.__target_logs_folder}\*.blg')
+            except Exception as e:
+                print(e)
+
+    @allure.step("{0} - Remove all irrelevant blg2log parsers from C:\\ParsedLogsFolder")
+    def _remove_all_irrelevant_blg2log_parsers(self):
+        parsers = self.os_station.get_list_of_files_in_folder(folder_path=fr'{self.__target_logs_folder}\blg2log_*')
+        current_version = self.get_version()
+        if parsers is not None and len(parsers) > 0:
+            for file in parsers:
+                if current_version not in file:
+                    self.os_station.remove_file(file_path=fr'{self.__target_logs_folder}\{file}')
 
     @allure.step("{0} - Clear logs")
     def clear_logs(self):
@@ -390,25 +484,15 @@ class WindowsCollector(CollectorAgent):
             self.os_station.remove_file(file_path=fr'{self.__collector_logs_folder}\{sub_folder}\*.blg')
         self.start_collector()
 
-    @allure.step("{0} - Append logs to report from a given log timestamp {first_log_timestamp_to_append}")
-    def append_logs_to_report(self,
-                              first_log_timestamp_to_append: str,
-                              file_suffix='.blg'):
-        """
-        This method will append logs to report from the given initial timestamp
-        :param first_log_timestamp_to_append: the time stamp of the log that we want to add from (lower threshold)
-        should be in the format: 25/01/2022 16:11:38
-        :param file_suffix: files types to take into account, default is .blg
-        """
+    def _prepare_parsed_logs(self, initial_timestamp: str):
 
         self._remove_all_log_files_from_parsed_log_folder()
-
-        machine_timestamp_regex = '(\d+)\/(\d+)\/(\d+)\s+(\d+):(\d+):(\d+)'
-
-        first_time_stamp_datetime_to_append = datetime.strptime(first_log_timestamp_to_append, "%d/%m/%Y %H:%M:%S")
+        self._remove_all_irrelevant_blg2log_parsers()
 
         log_parser_file = self.copy_log_parser_to_machine()
-        self._copy_blg_log_files_that_was_modified_after_given_timestamp_to_parsed_log_folder(initial_timestamp=first_log_timestamp_to_append)
+        self._copy_blg_log_files_that_was_modified_after_given_timestamp_to_parsed_log_folder(
+            initial_timestamp=initial_timestamp
+        )
 
         Reporter.report("Checking if all .blg files parsed successfully")
         # extract number of blg files after copy - 1 (minus the log parser itself)
@@ -418,7 +502,7 @@ class WindowsCollector(CollectorAgent):
         self.os_station.execute_cmd(cmd=f'cd {self.__target_logs_folder} & {log_parser_file} -q')
 
         curr_num_of_files = len(self.os_station.get_list_of_files_in_folder(folder_path=self.__target_logs_folder)) - 1
-        expected_file_num = (num_blg_files) * 2
+        expected_file_num = num_blg_files * 2
 
         timeout = 60
         sleep_delay = 2
@@ -434,44 +518,111 @@ class WindowsCollector(CollectorAgent):
         else:
             Reporter.report("all .blg files parsed successfully :)")
 
+    @allure.step("{0} - Get logs content")
+    def get_logs_content(self, file_suffix='.blg', filter_regex=None) -> dict:
+        """
+        This method will collect all logs content
+        Args:
+            filter_regex:
+            file_suffix (str): files types to take into account, default is .blg
+            filter_regex (str): a regex filter to apply on the content
+
+        Returns:
+            dict: a dictionary of log-file-name: content
+        """
+        self._prepare_parsed_logs(initial_timestamp=datetime.strftime(datetime.min, "%d/%m/%Y %H:%M:%S"))
+
         # for each .txt file
-        log_files = self.os_station.get_list_of_files_in_folder(folder_path=self.__target_logs_folder, file_suffix='.log')
+        log_files = self.os_station.get_list_of_files_in_folder(
+            folder_path=self.__target_logs_folder, file_suffix='.log'
+        )
+
+        logs = {}
+        for single_parsed_file in log_files:
+            content = self.os_station.get_file_content(file_path=single_parsed_file, filter_regex=filter_regex)
+            logs[single_parsed_file] = content
+
+        return logs
+
+    @allure.step("{0} - return logs from a given log timestamp {first_log_timestamp_to_append} as dictionary")
+    def get_parsed_logs_after_specified_time_stamp(self,
+                                                   first_log_timestamp_to_append: str,
+                                                   file_suffix='.blg') -> Dict[str, str]:
+        """
+        This method will return all logs that was created after the given initial timestamp
+        :param first_log_timestamp_to_append: the time stamp of the log that we want to add from (lower threshold)
+        should be in the format: 25/01/2022 16:11:38
+        :param file_suffix: files types to take into account, default is .blg
+        """
+        logs_dict_with_content = {}
+
+        machine_timestamp_regex = r'(\d+)\/(\d+)\/(\d+)\s+(\d+):(\d+):(\d+)'
+        first_time_stamp_datetime_to_append = datetime.strptime(first_log_timestamp_to_append, "%d/%m/%Y %H:%M:%S")
+
+        self._prepare_parsed_logs(initial_timestamp=first_log_timestamp_to_append)
+
+        # for each .txt file
+        log_files = self.os_station.get_list_of_files_in_folder(
+            folder_path=self.__target_logs_folder, file_suffix='.log'
+        )
 
         for single_parsed_file in log_files:
 
-            append_to_allure_log = False
+            is_logs_exist_after_the_first_timestamp = False
             content = self.os_station.get_file_content(file_path=single_parsed_file)
-            first_date_in_log_file = StringUtils.get_txt_by_regex(text=content, regex=f'({machine_timestamp_regex})', group=1)
+            first_date_in_log_file = StringUtils.get_txt_by_regex(
+                text=content, regex=f'({machine_timestamp_regex})', group=1
+            )
 
             first_time_stamp_in_log_file_datetime = datetime.strptime(first_date_in_log_file, "%d/%m/%Y %H:%M:%S")
 
             if first_log_timestamp_to_append in content:
                 index = content.index(first_log_timestamp_to_append)
                 content = content[index:]
-                append_to_allure_log = True
-
+                is_logs_exist_after_the_first_timestamp = True
             elif first_time_stamp_in_log_file_datetime >= first_time_stamp_datetime_to_append:
-                append_to_allure_log = True
-
+                is_logs_exist_after_the_first_timestamp = True
             else:
-                content_splitted = content.split('\n')
-                for single_line in content_splitted:
-                    line_date = StringUtils.get_txt_by_regex(text=single_line, regex=f'({machine_timestamp_regex})', group=1)
+                content_split = content.split('\n')
+                for single_line in content_split:
+                    line_date = StringUtils.get_txt_by_regex(
+                        text=single_line, regex=f'({machine_timestamp_regex})', group=1
+                    )
 
                     if line_date is not None:
                         if datetime.strptime(line_date, "%d/%m/%Y %H:%M:%S") > first_time_stamp_datetime_to_append:
                             first_index = content.index(line_date)
                             content = content[first_index:]
+                            logs_dict_with_content[single_parsed_file] = content
                             break
 
-            if append_to_allure_log:
-                Reporter.attach_str_as_file(file_name=single_parsed_file, file_content=content)
+            if is_logs_exist_after_the_first_timestamp:
+                logs_dict_with_content[single_parsed_file] = content
+
+        return logs_dict_with_content
+
+    @allure.step("{0} - Append logs to report from a given log timestamp {first_log_timestamp_to_append}")
+    def append_logs_to_report(self,
+                              first_log_timestamp_to_append: str,
+                              file_suffix='.blg'):
+        """
+        This method will append logs to report from the given initial timestamp
+        :param first_log_timestamp_to_append: the time stamp of the log that we want to add from (lower threshold)
+        should be in the format: 25/01/2022 16:11:38
+        :param file_suffix: files types to take into account, default is .blg
+        """
+        results_dict = self.get_parsed_logs_after_specified_time_stamp(
+            first_log_timestamp_to_append=first_log_timestamp_to_append,
+            file_suffix=file_suffix)
+
+        if results_dict is not None and len(results_dict) > 0:
+            for file_name, file_content in results_dict.items():
+                Reporter.attach_str_as_file(file_name=file_name, file_content=file_content)
 
     @allure.step("{0} - Create event {malware_name}")
-    def create_event(self, malware_name: str="DynamicCodeTests.exe"):
+    def create_event(self, malware_name: str = "DynamicCodeTests.exe"):
         malware_folder = rf'{third_party_details.SHARED_DRIVE_QA_PATH}\automation_ng\malware_sample'
         target_path = self.get_qa_files_path()
-
         target_folder = self.os_station.copy_files_from_shared_folder(
             target_path_in_local_machine=target_path, shared_drive_path=malware_folder,
             files_to_copy=[malware_name])
@@ -580,3 +731,18 @@ class WindowsCollector(CollectorAgent):
         Reporter.report(rf"{self.__collector_config_folder}\*.*.bak")
         self.os_station.remove_file(rf"{self.__collector_config_folder}\*.*.bak")
 
+    @allure.step("Search for a given string {string_to_find} appears in logs after a given timestamp {first_log_date_time}")
+    def is_string_in_logs(self, string_to_find: str, first_log_date_time: str) -> bool:
+        logger.info(f"Get parsed logs from {first_log_date_time}")
+        log_files_dict = self.get_parsed_logs_after_specified_time_stamp(
+            first_log_timestamp_to_append=first_log_date_time,
+            file_suffix='.blg')
+        for file_name, file_content in log_files_dict.items():
+            Reporter.report(f"Checking if '{string_to_find}' received in the parsed log {file_name}", logger_func=logger.info)
+            result = StringUtils.get_txt_by_regex(text=file_content.lower(),
+                                                  regex=string_to_find.lower(),
+                                                  group=0)
+            if result is not None:
+                Reporter.report(f"Received from '{file_name}' log file: '{result}'", logger_func=logger.info)
+                return True
+        return False
