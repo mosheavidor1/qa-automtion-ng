@@ -24,12 +24,12 @@ class RestCommands(object):
     Class with different rest API methods.
     """
 
-    def __init__(self, management_ip, management_user, management_password, organization=None):
-        self.management_ip = management_ip
-        self.management_user = management_user
-        self.management_password = management_password
-        self.rest = NsloRest(NsloManagementConnection(management_ip, management_user, management_password,
-                                                      organization=organization))
+    def __init__(
+            self, management_ip, rest_api_user_name, rest_api_user_password, organization=None, forced_version=None
+    ):
+        self._management_ip = management_ip
+        self.rest = NsloRest(NsloManagementConnection(management_ip, rest_api_user_name, rest_api_user_password,
+                                                      organization=organization), forced_version=forced_version)
         self.administrator = AdministratorRest(nslo_rest=self.rest)
         self.communication_control = CommunicationControlRest(nslo_rest=self.rest)
         self.events = EventsRest(nslo_rest=self.rest)
@@ -48,3 +48,6 @@ class RestCommands(object):
         self.threat_hunting = ThreatHuntingRest(nslo_rest=self.rest)
         self.threat_hunting_settings = ThreatHuntingSettingsRest(nslo_rest=self.rest)
         self.users_rest = UsersRest(nslo_rest=self.rest)
+
+    def is_management_ip_changed(self, management_host: str) -> bool:
+        return self._management_ip != management_host

@@ -1,5 +1,7 @@
 import os
 
+vsphere_cluster = int(os.getenv("vsphere_cluster", default=40))
+
 environment_name = os.getenv("environment_name")
 curr_version = "5.2.0.x"
 
@@ -12,6 +14,9 @@ linux_collector_version = os.getenv("linux_collector_version", default=curr_vers
 management_and_aggregator_deployment_architecture = os.getenv(
     "management_and_aggregator_deployment_architecture", default="both"
 )
+
+managements_amount = int(os.getenv("managements_amount", default=1))
+components = os.getenv("components", default="true,0,1")  # both?, # of aggrs, # of cores
 
 # External Service Deployment data
 aggregators_amount = int(os.getenv("aggregators_amount", default=1))

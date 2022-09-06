@@ -11,7 +11,7 @@ from infra.system_components.collectors.collectors_agents_utils import (
     wait_until_collector_pid_disappears,
     wait_until_collector_pid_appears
 )
-from sut_details import management_registration_password
+from sut_details import default_organization_registration_password
 
 PREFIX_INSTALLER_FILE_NAME = "FortiEDRCollectorInstaller"
 SERVICE_NAME = "FortiEDRCollector"
@@ -28,7 +28,7 @@ COLLECTOR_CONFIG_SCRIPT_PATH = f"{COLLECTOR_SCRIPTS_FOLDER_PATH}/fortiedrconfig.
 COLLECTOR_BIN_PATH = f"{COLLECTOR_INSTALLATION_FOLDER_PATH}/bin/{SERVICE_NAME}"
 CRASH_FOLDERS_PATHS = ["/var/crash", COLLECTOR_CRASH_DUMPS_FOLDER_PATH]
 
-REGISTRATION_PASS = management_registration_password
+REGISTRATION_PASS = default_organization_registration_password
 DEFAULT_AGGREGATOR_PORT = 8081
 
 SUPPORTED_MALWARE_FOLDER_NAME = "listen"

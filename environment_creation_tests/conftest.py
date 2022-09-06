@@ -1,20 +1,26 @@
+import concurrent.futures
+import logging
 import random
+import re
 from datetime import date
 from typing import List
-import concurrent.futures
 
 import allure
 import pytest
 
+import sut_details
 from environment_creation_tests import desired_env_details
-from infra.forti_edr_versions_service_handler.forti_edr_versions_service_handler import FortiEdrVersionsServiceHandler
 from infra.allure_report_handler.reporter import Reporter
 from infra.containers.environment_creation_containers import MachineType, EnvironmentSystemComponent, DeployedEnvInfo
-from infra.enums import ComponentType, AutomationVmTemplates
+from infra.enums import ComponentType, AutomationVmTemplates, DeploymentMethods
 from infra.environment_creation.environment_creation_handler import EnvironmentCreationHandler
+from infra.forti_edr_versions_service_handler.forti_edr_versions_service_handler import FortiEdrVersionsServiceHandler
 from infra.utils.utils import StringUtils
 from infra.vpshere import vsphere_cluster_details
+from infra.vpshere.vsphere_cluster_details import CLUSTERS
 from infra.vpshere.vsphere_cluster_handler import VsphereClusterHandler
+
+logger = logging.getLogger(__name__)
 
 
 def get_collector_latest_version(
@@ -162,8 +168,153 @@ def get_latest_versions_of_all_base_versions_dict(base_versions_dict: dict):
     return last_versions_dict
 
 
+def get_system_components_list_for_external_service(
+        machine_type: MachineType,
+        management_ver: str,
+        aggregator_ver: str,
+        core_ver: str,
+) -> List[EnvironmentSystemComponent]:
+    sys_comp_list = []
+    if desired_env_details.management_and_aggregator_deployment_architecture == 'both':
+        manager_aggr = EnvironmentSystemComponent(component_type=ComponentType.BOTH,
+                                                  component_version=management_ver,
+                                                  machine_type=machine_type)
+        sys_comp_list.append(manager_aggr)
+
+    elif desired_env_details.management_and_aggregator_deployment_architecture == 'separate':
+        manager = EnvironmentSystemComponent(component_type=ComponentType.MANAGEMENT,
+                                             component_version=management_ver,
+                                             machine_type=machine_type)
+        sys_comp_list.append(manager)
+
+        for i in range(desired_env_details.aggregators_amount):
+            aggr = EnvironmentSystemComponent(component_type=ComponentType.AGGREGATOR,
+                                              component_version=aggregator_ver,
+                                              machine_type=machine_type)
+            sys_comp_list.append(aggr)
+    else:
+        assert False, (
+            f"Unknown deployment architecture: {desired_env_details.management_and_aggregator_deployment_architecture}"
+        )
+
+    for i in range(desired_env_details.cores_amount):
+        core = EnvironmentSystemComponent(component_type=ComponentType.CORE,
+                                          component_version=core_ver,
+                                          machine_type=machine_type)
+        sys_comp_list.append(core)
+
+    return sys_comp_list
+
+
+def get_system_components_list_for_direct_deployment(
+        machine_type: MachineType,
+        management_ver: str,
+        aggregator_ver: str,
+        core_ver: str,
+) -> List[EnvironmentSystemComponent]:
+
+    management_components = []
+    all_environments = [
+        {
+            'both': m['both'] == 'true',
+            'aggr': int(m['aggr']),
+            'cores': int(m['cores']),
+        } for m in re.finditer(
+            r'(?P<both>true|false),(?P<aggr>\d+),(?P<cores>\d+),?',
+            desired_env_details.components,
+        )
+    ]
+
+    assert desired_env_details.managements_amount == len(all_environments), (
+        f'The amount of managements ({desired_env_details.managements_amount}) '
+        f'does not math the number of systems ({len(all_environments)})'
+    )
+
+    for i in range(desired_env_details.managements_amount):
+        environment = all_environments[i]
+        component_type = ComponentType.BOTH if environment['both'] else ComponentType.MANAGEMENT
+        manager = EnvironmentSystemComponent(
+            component_type=component_type,
+            component_version=management_ver,
+            machine_type=machine_type,
+        )
+        management_components.append(manager)
+
+        aggregators_list = []
+        for j in range(environment['aggr']):
+            aggr = EnvironmentSystemComponent(
+                component_type=ComponentType.AGGREGATOR,
+                component_version=aggregator_ver,
+                machine_type=machine_type,
+            )
+            aggregators_list.append(aggr)
+        manager.aggregators = aggregators_list
+
+        cores_list = []
+        for j in range(environment['cores']):
+            core = EnvironmentSystemComponent(
+                component_type=ComponentType.CORE,
+                component_version=core_ver,
+                machine_type=machine_type,
+            )
+            cores_list.append(core)
+        manager.cores = cores_list
+
+    return management_components
+
+
+def deploy_and_get_info_directly(
+        vsphere_handler: VsphereClusterHandler,
+        env_name: str,
+        machine_type: MachineType,
+        management_ver: str,
+        aggregator_ver: str,
+        core_ver: str,
+) -> DeployedEnvInfo:
+    system_components = get_system_components_list_for_direct_deployment(
+        machine_type, management_ver, aggregator_ver, core_ver
+    )
+    build_id, components = EnvironmentCreationHandler.deploy_system_components_against_vsphere_directly(
+        vsphere_handler=vsphere_handler,
+        environment_name=env_name.replace(" ", "_"),
+        management_components=system_components,
+    )
+    deployed_env_info = EnvironmentCreationHandler.get_system_components_deploy_info_directly(
+        env_id=build_id, components=components
+    )
+    return deployed_env_info
+
+
+def deploy_and_get_info_using_external_service(
+        env_name: str,
+        machine_type: MachineType,
+        management_ver: str,
+        aggregator_ver: str,
+        core_ver: str,
+) -> DeployedEnvInfo:
+    system_components = get_system_components_list_for_external_service(
+        machine_type, management_ver, aggregator_ver, core_ver
+    )
+    env_id = EnvironmentCreationHandler.deploy_system_components_using_external_service(
+        environment_name=env_name.replace(" ", "_"),
+        system_components=system_components,
+        installation_type='qa',
+    )
+    EnvironmentCreationHandler.wait_for_system_component_deploy_status(
+        env_id=env_id,
+        timeout=30 * 60,
+        sleep_interval=60,
+    )
+    deployed_env_info = EnvironmentCreationHandler.get_system_components_deploy_info_external_service(env_id=env_id)
+    return deployed_env_info
+
+
 @allure.step("Deploy system components")
-def deploy_system_components(env_name='automation_env'):
+def deploy_system_components(
+        deployment_method: DeploymentMethods,
+        vsphere_handler: VsphereClusterHandler = None,
+        env_name='automation_env'
+) -> DeployedEnvInfo:
     base_versions_dict = get_base_versions_of_all_sys_components_as_dict()
     latest_versions_dict = get_latest_versions_of_all_base_versions_dict(base_versions_dict=base_versions_dict)
 
@@ -181,46 +332,64 @@ def deploy_system_components(env_name='automation_env'):
                                memory_limit=16000,
                                disk_size=40000)
 
-    sys_comp_list = []
-    if desired_env_details.management_and_aggregator_deployment_architecture == 'both':
-        manager_aggr = EnvironmentSystemComponent(component_type=ComponentType.BOTH,
-                                                  component_version=management_ver,
-                                                  machine_type=machine_type)
-        sys_comp_list.append(manager_aggr)
+    match deployment_method:
+        case DeploymentMethods.DIRECT:
+            deployed_env_info = deploy_and_get_info_directly(
+                vsphere_handler,
+                env_name,
+                machine_type,
+                management_ver,
+                aggregator_ver,
+                core_ver,
+            )
+        case DeploymentMethods.EXTERNAL:
+            deployed_env_info = deploy_and_get_info_using_external_service(
+                env_name,
+                machine_type,
+                management_ver,
+                aggregator_ver,
+                core_ver,
+            )
+        case _:
+            assert False, f"Unsupported deployment method {deployment_method}"
 
-    elif desired_env_details.management_and_aggregator_deployment_architecture == 'separate':
-        manager = EnvironmentSystemComponent(component_type=ComponentType.MANAGEMENT,
-                                             component_version=management_ver,
-                                             machine_type=machine_type)
-        sys_comp_list.append(manager)
-
-        for i in range(desired_env_details.aggregator_version):
-            aggr = EnvironmentSystemComponent(component_type=ComponentType.AGGREGATOR,
-                                              component_version=aggregator_ver,
-                                              machine_type=machine_type)
-            sys_comp_list.append(aggr)
-    else:
-        assert False, (
-            f"Unknown deployment architecture: {desired_env_details.management_and_aggregator_deployment_architecture}"
-        )
-
-    for i in range(desired_env_details.cores_amount):
-        core = EnvironmentSystemComponent(component_type=ComponentType.CORE,
-                                          component_version=core_ver,
-                                          machine_type=machine_type)
-        sys_comp_list.append(core)
-
-    env_id = EnvironmentCreationHandler.deploy_system_components_external_service(
-        environment_name=env_name.replace(" ", "_"),
-        system_components=sys_comp_list,
-        installation_type='qa')
-
-    EnvironmentCreationHandler.wait_for_system_component_deploy_status(env_id=env_id,
-                                                                       timeout=30 * 60,
-                                                                       sleep_interval=60)
-
-    deployed_env_info = EnvironmentCreationHandler.get_system_components_deploy_info(env_id=env_id)
+    logger.info(f"user name: {deployed_env_info.admin_user}")
+    logger.info(f"password: {deployed_env_info.admin_password}")
+    logger.info(f"registration password: {deployed_env_info.registration_password}")
     return deployed_env_info
+
+
+def deploy_missing_components(environment_name: str, deployed_env_info: DeployedEnvInfo):
+    aggregator_ips = deployed_env_info.aggregator_ips
+    core_ips = deployed_env_info.core_ips
+
+    vsphere_handler = None
+    if len(aggregator_ips) < int(desired_env_details.aggregators_amount):
+
+        if vsphere_handler is None:
+            vsphere_handler = VsphereClusterHandler(CLUSTERS[40])
+
+        for i in range(desired_env_details.aggregators_amount - len(aggregator_ips)):
+            aggr = EnvironmentCreationHandler.deploy_system_component_from_template(
+                vsphere_cluster_handler=vsphere_handler,
+                component_type=ComponentType.AGGREGATOR,
+                desired_component_name=f'{environment_name}_aggregator_{i}',
+                desired_version=desired_env_details.aggregator_version,
+                management_ip=deployed_env_info.management_ip,
+                management_registration_password=deployed_env_info.registration_password)
+
+    if len(core_ips) < int(desired_env_details.cores_amount):
+        if vsphere_handler is None:
+            vsphere_handler = VsphereClusterHandler(CLUSTERS[40])
+
+        for i in range(desired_env_details.cores_amount - len(core_ips)):
+            core = EnvironmentCreationHandler.deploy_system_component_from_template(
+                vsphere_cluster_handler=vsphere_handler,
+                component_type=ComponentType.CORE,
+                desired_component_name=f'{environment_name}_core_{i}',
+                desired_version=desired_env_details.core_version,
+                aggregator_ip=aggregator_ips[0],
+                management_registration_password=deployed_env_info.registration_password)
 
 
 def get_list_of_desired_collectors() -> List[AutomationVmTemplates]:
@@ -258,19 +427,20 @@ def get_list_of_desired_collectors() -> List[AutomationVmTemplates]:
 def deploy_collectors(aggregator_ip: str,
                       registration_password: str,
                       organization: str,
-                      env_name='automation_env_exp') -> dict:
+                      env_name='automation_env_exp',
+                      vsphere_cluster_handler=None) -> dict:
 
     base_versions_dict = get_base_versions_of_all_sys_components_as_dict()
     latest_versions_dict = get_latest_versions_of_all_base_versions_dict(base_versions_dict=base_versions_dict)
 
     ret_dict = {}
     desired_collectors_list = get_list_of_desired_collectors()
-    vsphere_cluster_handler = VsphereClusterHandler(cluster_details=vsphere_cluster_details.ENSILO_VCSA_40)
+    if vsphere_cluster_handler is None:
+        vsphere_cluster_handler = VsphereClusterHandler(cluster_details=vsphere_cluster_details.ENSILO_VCSA_40)
 
     args_list = []
     for template in desired_collectors_list:
         # if we want to seperate according to specific collector type (not only by OS) - write here the logic
-        desired_version = None
         if 'win' in template.name.lower():
             desired_version = desired_env_details.windows_collector_version
 
@@ -286,9 +456,10 @@ def deploy_collectors(aggregator_ip: str,
 
         raise_exception_on_failure = False
         rand_str = StringUtils.generate_random_string(length=5)  # added in case of multi-thread usage
+        today = date.today().strftime('%Y%m%d')
         # curr_time = str(time.time()).replace('.', '_')
         # collector_name = f'{env_name}_{template.value}_{rand_str}_{curr_time}'
-        collector_name = f'{template.value}_{rand_str}_{env_name}'
+        collector_name = f'{today}_{env_name}_{template.value}_{rand_str}'
         collector_name = collector_name.replace("TEMPLATE_", "")
         collector_name = collector_name.replace(" ", "_")
         if len(collector_name) >= 80:
@@ -338,14 +509,29 @@ def setup_environment():
         curr_day = today.strftime("%d-%b-%Y")
         environment_name = f'{curr_day}_automation_environment_{StringUtils.generate_random_string(4)}'
 
-    deployed_env_info = deploy_system_components(env_name=environment_name)
+    vsphere_handler: VsphereClusterHandler | None = None
+    deployment_method = DeploymentMethods(sut_details.deployment_method)
+    if deployment_method == DeploymentMethods.DIRECT:
+        cluster = desired_env_details.vsphere_cluster
+        vsphere_handler = VsphereClusterHandler(CLUSTERS[cluster])
+
+    deployed_env_info = deploy_system_components(deployment_method, vsphere_handler, env_name=environment_name)
+
     aggregator_ips = deployed_env_info.aggregator_ips
     assert len(aggregator_ips) != 0, "There is no deployed aggregators, can not proceed and deploy collectors machines"
 
+    if deployment_method == DeploymentMethods.EXTERNAL:
+        deploy_missing_components(
+            environment_name=environment_name,
+            deployed_env_info=deployed_env_info,
+        )
+
+    Reporter.report(f'Deploying collectors to Aggregator IP {aggregator_ips[0]}')
     deployed_collectors_info = deploy_collectors(env_name=f'{environment_name}_{deployed_env_info.env_id}',
                                                  aggregator_ip=aggregator_ips[0],
                                                  registration_password=deployed_env_info.registration_password,
-                                                 organization=deployed_env_info.customer_name)
+                                                 organization=deployed_env_info.customer_name,
+                                                 vsphere_cluster_handler=vsphere_handler)
 
     ret_dict = {
         'system_components': deployed_env_info,

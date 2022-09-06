@@ -56,7 +56,7 @@ class BaseApiObj:
     def is_exist(self) -> bool:
         """ Check if object exists in management """
         logger.info(f"Check if {self} exists")
-        return self.get_fields(safe=True, rest_client=ADMIN_REST) is not None
+        return self.get_fields(safe=True, rest_client=ADMIN_REST()) is not None
 
     def _validate_deletion(self):
         """ Validate that api call really worked: deleted the object"""

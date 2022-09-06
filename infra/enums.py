@@ -135,3 +135,8 @@ class LinuxDistroTypes(Enum):
 class CollectorConfigurationTypes(Enum):
     FULL = 'Full'
     PARTIAL = 'Partial'
+
+
+class DeploymentMethods(Enum):
+    EXTERNAL = 'external'
+    DIRECT = 'direct'

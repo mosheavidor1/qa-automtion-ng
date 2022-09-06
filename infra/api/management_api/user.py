@@ -70,8 +70,8 @@ class User(BaseApiObj):
         self._id = initial_data[UserFieldsNames.ID.value]  # Static, unique identifier
         self._organization_name = initial_data[UserFieldsNames.ORGANIZATION.value]
         super().__init__(rest_client=RestCommands(management_ip=sut_details.management_host,
-                                                  management_user=initial_data[UserFieldsNames.USERNAME.value],
-                                                  management_password=self._password,
+                                                  rest_api_user_name=initial_data[UserFieldsNames.USERNAME.value],
+                                                  rest_api_user_password=self._password,
                                                   organization=self._organization_name),
                          initial_data=initial_data)
         self._rest_components = UserRestComponentsFactory(organization_name=self._organization_name,
