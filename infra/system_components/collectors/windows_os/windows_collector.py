@@ -17,7 +17,7 @@ from infra.enums import FortiEdrSystemState
 from infra.system_components.collectors.default_values import MAX_WAIT_FOR_NEW_CONFIG_FILE_TO_APPEAR, \
     CONFIG_FILE_APPEAR_INTERVAL
 from infra.utils.utils import StringUtils
-from sut_details import management_registration_password
+from sut_details import default_organization_registration_password
 from infra.system_components.collectors.windows_os.windows_collector_installation_utils import (
     create_uninstallation_script,
     get_installer_path,
@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 
 INTERVAL_WAIT_FOR_SERVICE = 5
 MAX_WAIT_FOR_SERVICE = 60
-REGISTRATION_PASS = management_registration_password
+REGISTRATION_PASS = default_organization_registration_password
 DEFAULT_AGGREGATOR_PORT = 8081
 SERVICE_NAME = "FortiEDRCollectorService."
 INSTALL_UNINSTALL_LOGS_FOLDER_PATH = "C:\\InstallUninstallLogs"

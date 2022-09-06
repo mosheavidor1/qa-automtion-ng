@@ -79,8 +79,8 @@ class Tenant:
         """ Create tenant from an existing/create new organization and existing/create new local admin user """
         is_new_org = False
         logger.info(f"Create tenant with organization '{organization_name}' and local admin user '{username}'")
-        local_admin_rest = RestCommands(management_ip=sut_details.management_host, management_user=username,
-                                        management_password=user_password, organization=organization_name)
+        local_admin_rest = RestCommands(management_ip=sut_details.management_host, rest_api_user_name=username,
+                                        rest_api_user_password=user_password, organization=organization_name)
         organizations_factory = OrganizationsFactory(factory_rest_client=local_admin_rest)
         organization = organizations_factory.get_by_name(org_name=organization_name,
                                                          registration_password=registration_password,
@@ -92,7 +92,7 @@ class Tenant:
                                                                      password=registration_password)
         else:
             logger.info(f"Organization {organization_name} already exists in management")
-        users_factory = UsersFactory(organization_name=organization_name, factory_rest_client=ADMIN_REST)
+        users_factory = UsersFactory(organization_name=organization_name, factory_rest_client=ADMIN_REST())
         default_local_admin = users_factory.get_by_username(username=username, password=user_password, safe=True)
         if default_local_admin is None:
             logger.info(f"Default Local admin {username} doesn't exist in org {organization_name}, create a new one")
@@ -129,7 +129,7 @@ class Tenant:
             logger.info(f"{source_collector} already in desired organization '{tenant_org_name}', no need to move")
             return source_collector
         logger.info(f"Move {source_collector} from org {collector_org_name} to {self} and wait few seconds")
-        ADMIN_REST.system_inventory.move_collectors_to_organization(collectors_names=[source_collector.get_name()],
+        ADMIN_REST().system_inventory.move_collectors_to_organization(collectors_names=[source_collector.get_name()],
                                                                     target_group_name=target_group_name,
                                                                     current_collectors_organization=collector_org_name,
                                                                     target_organization=tenant_org_name)

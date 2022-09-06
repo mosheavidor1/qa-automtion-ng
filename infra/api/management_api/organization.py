@@ -11,8 +11,8 @@ from infra.utils.utils import StringUtils
 logger = logging.getLogger(__name__)
 
 DEFAULT_LICENSE_CAPACITY = 100
-DEFAULT_ORGANIZATION_NAME = sut_details.default_organization  # Gabi why we need to get it from sut details ? is it not constent 'Default' ?
-MANAGEMENT_REGISTRATION_PASSWORD = sut_details.management_registration_password
+DEFAULT_ORGANIZATION_NAME = sut_details.default_organization_name  # Gabi why we need to get it from sut details ? is it not constent 'Default' ?
+MANAGEMENT_REGISTRATION_PASSWORD = sut_details.default_organization_registration_password
 
 
 class OrgFieldsNames(Enum):
@@ -29,7 +29,6 @@ class OrgFieldsNames(Enum):
     WORK_STATION_LICENCES = 'workstationsAllocated'
     IOT_LICENCES = 'iotAllocated'
     WORK_STATIONS_IN_USE = 'workstationsInUse'
-
 
 
 class Organization(BaseApiObj):
@@ -74,8 +73,8 @@ class Organization(BaseApiObj):
         }
         organization_data[OrgFieldsNames.FORENSICS.value] = organization_data[OrgFieldsNames.FORENSICS_AND_EDR.value]
         organization_data[OrgFieldsNames.EDR.value] = organization_data[OrgFieldsNames.FORENSICS_AND_EDR.value]
-        ADMIN_REST.organizations.create_organization(org_data=organization_data,
-                                                     expected_status_code=expected_status_code)
+        ADMIN_REST().organizations.create_organization(org_data=organization_data,
+                                                       expected_status_code=expected_status_code)
         new_org_data = get_organization_fields_by_name(organization_name=name, safe=False)
         if expected_status_code == 200:
             _compare_new_org_data(expected_data=organization_data, actual_data=new_org_data)
@@ -125,8 +124,8 @@ class Organization(BaseApiObj):
     def _delete(self, expected_status_code=200):
         """ Organization that is actually a tenant can be deleted via management only """
         logger.info(f"Delete {self}")
-        ADMIN_REST.organizations.delete_organization(organization_name=self.get_name(),
-                                                     expected_status_code=expected_status_code)
+        ADMIN_REST().organizations.delete_organization(organization_name=self.get_name(),
+                                                       expected_status_code=expected_status_code)
         self._validate_deletion()
 
     def _get_field(self, field_name, from_cache, update_cache):
@@ -140,9 +139,9 @@ class Organization(BaseApiObj):
                 self._cache[field_name] = updated_value
         return value
 
-    def get_fields(self, safe=False, update_cache_data=False, rest_client=ADMIN_REST) -> dict:
+    def get_fields(self, safe=False, update_cache_data=False, rest_client=ADMIN_REST()) -> dict:
         """ Get organization fields by its id """
-        orgs_fields = ADMIN_REST.organizations.get_all_organizations()
+        orgs_fields = ADMIN_REST().organizations.get_all_organizations()
         for org_fields in orgs_fields:
             if org_fields[OrgFieldsNames.ID.value] == self.id:
                 logger.debug(f"{self} updated data from management: \n {org_fields}")
@@ -190,7 +189,7 @@ def get_default_org_expiration_date():
 def get_organization_fields_by_name(organization_name, safe=False) -> dict:
     """ When creating new organization (POST) the response doesn't contain any data, only status code,
     so use this to get the rest data in order to initialize the organization instance """
-    all_organizations_fields = ADMIN_REST.organizations.get_all_organizations()
+    all_organizations_fields = ADMIN_REST().organizations.get_all_organizations()
     for org_fields in all_organizations_fields:
         if org_fields[OrgFieldsNames.ORG_NAME.value] == organization_name:
             logger.debug(f"Organization '{organization_name}' updated data from management: \n {org_fields}")

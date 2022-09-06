@@ -35,7 +35,7 @@ class OrganizationsFactory(BaseApiObjFactory):
         """ Get organizations by field """
         organizations = []
         logger.debug(f"Find organizations with field {field_name} = {value} ")
-        all_orgs_fields = ADMIN_REST.organizations.get_all_organizations()
+        all_orgs_fields = ADMIN_REST().organizations.get_all_organizations()
         for org_fields in all_orgs_fields:
             if org_fields[field_name] == value:
                 org = Organization(rest_client=self._factory_rest_client, password=registration_password,
@@ -61,7 +61,7 @@ def get_default_organization():
     """ Return the default organization, the default organization has admin credentials because
         it is under admin user """
     logger.debug(f"Get the default organization: {DEFAULT_ORGANIZATION_NAME}")
-    organizations_factory = OrganizationsFactory(factory_rest_client=ADMIN_REST)
+    organizations_factory = OrganizationsFactory(factory_rest_client=ADMIN_REST())
     default_organization = organizations_factory.get_by_name(org_name=DEFAULT_ORGANIZATION_NAME,
                                                              registration_password=MANAGEMENT_REGISTRATION_PASSWORD)
     return default_organization

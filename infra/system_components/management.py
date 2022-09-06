@@ -17,7 +17,6 @@ from infra.api.management_api.organization import DEFAULT_LICENSE_CAPACITY
 import sut_details
 from infra.containers.system_component_containers import ManagementDetails
 from infra.enums import ComponentType, FortiEdrSystemState, ManagementUserRoles
-from infra.singleton import Singleton
 from infra.system_components.forti_edr_linux_station import FortiEdrLinuxStation
 
 from infra.test_im.management_ui_client import ManagementUiClient
@@ -27,7 +26,6 @@ from third_party_details import SHARED_DRIVE_COLLECTORS_CONTENT
 logger = logging.getLogger(__name__)
 
 
-@Singleton
 class Management(FortiEdrLinuxStation):
     APPLICATION_PROPERTIES_FILE_PATH = '/opt/FortiEDR/webapp/application.properties'
 
@@ -37,57 +35,63 @@ class Management(FortiEdrLinuxStation):
     _DB_TBL_ADM_USERS_ROLES = 'adm_users_roles'
     _DB_TBL_ADM_ROLES = 'adm_roles'
 
-    def __init__(self):
-        self._config = sut_details
+    def __init__(
+            self,
+            host_ip: str,
+            ssh_user_name: str,
+            ssh_password: str,
+            rest_api_user: str,
+            rest_api_user_password: str,
+            default_organization_registration_password: str,
+            is_licensed: bool = True,
+            forced_version: str = None,
+    ):
         logger.info(
-            f"Trying to init management object with user_name: {self._config.management_ssh_user_name},"
-            f" password: {self._config.management_ssh_password}")
+            f"Trying to init management object with user_name: {ssh_user_name},"
+            f" password: {ssh_password}")
 
         super().__init__(
-            host_ip=self._config.management_host,
-            user_name=self._config.management_ssh_user_name,
-            password=self._config.management_ssh_password,
+            host_ip=host_ip,
+            user_name=ssh_user_name,
+            password=ssh_password,
             component_type=ComponentType.MANAGEMENT)
 
-        self._ui_admin_user_name = self._config.management_ui_admin_user_name
-        self._ui_admin_password = self._config.management_ui_admin_password
-        self._registration_password = self._config.management_registration_password
+        self._rest_api_user_name = rest_api_user
+        self._rest_api_user_password = rest_api_user_password
+        self._registration_password = default_organization_registration_password
 
         self._postgresql_db: PostgresqlOverSshDb = self._get_postgresql_db_obj()
-        self.enable_rest_api_for_user_via_db(user_name=self._ui_admin_user_name)
+        self.enable_rest_api_for_user_via_db(user_name=self._rest_api_user_name)
 
-        self._admin_rest_api_client = RestCommands(self.host_ip,
-                                                   self._ui_admin_user_name,
-                                                   self._ui_admin_password,
-                                                   organization=None)
+        self._admin_rest_api_client = RestCommands(
+            management_ip=host_ip,
+            rest_api_user_name=rest_api_user,
+            rest_api_user_password=rest_api_user_password,
+            organization=None,
+            forced_version=forced_version,
+        )
 
-        self._details: ManagementDetails = self._get_management_details()
-        reduce_default_org_license_capacity()
         self._temp_tenants = []
-        self._default_tenant: Tenant = self._create_default_tenant()
-        self._ui_client = ManagementUiClient(management_ui_ip=self.host_ip,
-                                             tenant=self._default_tenant)
+        self._details: ManagementDetails | None = None
+        self._default_tenant: Tenant | None = None
+        self._ui_client: ManagementUiClient | None = None
+
+        if is_licensed:
+            self.finish_init_with_license()
+
 
     @property
-    def ui_admin_user_name(self) -> str:
-        return self._ui_admin_user_name
-
-    @ui_admin_user_name.setter
-    def ui_admin_user_name(self, ui_admin_user_name: str):
-        self._ui_admin_user_name = ui_admin_user_name
+    def rest_api_user_name(self) -> str:
+        return self._rest_api_user_name
 
     @property
-    def ui_admin_password(self) -> str:
-        return self._ui_admin_password
+    def rest_api_user_password(self) -> str:
+        return self._rest_api_user_password
 
     @property
     def registration_password(self) -> str:
         """ Password for registering collectors to this MGMT """
         return self._registration_password
-
-    @ui_admin_password.setter
-    def ui_admin_password(self, ui_admin_password: str):
-        self._ui_admin_password = ui_admin_password
 
     @property
     def ui_client(self) -> ManagementUiClient:
@@ -113,6 +117,15 @@ class Management(FortiEdrLinuxStation):
 
     def __repr__(self):
         return f"Management {self._host_ip}"
+
+    def finish_init_with_license(self):
+        self._details = self._get_management_details()
+        reduce_default_org_license_capacity()
+        self._default_tenant = self._create_default_tenant()
+        self._ui_client = ManagementUiClient(
+            management_ui_ip=self.host_ip,
+            tenant=self._default_tenant,
+        )
 
     def get_logs_folder_path(self):
         return '/opt/FortiEDR/webapp/logs'
@@ -263,7 +276,7 @@ class Management(FortiEdrLinuxStation):
     def _create_default_tenant(self) -> Tenant:
         """ This is the main tenant in the test session, can't be deleted """
         logger.info("Create the default tenant")
-        collector_type_name = self._config.collector_type
+        collector_type_name = sut_details.collector_type
         default_tenant = Tenant.create(username=collector_type_name, user_password=collector_type_name,
                                        organization_name=collector_type_name, registration_password=collector_type_name)
         return default_tenant
@@ -351,6 +364,11 @@ class Management(FortiEdrLinuxStation):
         if not status:
             assert False, f'Could not get response from the management. \n{response}'
         return True
+
+    @allure.step("Upload new license")
+    def upload_license_blob(self, license_blob: str):
+        uploaded = self._admin_rest_api_client.administrator.upload_license(license_blob=license_blob)
+        assert uploaded, "License upload failed"
 
 
 def reduce_default_org_license_capacity():

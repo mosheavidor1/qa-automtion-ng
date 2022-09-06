@@ -260,7 +260,12 @@ def jenkins_handler() -> JenkinsHandler:
 @pytest.fixture(scope="session")
 def management():
     logger.info("Session start - Going to create MGMT instance")
-    management: Management = Management.instance()
+    management: Management = Management(host_ip=sut_details.management_host,
+                                        ssh_user_name=sut_details.management_ssh_user_name,
+                                        ssh_password=sut_details.management_ssh_password,
+                                        rest_api_user=sut_details.rest_api_user,
+                                        rest_api_user_password=sut_details.rest_api_user_password,
+                                        default_organization_registration_password=sut_details.default_organization_registration_password)
     logger.info("Management instance was created successfully")
 
     if sut_details.upgrade_management_to_latest_build:

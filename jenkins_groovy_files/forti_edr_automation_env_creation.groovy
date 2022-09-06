@@ -165,6 +165,7 @@ pipeline {
                     sh "echo tests_discover_type=suite >> ./myenv.txt"
                     sh "echo tests=create_environment >> ./myenv.txt"
                     sh "echo report_results_to_jira=false >> ./myenv.txt"
+                    sh "echo deployment_method=direct >> ./myenv.txt"
 
                     try
                     {
