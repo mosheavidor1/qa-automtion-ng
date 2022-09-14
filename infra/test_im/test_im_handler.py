@@ -18,14 +18,14 @@ class TestImHandler:
     script_dir = pathlib.Path(__file__).parent.resolve()
 
     def __init__(self,
-                 branch="master"):
+                 branch="Moshe_Test_Branch"):
         self.branch = branch
 
     def _get_testim_cmd(self,
                         test_name: str,
                         params_file_name: str,
                         ui_ip: str,
-                        branch_name: str = 'main'):
+                        branch_name: str = 'Moshe_Test_Branch'):
 
         json_file_param = ''
         branch_name_param = ''

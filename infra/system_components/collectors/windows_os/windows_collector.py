@@ -254,10 +254,10 @@ class WindowsCollector(CollectorAgent):
             Reporter.report("Crash was detected :(")
 
             # create snapshot only if collector machine found on vSphere
-            if self.os_station.vm_operations is not None:
-                snapshot_name = f"snpashot_wit_crash_{time.time()}"
-                self.os_station.vm_operations.snapshot_create(snapshot_name=snapshot_name)
-                Reporter.report(f"Created New snapshot with the name: {snapshot_name}")
+            #if self.os_station.vm_operations is not None:
+               # snapshot_name = f"snpashot_wit_crash_{time.time()}"
+#                self.os_station.vm_operations.snapshot_create(snapshot_name=snapshot_name)
+             #   Reporter.report(f"Created New snapshot with the name: {snapshot_name}")
             return True
 
         Reporter.report("No crash detected :)")

@@ -7,18 +7,21 @@ JENKINS_URL = 'http://jenkins.ensilo.local/'
 USER_NAME_DOMAIN = f'ensilo\\{USER_NAME}'
 SHARED_DRIVE_PATH = r'\\ens-fs01.ensilo.local'
 SHARED_DRIVE_QA_PATH = fr'{SHARED_DRIVE_PATH}\qa'
+SHARED_DRIVE_LICENSE_PATH = fr'{SHARED_DRIVE_QA_PATH}\LicenseTool'
 SHARED_DRIVE_VERSIONS_PATH = fr'{SHARED_DRIVE_PATH}\Versions'
+SHARED_DRIVE_COLLECTORS_CONTENT = fr"{SHARED_DRIVE_VERSIONS_PATH}\Collector_Content"
 SHARED_DRIVE_LINUX_VERSIONS_PATH = fr"{SHARED_DRIVE_VERSIONS_PATH}\linux-collector"
 
 JENKINS_JOB = fr'{os.getenv("BUILD_URL")}allure/' if os.getenv("BUILD_URL") is not None else None
 
 TEST_IM_HEADLESS = False
 TEST_IM_ON_REMOTE_GRID = False
-RUN_TEST_IM_ON_PROXY = True if os.getenv("use_test_im_proxy") == 'true' else False
+RUN_TEST_IM_ON_PROXY = os.getenv("use_test_im_proxy") == 'true'
 
 ENVIRONMENT_SERVICE_URL = 'http://environment-service.ensilo.local'
-AUTOMATION_SERVICES_UTILS_MACHINE_IP = '10.151.121.54' # workaround for now, in the future we will create proxy machine per run in jenkins
+# workaround for now, in the future we will create proxy machine per run in jenkins
+AUTOMATION_SERVICES_UTILS_MACHINE_IP = '10.151.120.192'
 LATEST_VERSIONS_SERVICE_PORT = 5070
+AUTOMATION_SERVICES_URL = f'http://{AUTOMATION_SERVICES_UTILS_MACHINE_IP}:{LATEST_VERSIONS_SERVICE_PORT}'
 TEST_IM_PROXY_PORT = 5071
-TEST_IM_BRANCH = os.getenv("Moshe_Test_Branch") if os.getenv("Moshe_Test_Branch") is not None else "Moshe_Test_Branch"
-
+TEST_IM_BRANCH = os.getenv("testim_branch", default="Moshe_Test_Branch")

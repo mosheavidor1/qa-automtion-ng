@@ -292,7 +292,7 @@ def aggregator(management):
         assert False, "Automation does not support more than 1 aggregator for functional testing"
 
     aggregator = aggregators[0]
-    
+
     if sut_details.upgrade_aggregator_to_latest_build and management.host_ip != aggregator.host_ip:
         aggregator.upgrade_to_specific_build(desired_build=None, create_snapshot_before_upgrade=True)
         aggregator.details.version = aggregator.get_version()
@@ -346,9 +346,10 @@ def collector(management, aggregator) -> CollectorAgent:
         collector_latest_version = get_collector_latest_version(collector=collector_agent)
         if collector_agent.get_version() != collector_latest_version:
             # create snapshot before new version installation process
-            create_snapshot_for_collector(snapshot_name=f'snapshot_before_installation_process_{StringUtils.generate_random_string(length=6)}',
-                                          management=management,
-                                          collector=collector_agent)
+            create_snapshot_for_collector(
+                snapshot_name=f'snapshot_before_installation_process_{StringUtils.generate_random_string(length=6)}',
+                management=management,
+                collector=collector_agent)
 
             collector_agent.uninstall_collector(registration_password=tenant.organization.registration_password)
             collector_agent.install_collector(version=collector_latest_version, aggregator_ip=aggregator.host_ip,
@@ -497,15 +498,15 @@ def validate_all_system_components_are_running(management: Management,
     collector_status_timeout = 30
 
     for sys_comp in non_collector_sys_components:
-    #     if isinstance(sys_comp, Core):
-    #         with allure.step("Workaround for core - change DeploymentMethod to Cloud although it's onPrem"):
-    #             content = core.get_file_content(file_path='/opt/FortiEDR/core/Config/Core/CoreBootstrap.jsn')
-    #             deployment_mode = StringUtils.get_txt_by_regex(text=content, regex='"DeploymentMode":"(\w+)"', group=1)
-    #             if deployment_mode == 'OnPremise':
-    #                 core.execute_cmd(
-    #                     """sed -i 's/"DeploymentMode":"OnPremise"/"DeploymentMode":"Cloud"/g' /opt/FortiEDR/core/Config/Core/CoreBootstrap.jsn""")
-    #                 core.stop_service()
-    #                 core.start_service()
+        #     if isinstance(sys_comp, Core):
+        #         with allure.step("Workaround for core - change DeploymentMethod to Cloud although it's onPrem"):
+        #             content = core.get_file_content(file_path='/opt/FortiEDR/core/Config/Core/CoreBootstrap.jsn')
+        #             deployment_mode = StringUtils.get_txt_by_regex(text=content, regex='"DeploymentMode":"(\w+)"', group=1)
+        #             if deployment_mode == 'OnPremise':
+        #                 core.execute_cmd(
+        #                     """sed -i 's/"DeploymentMode":"OnPremise"/"DeploymentMode":"Cloud"/g' /opt/FortiEDR/core/Config/Core/CoreBootstrap.jsn""")
+        #                 core.stop_service()
+        #                 core.start_service()
         sys_comp.validate_system_component_is_in_desired_state(desired_state=FortiEdrSystemState.RUNNING)
 
     assert rest_collector.is_running(), f"{collector} is not running in {management}"
@@ -696,7 +697,7 @@ def check_if_collector_has_crashed(collector: CollectorAgent):
     yield
 
     logger.info("Test end - check if collector has crashes")
-    if collector.has_crash(): # if we detected crash, we will take snapshots inside the has_crash() method
+    if collector.has_crash():  # if we detected crash, we will take snapshots inside the has_crash() method
         collector.remove_all_crash_dumps_files()
         assert False, "Real bug - test created crashes, they can be found in the snapshot"
     logger.info("Test end - did not detected crashes at the end of the test :)")
